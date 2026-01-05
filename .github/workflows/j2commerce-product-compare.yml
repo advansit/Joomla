@@ -1,0 +1,75 @@
+name: Build & Test - J2Commerce Product Compare
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'J2Commerce/plg_j2commerce_productcompare/**'
+
+jobs:
+  build-01:
+    name: 01 - Build Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y rsync zip
+      - working-directory: J2Commerce/plg_j2commerce_productcompare
+        run: |
+          chmod +x build.sh
+          ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: J2Commerce/plg_j2commerce_productcompare/*.zip
+
+  test-02-installation:
+    name: 02 - Test Installation
+    runs-on: ubuntu-latest
+    needs: build-01
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: extension-package, path: package}
+      - run: cp package/*.zip J2Commerce/plg_j2commerce_productcompare/tests/extension.zip
+      - working-directory: J2Commerce/plg_j2commerce_productcompare/tests
+        run: |
+          docker compose up -d
+          sleep 120
+          chmod +x run-tests.sh
+          ./run-tests.sh installation || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installation-logs
+          path: J2Commerce/plg_j2commerce_productcompare/tests/test-results/*.txt
+          if-no-files-found: warn
+      - if: always()
+        working-directory: J2Commerce/plg_j2commerce_productcompare/tests
+        run: docker compose down -v
+
+  test-03-uninstall:
+    name: 03 - Test Uninstall
+    runs-on: ubuntu-latest
+    needs: test-02-installation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: extension-package, path: package}
+      - run: cp package/*.zip J2Commerce/plg_j2commerce_productcompare/tests/extension.zip
+      - working-directory: J2Commerce/plg_j2commerce_productcompare/tests
+        run: |
+          docker compose up -d
+          sleep 120
+          chmod +x run-tests.sh
+          ./run-tests.sh uninstall || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uninstall-logs
+          path: J2Commerce/plg_j2commerce_productcompare/tests/test-results/*.txt
+          if-no-files-found: warn
+      - if: always()
+        working-directory: J2Commerce/plg_j2commerce_productcompare/tests
+        run: docker compose down -v

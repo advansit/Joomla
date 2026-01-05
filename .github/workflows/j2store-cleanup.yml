@@ -1,0 +1,126 @@
+name: Build & Test - J2Store Cleanup
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'J2Commerce/com_j2store_cleanup/**'
+      - '!J2Commerce/com_j2store_cleanup/tests/logs/**'
+
+jobs:
+  build-01:
+    name: 01 - Build Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y rsync zip
+      - working-directory: J2Commerce/com_j2store_cleanup
+        run: |
+          chmod +x build.sh
+          ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: J2Commerce/com_j2store_cleanup/*.zip
+
+  test-02-installation:
+    name: 02 - Test Installation
+    runs-on: ubuntu-latest
+    needs: build-01
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: extension-package, path: package}
+      - run: cp package/*.zip J2Commerce/com_j2store_cleanup/tests/extension.zip
+      - working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: |
+          docker compose up -d
+          sleep 120
+          chmod +x run-tests.sh
+          ./run-tests.sh installation || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installation-logs
+          path: J2Commerce/com_j2store_cleanup/tests/test-results/*.txt
+          if-no-files-found: warn
+      - if: always()
+        working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: docker compose down -v
+
+  test-03-scanning:
+    name: 03 - Test Scanning
+    runs-on: ubuntu-latest
+    needs: test-02-installation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: extension-package, path: package}
+      - run: cp package/*.zip J2Commerce/com_j2store_cleanup/tests/extension.zip
+      - working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: |
+          docker compose up -d
+          sleep 120
+          chmod +x run-tests.sh
+          ./run-tests.sh scanning || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scanning-logs
+          path: J2Commerce/com_j2store_cleanup/tests/test-results/*.txt
+          if-no-files-found: warn
+      - if: always()
+        working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: docker compose down -v
+
+  test-04-cleanup:
+    name: 04 - Test Cleanup
+    runs-on: ubuntu-latest
+    needs: test-03-scanning
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: extension-package, path: package}
+      - run: cp package/*.zip J2Commerce/com_j2store_cleanup/tests/extension.zip
+      - working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: |
+          docker compose up -d
+          sleep 120
+          chmod +x run-tests.sh
+          ./run-tests.sh cleanup || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-logs
+          path: J2Commerce/com_j2store_cleanup/tests/test-results/*.txt
+          if-no-files-found: warn
+      - if: always()
+        working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: docker compose down -v
+
+  test-05-uninstall:
+    name: 05 - Test Uninstall
+    runs-on: ubuntu-latest
+    needs: test-04-cleanup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: extension-package, path: package}
+      - run: cp package/*.zip J2Commerce/com_j2store_cleanup/tests/extension.zip
+      - working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: |
+          docker compose up -d
+          sleep 120
+          chmod +x run-tests.sh
+          ./run-tests.sh uninstall || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uninstall-logs
+          path: J2Commerce/com_j2store_cleanup/tests/test-results/*.txt
+          if-no-files-found: warn
+      - if: always()
+        working-directory: J2Commerce/com_j2store_cleanup/tests
+        run: docker compose down -v

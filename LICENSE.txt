@@ -1,0 +1,24 @@
+PROPRIETARY LICENSE
+
+Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+
+This software and associated documentation files (the "Software") are proprietary 
+and confidential to Advans IT Solutions GmbH.
+
+RESTRICTIONS:
+- You may NOT copy, modify, merge, publish, distribute, sublicense, or sell 
+  copies of the Software without explicit written permission.
+- You may NOT reverse engineer, decompile, or disassemble the Software.
+- The Software is provided for use only by authorized clients of Advans IT Solutions GmbH.
+
+NO WARRANTY:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+CONTACT:
+Advans IT Solutions GmbH
+Karl-Barth-Platz 9
+4052 Basel
+Switzerland
+CHE-316.407.165
+
+https://advans.ch

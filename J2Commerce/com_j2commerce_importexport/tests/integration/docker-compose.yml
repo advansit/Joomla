@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  joomla:
+    image: joomla:5-php8.2-apache
+    container_name: j2commerce_importexport_test
+    ports:
+      - "8084:80"
+    environment:
+      JOOMLA_DB_HOST: mysql
+      JOOMLA_DB_USER: joomla
+      JOOMLA_DB_PASSWORD: joomla_password
+      JOOMLA_DB_NAME: joomla_db
+    volumes:
+      - ./test-package.zip:/tmp/extension.zip
+      - ./install-extension.sh:/docker-entrypoint-init.d/install-extension.sh
+      - ./test-results:/var/www/html/test-results
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mysql:
+    image: mysql:8.0
+    container_name: j2commerce_importexport_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: joomla_db
+      MYSQL_USER: joomla
+      MYSQL_PASSWORD: joomla_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:

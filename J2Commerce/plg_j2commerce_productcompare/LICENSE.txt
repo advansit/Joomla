@@ -1,0 +1,86 @@
+PROPRIETARY LICENSE
+
+Copyright (c) 2025 Advans IT Solutions GmbH
+All rights reserved.
+
+================================================================================
+J2COMMERCE EXTENSIONS - PROPRIETARY SOFTWARE LICENSE
+================================================================================
+
+This software and associated documentation files (the "Software") are 
+proprietary and confidential property of Advans IT Solutions GmbH.
+
+GRANT OF LICENSE:
+Subject to the terms of the End User License Agreement (EULA), Advans IT 
+Solutions GmbH grants you a non-exclusive, non-transferable, limited license 
+to use the Software for your internal business or personal purposes.
+
+RESTRICTIONS:
+- You may NOT copy, modify, distribute, sell, or lease the Software
+- You may NOT reverse engineer, decompile, or disassemble the Software
+- You may NOT remove or alter any copyright notices or proprietary markings
+- You may NOT create derivative works based on the Software
+
+OWNERSHIP:
+All intellectual property rights in and to the Software remain with 
+Advans IT Solutions GmbH. This license does not grant you any ownership 
+rights to the Software.
+
+WARRANTY DISCLAIMER:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+Advans IT Solutions GmbH does not warrant the accuracy, completeness, or 
+reliability of the Software and disclaims any responsibility for errors or 
+omissions in the Software.
+
+LIMITATION OF LIABILITY:
+Any liability for damages arising from the use of the Software or information 
+retrievable from it is excluded. Advans IT Solutions GmbH is not liable for 
+damages arising in connection with:
+
+- Internet or communication facility disruptions
+- Interruptions due to failure, repair, update, or maintenance work on the 
+  Software or for any other reason
+- Transmission errors outside the control of Advans IT Solutions GmbH
+- Unauthorized access by third parties to user data, provided that the 
+  protective measures taken by Advans IT Solutions GmbH are appropriate to 
+  the circumstances
+
+IN NO EVENT SHALL ADVANS IT SOLUTIONS GMBH BE LIABLE FOR ANY CLAIM, DAMAGES 
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+TERMINATION:
+This license is effective until terminated. Your rights under this license 
+will terminate automatically without notice if you fail to comply with any 
+term of this license.
+
+GOVERNING LAW:
+This license shall be governed by and construed in accordance with the laws 
+of Switzerland, excluding its conflict of law provisions. The exclusive place 
+of jurisdiction is Basel, Switzerland.
+
+DATA PROTECTION:
+The processing of personal data is subject to the applicable data protection 
+regulations. For detailed information on data protection, please refer to:
+https://advans.ch/de/agb
+
+TERMS AND CONDITIONS:
+The complete Terms and Conditions (AGB) are available at:
+https://advans.ch/de/agb
+
+CONTACT:
+Advans IT Solutions GmbH
+Karl-Barth-Platz 9
+4052 Basel
+Switzerland
+CHE-316.407.165
+https://advans.ch
+
+
+================================================================================
+END OF LICENSE
+================================================================================
