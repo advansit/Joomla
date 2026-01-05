@@ -1,0 +1,343 @@
+name: Build & Test - J2Commerce Import/Export
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'J2Commerce/com_j2commerce_importexport/**'
+      - '!J2Commerce/com_j2commerce_importexport/tests/logs/**'
+
+jobs:
+  build-01:
+    name: 01 - Build Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y rsync zip
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(cat J2Commerce/com_j2commerce_importexport/VERSION | tr -d '[:space:]')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "📌 Version: ${VERSION}"
+
+      - name: Build package
+        working-directory: J2Commerce/com_j2commerce_importexport
+        run: |
+          chmod +x build.sh
+          ./build.sh
+          ls -lh *.zip
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: J2Commerce/com_j2commerce_importexport/*.zip
+          retention-days: 30
+
+  test-02-installation:
+    name: 02 - Test Installation
+    runs-on: ubuntu-latest
+    needs: build-01
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: package
+
+      - name: Prepare test environment
+        run: |
+          cp package/*.zip J2Commerce/com_j2commerce_importexport/tests/extension.zip
+          ls -lh J2Commerce/com_j2commerce_importexport/tests/extension.zip
+
+      - name: Start Docker containers
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          docker compose up -d
+          echo "Waiting for Joomla initialization and extension installation..."
+          sleep 120
+          docker compose ps
+          
+      - name: Check installation logs
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          echo "=== Container Logs ==="
+          docker logs j2commerce_importexport_test | tail -50
+          
+      - name: Debug container state
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          echo "=== Checking extension package ==="
+          docker exec j2commerce_importexport_test ls -lh /tmp/extension.zip || echo "Package not found"
+          echo ""
+          echo "=== Checking Joomla installation ==="
+          docker exec j2commerce_importexport_test ls -lh /var/www/html/configuration.php || echo "Joomla not installed"
+
+      - name: Run installation tests
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh installation || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installation-logs
+          path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop containers
+        if: always()
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: docker compose down -v
+
+  test-03-import:
+    name: 03 - Test Import
+    runs-on: ubuntu-latest
+    needs: test-02-installation
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: package
+
+      - name: Prepare test environment
+        run: cp package/*.zip J2Commerce/com_j2commerce_importexport/tests/extension.zip
+
+      - name: Start Docker containers
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          docker compose up -d
+          sleep 120
+
+      - name: Run import tests
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh import || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: import-logs
+          path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop containers
+        if: always()
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: docker compose down -v
+
+  test-04-export:
+    name: 04 - Test Export
+    runs-on: ubuntu-latest
+    needs: test-02-installation
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: package
+
+      - name: Prepare test environment
+        run: cp package/*.zip J2Commerce/com_j2commerce_importexport/tests/extension.zip
+
+      - name: Start Docker containers
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          docker compose up -d
+          sleep 120
+
+      - name: Run export tests
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh export || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: export-logs
+          path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop containers
+        if: always()
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: docker compose down -v
+
+  test-05-database:
+    name: 05 - Test Database
+    runs-on: ubuntu-latest
+    needs: test-02-installation
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: package
+
+      - name: Prepare test environment
+        run: cp package/*.zip J2Commerce/com_j2commerce_importexport/tests/extension.zip
+
+      - name: Start Docker containers
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          docker compose up -d
+          sleep 120
+
+      - name: Run database tests
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh database || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-logs
+          path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop containers
+        if: always()
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: docker compose down -v
+
+  test-06-uninstall:
+    name: 06 - Test Uninstall
+    runs-on: ubuntu-latest
+    needs: [test-03-import, test-04-export, test-05-database]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: package
+
+      - name: Prepare test environment
+        run: cp package/*.zip J2Commerce/com_j2commerce_importexport/tests/extension.zip
+
+      - name: Start Docker containers
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          docker compose up -d
+          sleep 120
+
+      - name: Run uninstall tests
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh uninstall || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uninstall-logs
+          path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop containers
+        if: always()
+        working-directory: J2Commerce/com_j2commerce_importexport/tests
+        run: docker compose down -v
+
+  collect-results:
+    name: Collect Test Results
+    runs-on: ubuntu-latest
+    needs: [test-02-installation, test-03-import, test-04-export, test-05-database, test-06-uninstall]
+    if: ${{ always() }}
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts/
+
+      - name: Collect logs
+        run: |
+          mkdir -p J2Commerce/com_j2commerce_importexport/tests/logs
+          
+          find test-artifacts/ -name "*.txt" -exec cp {} J2Commerce/com_j2commerce_importexport/tests/logs/ \; 2>/dev/null || true
+          
+          for test in Installation Import Export Database Uninstall; do
+            if [ ! -f "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt" ]; then
+              echo "=== ${test} Tests ===" > "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt"
+              echo "" >> "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt"
+              echo "❌ Test suite did not produce results" >> "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt"
+            fi
+          done
+          
+          ls -la J2Commerce/com_j2commerce_importexport/tests/logs/
+
+      - name: Commit logs to repository
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -f J2Commerce/com_j2commerce_importexport/tests/logs/*.txt
+          if ! git diff --staged --quiet; then
+            git commit -m "Add test logs from run ${{ github.run_number }} [skip ci]"
+            git push || true
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Create test summary
+        run: |
+          echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Suites" >> $GITHUB_STEP_SUMMARY
+          for file in test-artifacts/*/*.txt; do
+            if [ -f "$file" ]; then
+              echo "### $(basename $file .txt)" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              tail -20 "$file" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done

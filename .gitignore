@@ -1,0 +1,42 @@
+# Build artifacts
+*.zip
+!releases/*.zip
+build/
+packages/
+
+# Test results
+test-results/
+**/tests/logs/*.txt
+**/tests/logs/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+*~
+
+# Node modules (if any)
+node_modules/
+package-lock.json
+
+# Composer
+vendor/
+composer.lock
+
+# Environment
+.env
+.env.local
+.env.*.local

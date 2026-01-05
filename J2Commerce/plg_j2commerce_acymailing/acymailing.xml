@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="j2store" method="upgrade">
+    <autoloadLanguage>true</autoloadLanguage>
+    <scriptfile>script.php</scriptfile>
+    <name>PLG_J2STORE_ACYMAILING</name>
+    <element>acymailing</element>
+    <author>Advans IT Solutions GmbH</author>
+    <creationDate>December 2025</creationDate>
+    <copyright>Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.</copyright>
+    <license>Proprietary</license>
+    <authorEmail></authorEmail>
+    <authorUrl>https://advans.ch</authorUrl>
+    <version>1.0.0</version>
+    <description>PLG_J2STORE_ACYMAILING_XML_DESCRIPTION</description>
+    
+    <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+
+    <namespace path="src">Advans\Plugin\J2Commerce\AcyMailing</namespace>
+
+    <files>
+        <folder>services</folder>
+        <folder>src</folder>
+        <folder>tmpl</folder>
+        <folder>language</folder>
+    </files>
+
+    <config>
+        <fields name="params">
+            <fieldset name="basic">
+                <field
+                    name="list_id"
+                    type="text"
+                    label="PLG_J2STORE_ACYMAILING_LIST_ID_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_LIST_ID_DESC"
+                    default=""
+                />
+
+                <field
+                    name="checkbox_label"
+                    type="text"
+                    label="PLG_J2STORE_ACYMAILING_CHECKBOX_LABEL_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_CHECKBOX_LABEL_DESC"
+                    default="PLG_J2STORE_ACYMAILING_DEFAULT_CHECKBOX_LABEL"
+                />
+
+                <field
+                    name="checkbox_default"
+                    type="radio"
+                    label="PLG_J2STORE_ACYMAILING_CHECKBOX_DEFAULT_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_CHECKBOX_DEFAULT_DESC"
+                    default="0"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="double_optin"
+                    type="radio"
+                    label="PLG_J2STORE_ACYMAILING_DOUBLE_OPTIN_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_DOUBLE_OPTIN_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="show_in_checkout"
+                    type="radio"
+                    label="PLG_J2STORE_ACYMAILING_SHOW_IN_CHECKOUT_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_SHOW_IN_CHECKOUT_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="auto_subscribe"
+                    type="radio"
+                    label="PLG_J2STORE_ACYMAILING_AUTO_SUBSCRIBE_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_AUTO_SUBSCRIBE_DESC"
+                    default="0"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="show_in_products"
+                    type="radio"
+                    label="PLG_J2STORE_ACYMAILING_SHOW_IN_PRODUCTS_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_SHOW_IN_PRODUCTS_DESC"
+                    default="0"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="guest_subscription"
+                    type="radio"
+                    label="PLG_J2STORE_ACYMAILING_GUEST_SUBSCRIPTION_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_GUEST_SUBSCRIPTION_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="multiple_lists"
+                    type="text"
+                    label="PLG_J2STORE_ACYMAILING_MULTIPLE_LISTS_LABEL"
+                    description="PLG_J2STORE_ACYMAILING_MULTIPLE_LISTS_DESC"
+                    default=""
+                    hint="1,2,3"
+                />
+            </fieldset>
+        </fields>
+    </config>
+
+    <updateservers>
+        <server type="extension" priority="1" name="J2Store AcyMailing Integration">
+            https://advans.ch/updates/plg_j2store_acymailing.xml
+        </server>
+    </updateservers>
+</extension>

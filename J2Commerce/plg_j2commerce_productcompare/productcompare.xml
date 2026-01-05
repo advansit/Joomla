@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="j2store" method="upgrade">
+    <autoloadLanguage>true</autoloadLanguage>
+    <scriptfile>script.php</scriptfile>
+    <name>PLG_J2STORE_PRODUCTCOMPARE</name>
+    <element>productcompare</element>
+    <author>Advans IT Solutions GmbH</author>
+    <creationDate>December 2025</creationDate>
+    <copyright>Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.</copyright>
+    <license>Proprietary</license>
+    <authorEmail></authorEmail>
+    <authorUrl>https://advans.ch</authorUrl>
+    <version>1.0.0</version>
+    <description>PLG_J2STORE_PRODUCTCOMPARE_XML_DESCRIPTION</description>
+    
+    <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+
+    <namespace path="src">Advans\Plugin\J2Commerce\ProductCompare</namespace>
+
+    <files>
+        <folder>services</folder>
+        <folder>src</folder>
+        <folder>language</folder>
+        <folder>tmpl</folder>
+        <folder>media</folder>
+    </files>
+
+    <media destination="plg_j2store_productcompare" folder="media">
+        <folder>js</folder>
+        <folder>css</folder>
+    </media>
+
+    <config>
+        <fields name="params">
+            <fieldset name="basic">
+                <field
+                    name="show_in_list"
+                    type="radio"
+                    label="PLG_J2STORE_PRODUCTCOMPARE_SHOW_IN_LIST_LABEL"
+                    description="PLG_J2STORE_PRODUCTCOMPARE_SHOW_IN_LIST_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="show_in_detail"
+                    type="radio"
+                    label="PLG_J2STORE_PRODUCTCOMPARE_SHOW_IN_DETAIL_LABEL"
+                    description="PLG_J2STORE_PRODUCTCOMPARE_SHOW_IN_DETAIL_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="max_products"
+                    type="number"
+                    label="PLG_J2STORE_PRODUCTCOMPARE_MAX_PRODUCTS_LABEL"
+                    description="PLG_J2STORE_PRODUCTCOMPARE_MAX_PRODUCTS_DESC"
+                    default="4"
+                    min="2"
+                    max="10"
+                    step="1"
+                />
+
+                <field
+                    name="button_text"
+                    type="text"
+                    label="PLG_J2STORE_PRODUCTCOMPARE_BUTTON_TEXT_LABEL"
+                    description="PLG_J2STORE_PRODUCTCOMPARE_BUTTON_TEXT_DESC"
+                    default="PLG_J2STORE_PRODUCTCOMPARE_DEFAULT_BUTTON_TEXT"
+                />
+
+                <field
+                    name="button_class"
+                    type="text"
+                    label="PLG_J2STORE_PRODUCTCOMPARE_BUTTON_CLASS_LABEL"
+                    description="PLG_J2STORE_PRODUCTCOMPARE_BUTTON_CLASS_DESC"
+                    default="btn btn-secondary"
+                />
+            </fieldset>
+        </fields>
+    </config>
+
+    <updateservers>
+        <server type="extension" priority="1" name="J2Store Product Compare">
+            https://advans.ch/updates/plg_j2store_productcompare.xml
+        </server>
+    </updateservers>
+</extension>

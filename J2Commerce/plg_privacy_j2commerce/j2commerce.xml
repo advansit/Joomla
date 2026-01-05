@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="privacy" method="upgrade">
+    <autoloadLanguage>true</autoloadLanguage>
+    <scriptfile>script.php</scriptfile>
+    <name>PLG_PRIVACY_J2COMMERCE</name>
+    <element>j2commerce</element>
+    <author>Advans IT Solutions GmbH</author>
+    <creationDate>December 2025</creationDate>
+    <copyright>Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.</copyright>
+    <license>Proprietary</license>
+    <authorEmail></authorEmail>
+    <authorUrl>https://advans.ch</authorUrl>
+    <version>1.0.0</version>
+    <description>PLG_PRIVACY_J2COMMERCE_XML_DESCRIPTION</description>
+    
+    <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+
+    <namespace path="src">Advans\Plugin\Privacy\J2Commerce</namespace>
+
+    <files>
+        <folder>services</folder>
+        <folder>src</folder>
+        <folder>language</folder>
+    </files>
+
+    <config>
+        <fields name="params">
+            <fieldset name="basic">
+                <field
+                    name="include_joomla_data"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_INCLUDE_JOOMLA_DATA_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_INCLUDE_JOOMLA_DATA_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="anonymize_orders"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_ANONYMIZE_ORDERS_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_ANONYMIZE_ORDERS_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="delete_addresses"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_DELETE_ADDRESSES_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_DELETE_ADDRESSES_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+            </fieldset>
+        </fields>
+    </config>
+
+    <updateservers>
+        <server type="extension" priority="1" name="J2Commerce Privacy Plugin">
+            https://advans.ch/updates/plg_privacy_j2commerce.xml
+        </server>
+    </updateservers>
+</extension>
