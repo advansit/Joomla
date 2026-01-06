@@ -73,3 +73,31 @@ jobs:
       - if: always()
         working-directory: J2Commerce/plg_j2commerce_acymailing/tests
         run: docker compose down -v
+
+  commit-logs:
+    name: 04 - Commit Test Logs
+    runs-on: ubuntu-latest
+    needs: [test-02-installation, test-03-uninstall]
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: '*-logs'
+          path: downloaded-logs
+          merge-multiple: true
+      - name: Copy logs to repository
+        run: |
+          mkdir -p J2Commerce/plg_j2commerce_acymailing/tests/logs
+          cp -f downloaded-logs/*.txt J2Commerce/plg_j2commerce_acymailing/tests/logs/ 2>/dev/null || echo "No logs to copy"
+      - name: Commit and push logs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add J2Commerce/plg_j2commerce_acymailing/tests/logs/*.txt || true
+          git diff --staged --quiet || git commit -m "Update test logs for AcyMailing plugin [skip ci]"
+          git push || true
