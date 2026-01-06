@@ -16,7 +16,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y rsync zip
@@ -36,7 +36,7 @@ jobs:
           ls -lh *.zip
 
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: extension-package
           path: J2Commerce/com_j2commerce_importexport/*.zip
@@ -49,10 +49,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: extension-package
           path: package
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: installation-logs
           path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
@@ -112,10 +112,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: extension-package
           path: package
@@ -137,7 +137,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: import-logs
           path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
@@ -156,10 +156,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: extension-package
           path: package
@@ -181,7 +181,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: export-logs
           path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
@@ -200,10 +200,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: extension-package
           path: package
@@ -225,7 +225,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: database-logs
           path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
@@ -244,10 +244,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: extension-package
           path: package
@@ -269,7 +269,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: uninstall-logs
           path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
@@ -291,12 +291,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download all test results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: test-artifacts/
 
