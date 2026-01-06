@@ -89,7 +89,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           chmod +x run-tests.sh
-          ./run-tests.sh installation || true
+          ./run-tests.sh installation
 
       - name: Upload test logs
         if: always()
@@ -133,7 +133,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           chmod +x run-tests.sh
-          ./run-tests.sh import || true
+          ./run-tests.sh import
 
       - name: Upload test logs
         if: always()
@@ -177,7 +177,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           chmod +x run-tests.sh
-          ./run-tests.sh export || true
+          ./run-tests.sh export
 
       - name: Upload test logs
         if: always()
@@ -221,7 +221,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           chmod +x run-tests.sh
-          ./run-tests.sh database || true
+          ./run-tests.sh database
 
       - name: Upload test logs
         if: always()
@@ -265,7 +265,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           chmod +x run-tests.sh
-          ./run-tests.sh uninstall || true
+          ./run-tests.sh uninstall
 
       - name: Upload test logs
         if: always()
