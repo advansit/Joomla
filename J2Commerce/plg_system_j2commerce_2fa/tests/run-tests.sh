@@ -84,29 +84,16 @@ main() {
             tests=(
                 "Installation:01-installation.php"
                 "Uninstall:02-uninstall.php"
-                
-                
-                
-                
             )
             ;;
         "installation")
-            tests=("Installation:01-installation.php"
-                "Uninstall:02-uninstall.php")
-            ;;
-        
-            tests=()
-            ;;
-        
-            tests=()
-            ;;
-        
-            tests=()
-            ;;
-        tests=("Uninstall:02-uninstall.php")
+            tests=(
+                "Installation:01-installation.php"
+                "Uninstall:02-uninstall.php"
+            )
             ;;
         "uninstall")
-            tests=()
+            tests=("Uninstall:02-uninstall.php")
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
