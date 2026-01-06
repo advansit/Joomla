@@ -6,38 +6,14 @@ This repository contains extensions developed and maintained by Advans IT Soluti
 
 See the **J2Commerce** folder for all available extensions and their documentation.
 
-## Releases
+## Testing
 
-Each extension has independent releases. Create a release by pushing a git tag:
+Each extension has automated tests that run via GitHub Actions.
 
-```bash
-# Example: Release AcyMailing v1.0.0
-git tag -a acymailing-v1.0.0 -m "Initial release"
-git push origin acymailing-v1.0.0
-```
+### Test Workflows
 
-**Tag naming convention:**
-- `acymailing-v*` - J2Commerce AcyMailing Plugin
-- `productcompare-v*` - J2Commerce Product Compare Plugin
-- `importexport-v*` - J2Commerce Import/Export Component
-- `cleanup-v*` - J2Store Cleanup Component
-- `privacy-v*` - Privacy - J2Commerce Plugin
-- `2fa-v*` - System - J2Commerce 2FA Plugin
-
-Alternatively, use **Actions → Run workflow** in GitHub to create releases manually.
-
-View all releases: https://github.com/advansit/Joomla/releases
-
-## Repository Configuration
-
-This repository is configured with the following GitHub settings for security, automation, and collaboration.
-
-### Automation
-
-#### GitHub Actions Workflows
 **Location:** `.github/workflows/`
 
-**Test Workflows (6):**
 - `j2commerce-2fa.yml` - Tests for 2FA plugin
 - `j2commerce-acymailing.yml` - Tests for AcyMailing plugin
 - `j2commerce-import-export.yml` - Tests for Import/Export component
@@ -45,9 +21,42 @@ This repository is configured with the following GitHub settings for security, a
 - `j2commerce-product-compare.yml` - Tests for Product Compare plugin
 - `j2store-cleanup.yml` - Tests for Cleanup component
 
-Each workflow runs automatically when files in the respective extension directory are modified.
+### How Tests Run
 
-**Release Workflows (6):**
+**Automatic:** Tests run automatically when files in the respective extension directory are modified.
+
+**Manual:** Go to **Actions** → Select workflow → **Run workflow**
+
+View test results: https://github.com/advansit/Joomla/actions
+
+## Releases
+
+Each extension has independent releases.
+
+### Creating a Release
+
+**Via Git Tag:**
+```bash
+# Example: Release AcyMailing v1.0.0
+git tag -a acymailing-v1.0.0 -m "Initial release"
+git push origin acymailing-v1.0.0
+```
+
+**Via GitHub UI:** Go to **Actions** → Select release workflow → **Run workflow**
+
+### Tag Naming Convention
+
+- `acymailing-v*` - J2Commerce AcyMailing Plugin
+- `productcompare-v*` - J2Commerce Product Compare Plugin
+- `importexport-v*` - J2Commerce Import/Export Component
+- `cleanup-v*` - J2Store Cleanup Component
+- `privacy-v*` - Privacy - J2Commerce Plugin
+- `2fa-v*` - System - J2Commerce 2FA Plugin
+
+### Release Workflows
+
+**Location:** `.github/workflows/`
+
 - `release-2fa.yml` - Creates releases for 2FA plugin
 - `release-acymailing.yml` - Creates releases for AcyMailing plugin
 - `release-cleanup.yml` - Creates releases for Cleanup component
@@ -55,7 +64,13 @@ Each workflow runs automatically when files in the respective extension director
 - `release-privacy.yml` - Creates releases for Privacy plugin
 - `release-productcompare.yml` - Creates releases for Product Compare plugin
 
-Each workflow is triggered by git tags (e.g., `acymailing-v1.0.0`) or can be run manually via GitHub Actions UI.
+Each workflow builds the extension, generates changelog, and creates a GitHub release with the ZIP package.
+
+View all releases: https://github.com/advansit/Joomla/releases
+
+## Repository Configuration
+
+This repository is configured with the following GitHub settings for security and collaboration.
 
 ### Security Settings
 
