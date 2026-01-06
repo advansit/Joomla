@@ -32,6 +32,31 @@ View all releases: https://github.com/advansit/Joomla/releases
 
 This repository is configured with the following GitHub settings for security, automation, and collaboration.
 
+### Automation
+
+#### GitHub Actions Workflows
+**Location:** `.github/workflows/`
+
+**Test Workflows (6):**
+- `j2commerce-2fa.yml` - Tests for 2FA plugin
+- `j2commerce-acymailing.yml` - Tests for AcyMailing plugin
+- `j2commerce-import-export.yml` - Tests for Import/Export component
+- `j2commerce-privacy.yml` - Tests for Privacy plugin
+- `j2commerce-product-compare.yml` - Tests for Product Compare plugin
+- `j2store-cleanup.yml` - Tests for Cleanup component
+
+Each workflow runs automatically when files in the respective extension directory are modified.
+
+**Release Workflows (6):**
+- `release-2fa.yml` - Creates releases for 2FA plugin
+- `release-acymailing.yml` - Creates releases for AcyMailing plugin
+- `release-cleanup.yml` - Creates releases for Cleanup component
+- `release-importexport.yml` - Creates releases for Import/Export component
+- `release-privacy.yml` - Creates releases for Privacy plugin
+- `release-productcompare.yml` - Creates releases for Product Compare plugin
+
+Each workflow is triggered by git tags (e.g., `acymailing-v1.0.0`) or can be run manually via GitHub Actions UI.
+
 ### Security Settings
 
 All security features are configured at: **Settings → Security → Code security and analysis**
@@ -121,31 +146,6 @@ Protected branch rules prevent force pushes and ensure code quality standards.
 #### Disabled Features
 - ❌ **Wikis** - Documentation is maintained in README files
 - ❌ **Sponsorships** - Not accepting sponsorships
-
-### Automation
-
-#### GitHub Actions Workflows
-**Location:** `.github/workflows/`
-
-**Test Workflows (6):**
-- `j2commerce-2fa.yml` - Tests for 2FA plugin
-- `j2commerce-acymailing.yml` - Tests for AcyMailing plugin
-- `j2commerce-import-export.yml` - Tests for Import/Export component
-- `j2commerce-privacy.yml` - Tests for Privacy plugin
-- `j2commerce-product-compare.yml` - Tests for Product Compare plugin
-- `j2store-cleanup.yml` - Tests for Cleanup component
-
-Each workflow runs automatically when files in the respective extension directory are modified.
-
-**Release Workflows (6):**
-- `release-2fa.yml` - Creates releases for 2FA plugin
-- `release-acymailing.yml` - Creates releases for AcyMailing plugin
-- `release-cleanup.yml` - Creates releases for Cleanup component
-- `release-importexport.yml` - Creates releases for Import/Export component
-- `release-privacy.yml` - Creates releases for Privacy plugin
-- `release-productcompare.yml` - Creates releases for Product Compare plugin
-
-Each workflow is triggered by git tags (e.g., `acymailing-v1.0.0`) or can be run manually via GitHub Actions UI.
 
 ### Security Policy
 
