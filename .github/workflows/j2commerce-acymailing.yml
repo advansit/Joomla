@@ -39,7 +39,7 @@ jobs:
           sleep 120
           chmod +x run-tests.sh
           mkdir -p test-results
-          ./run-tests.sh installation || true
+          ./run-tests.sh installation
           ls -la test-results/ || echo "No test-results directory"
       - if: always()
         uses: actions/upload-artifact@v6
@@ -68,7 +68,7 @@ jobs:
           sleep 120
           chmod +x run-tests.sh
           mkdir -p test-results
-          ./run-tests.sh uninstall || true
+          ./run-tests.sh uninstall
           ls -la test-results/ || echo "No test-results directory"
       - if: always()
         uses: actions/upload-artifact@v6

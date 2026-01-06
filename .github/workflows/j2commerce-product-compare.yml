@@ -38,7 +38,7 @@ jobs:
           docker compose up -d
           sleep 120
           chmod +x run-tests.sh
-          ./run-tests.sh installation || true
+          ./run-tests.sh installation
       - if: always()
         uses: actions/upload-artifact@v6
         with:
@@ -63,7 +63,7 @@ jobs:
           docker compose up -d
           sleep 120
           chmod +x run-tests.sh
-          ./run-tests.sh uninstall || true
+          ./run-tests.sh uninstall
       - if: always()
         uses: actions/upload-artifact@v6
         with:
