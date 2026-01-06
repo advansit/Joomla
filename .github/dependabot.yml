@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # AcyMailing Plugin
+  - package-ecosystem: "composer"
+    directory: "/J2Commerce/plg_j2commerce_acymailing"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "acymailing"
+
+  # Privacy Plugin
+  - package-ecosystem: "composer"
+    directory: "/J2Commerce/plg_privacy_j2commerce"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "privacy"
+
+  # 2FA Plugin
+  - package-ecosystem: "composer"
+    directory: "/J2Commerce/plg_system_j2commerce_2fa"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "2fa"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"
