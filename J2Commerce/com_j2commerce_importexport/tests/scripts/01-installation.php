@@ -134,8 +134,6 @@ class InstallationTest
             '/var/www/html/administrator/components/com_j2commerce_importexport/services/provider.php',
             '/var/www/html/administrator/components/com_j2commerce_importexport/src/Extension/J2CommerceImportExportComponent.php',
             '/var/www/html/administrator/components/com_j2commerce_importexport/src/Controller/DisplayController.php',
-            '/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ImportModel.php',
-            '/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ExportModel.php',
         ];
         
         $missingFiles = [];

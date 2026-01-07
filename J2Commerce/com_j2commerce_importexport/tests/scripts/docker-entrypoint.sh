@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "=== J2Commerce Test Environment Setup ==="
-echo "Extension: ${EXTENSION_NAME:-unknown}"
-echo "=========================================="
-
 # Run original Joomla entrypoint
 /entrypoint.sh apache2-foreground &
 JOOMLA_PID=$!

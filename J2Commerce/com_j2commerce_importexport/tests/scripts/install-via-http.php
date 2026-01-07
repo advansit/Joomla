@@ -8,7 +8,7 @@
 $baseUrl = 'http://localhost';
 $adminUser = 'admin';
 $adminPass = 'Admin123456789!@#$%';
-$packagePath = '/tmp/extension.zip';
+$packagePath = '/tmp/com_j2commerce_importexport.zip';
 
 echo "=== Installing J2Commerce Import/Export via HTTP ===\n\n";
 
@@ -98,7 +98,7 @@ if (!file_exists($packagePath)) {
     exit(1);
 }
 
-$cfile = new CURLFile($packagePath, 'application/zip', 'extension.zip');
+$cfile = new CURLFile($packagePath, 'application/zip', 'com_j2commerce_importexport.zip');
 
 curl_setopt($ch, CURLOPT_URL, "$baseUrl/administrator/index.php?option=com_installer&view=install");
 curl_setopt($ch, CURLOPT_POST, true);
