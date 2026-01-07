@@ -26,13 +26,24 @@ run_test() {
     
     print_header "Running: $test_name"
     
-    if docker exec "$CONTAINER" php "/var/www/html/tests/scripts/${test_script}" > "$result_file" 2>&1; then
+    # Always write output to file, even on failure
+    set +e  # Temporarily disable exit on error
+    docker exec "$CONTAINER" php "/var/www/html/tests/scripts/${test_script}" > "$result_file" 2>&1
+    local exit_code=$?
+    set -e  # Re-enable exit on error
+    
+    # Show the output
+    if [ -s "$result_file" ]; then
         cat "$result_file"
+    else
+        echo "No output generated" | tee "$result_file"
+    fi
+    
+    if [ $exit_code -eq 0 ]; then
         print_success "$test_name PASSED"
         return 0
     else
-        cat "$result_file"
-        print_error "$test_name FAILED"
+        print_error "$test_name FAILED (exit code: $exit_code)"
         return 1
     fi
 }
