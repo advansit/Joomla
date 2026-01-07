@@ -36,11 +36,9 @@ jobs:
       - working-directory: J2Commerce/plg_j2commerce_acymailing/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
           chmod +x run-tests.sh
-          mkdir -p test-results
           ./run-tests.sh installation
-          ls -la test-results/ || echo "No test-results directory"
       - if: always()
         uses: actions/upload-artifact@v6
         with:
@@ -65,11 +63,9 @@ jobs:
       - working-directory: J2Commerce/plg_j2commerce_acymailing/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
           chmod +x run-tests.sh
-          mkdir -p test-results
           ./run-tests.sh uninstall
-          ls -la test-results/ || echo "No test-results directory"
       - if: always()
         uses: actions/upload-artifact@v6
         with:

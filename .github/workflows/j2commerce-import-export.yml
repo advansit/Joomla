@@ -67,7 +67,7 @@ jobs:
         run: |
           docker compose up -d
           echo "Waiting for Joomla initialization and extension installation..."
-          sleep 120
+          sleep 30
           docker compose ps
           
       - name: Check installation logs
@@ -127,7 +127,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
 
       - name: Run import tests
         working-directory: J2Commerce/com_j2commerce_importexport/tests
@@ -171,7 +171,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
 
       - name: Run export tests
         working-directory: J2Commerce/com_j2commerce_importexport/tests
@@ -215,7 +215,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
 
       - name: Run database tests
         working-directory: J2Commerce/com_j2commerce_importexport/tests
@@ -259,7 +259,7 @@ jobs:
         working-directory: J2Commerce/com_j2commerce_importexport/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
 
       - name: Run uninstall tests
         working-directory: J2Commerce/com_j2commerce_importexport/tests
