@@ -70,11 +70,23 @@ class InstallationVerificationTest {
     }
 }
 
+// Ensure output is not buffered
+ob_implicit_flush(true);
+ob_end_flush();
+
 try {
     $app = Factory::getApplication('administrator');
     $test = new InstallationVerificationTest();
-    exit($test->run() ? 0 : 1);
+    $result = $test->run();
+    
+    // Force flush output
+    if (ob_get_level()) ob_end_flush();
+    flush();
+    
+    exit($result ? 0 : 1);
 } catch (Exception $e) {
     echo "\n❌ FATAL ERROR: " . $e->getMessage() . "\n";
+    if (ob_get_level()) ob_end_flush();
+    flush();
     exit(1);
 }
