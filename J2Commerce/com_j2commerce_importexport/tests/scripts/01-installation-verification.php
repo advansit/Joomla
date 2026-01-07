@@ -1,7 +1,8 @@
 #!/usr/bin/env php
 <?php
-// Write directly to STDERR to bypass any output buffering
-define('OUTPUT', STDERR);
+// Write directly to a log file since Joomla suppresses all output
+$logFile = '/tmp/installation-test.log';
+file_put_contents($logFile, ''); // Clear log file
 
 define('_JEXEC', 1);
 define('JPATH_BASE', '/var/www/html/administrator');
@@ -12,7 +13,10 @@ use Joomla\CMS\Factory;
 
 // Helper function to write output
 function write_output($message) {
-    fwrite(OUTPUT, $message);
+    global $logFile;
+    file_put_contents($logFile, $message, FILE_APPEND);
+    // Also try to write to STDOUT
+    echo $message;
 }
 
 class InstallationVerificationTest {
@@ -82,8 +86,17 @@ try {
     $app = Factory::getApplication('administrator');
     $test = new InstallationVerificationTest();
     $result = $test->run();
+    
+    // Copy log file to STDOUT so it gets captured
+    if (file_exists($logFile)) {
+        echo file_get_contents($logFile);
+    }
+    
     exit($result ? 0 : 1);
 } catch (Exception $e) {
     write_output("\n❌ FATAL ERROR: " . $e->getMessage() . "\n");
+    if (file_exists($logFile)) {
+        echo file_get_contents($logFile);
+    }
     exit(1);
 }
