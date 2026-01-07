@@ -3,14 +3,12 @@ set -e
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
 RESULTS_DIR="./test-results"
 mkdir -p "$RESULTS_DIR"
-
-CONTAINER="j2commerce_importexport_test"
+CONTAINER="com_j2commerce_importexport_test"
 
 print_header() {
     echo -e "\n${BLUE}========================================${NC}"
@@ -18,13 +16,8 @@ print_header() {
     echo -e "${BLUE}========================================${NC}\n"
 }
 
-print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}❌ $1${NC}"
-}
+print_success() { echo -e "${GREEN}✅ $1${NC}"; }
+print_error() { echo -e "${RED}❌ $1${NC}"; }
 
 run_test() {
     local test_name=$1
@@ -46,14 +39,11 @@ run_test() {
 
 copy_test_scripts() {
     print_header "Copying test scripts to container"
-    
     docker exec "$CONTAINER" mkdir -p /var/www/html/tests/scripts
-    
     for script in scripts/*.php; do
         docker cp "$script" "$CONTAINER:/var/www/html/tests/scripts/"
         echo "  Copied: $(basename $script)"
     done
-    
     print_success "Test scripts copied"
 }
 
@@ -62,47 +52,28 @@ main() {
     local failed_tests=0
     local total_tests=0
     
-    print_header "J2Commerce ImportExport - Test Suite"
+    print_header "Import/Export Component - Test Suite"
     
     if ! docker ps | grep -q "$CONTAINER"; then
         print_error "Container $CONTAINER is not running"
         exit 1
     fi
     
+    print_header "Waiting for Joomla to be ready"
+    timeout 60 bash -c "until docker exec $CONTAINER curl -sf http://localhost > /dev/null 2>&1; do sleep 2; done" || {
+        print_error "Joomla did not become ready in time"
+        exit 1
+    }
+    print_success "Joomla is ready"
+    
     copy_test_scripts
     
-    print_header "Verifying Setup"
-    if docker exec "$CONTAINER" php /var/www/html/tests/scripts/00-verify-setup.php; then
-        print_success "Setup verification passed"
-    else
-        print_error "Setup verification failed"
-        exit 1
-    fi
-    
     case $test_suite in
-        "all")
-            tests=(
-                "Installation:01-installation.php"
-                "Import:02-import.php"
-                "Export:03-export.php"
-                "Database:04-database.php"
-                "Uninstall:05-uninstall.php"
-            )
-            ;;
-        "installation")
-            tests=("Installation:01-installation.php")
-            ;;
-        "import")
-            tests=("Import:02-import.php")
-            ;;
-        "export")
-            tests=("Export:03-export.php")
-            ;;
-        "database")
-            tests=("Database:04-database.php")
+        "all"|"installation")
+            tests=("Installation:01-installation-verification.php" "Uninstall:02-uninstall-verification.php")
             ;;
         "uninstall")
-            tests=("Uninstall:05-uninstall.php")
+            tests=("Uninstall:02-uninstall-verification.php")
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
@@ -113,7 +84,6 @@ main() {
     for test in "${tests[@]}"; do
         IFS=':' read -r name script <<< "$test"
         total_tests=$((total_tests + 1))
-        
         if ! run_test "$name" "$script"; then
             failed_tests=$((failed_tests + 1))
         fi

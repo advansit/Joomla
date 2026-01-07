@@ -14,7 +14,7 @@ class UninstallVerificationTest {
     private $failed = 0;
     private $type = 'plugin';
     private $folder = 'FOLDER_PLACEHOLDER';
-    private $element = 'j2commerce_importexport';
+    private $element = 'ELEMENT_PLACEHOLDER';
 
     public function __construct() {
         $this->db = Factory::getDbo();

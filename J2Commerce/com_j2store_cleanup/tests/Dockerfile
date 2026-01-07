@@ -11,7 +11,7 @@ COPY ../../_shared/install-extension-http.php /usr/local/bin/install-extension-h
 COPY ../../_shared/docker-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
 RUN chmod +x /usr/local/bin/install-extension-http.php /usr/local/bin/custom-entrypoint.sh
 
-ENV EXTENSION_NAME="com_j2store_cleanup"
+ENV EXTENSION_NAME="Cleanup Component"
 
 ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]
 CMD ["apache2-foreground"]

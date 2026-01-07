@@ -16,7 +16,7 @@ services:
       JOOMLA_SITE_NAME: "Test Site"
       JOOMLA_ADMIN_USER: admin
       JOOMLA_ADMIN_USERNAME: admin
-      JOOMLA_ADMIN_PASSWORD: Admin123!
+      JOOMLA_ADMIN_PASSWORD: Admin123!@#
       JOOMLA_ADMIN_EMAIL: admin@test.local
     volumes:
       - joomla_data:/var/www/html

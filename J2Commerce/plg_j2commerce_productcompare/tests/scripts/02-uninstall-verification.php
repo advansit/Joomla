@@ -13,8 +13,8 @@ class UninstallVerificationTest {
     private $passed = 0;
     private $failed = 0;
     private $type = 'plugin';
-    private $folder = 'FOLDER_PLACEHOLDER';
-    private $element = 'ELEMENT_PLACEHOLDER';
+    private $folder = 'j2commerce';
+    private $element = 'productcompare';
 
     public function __construct() {
         $this->db = Factory::getDbo();
