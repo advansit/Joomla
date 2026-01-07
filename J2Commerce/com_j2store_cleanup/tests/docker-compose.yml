@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: j2store_cleanup_test
+    container_name: com_j2store_cleanup_test
     ports:
       - "8080:80"
     environment:
@@ -16,11 +16,10 @@ services:
       JOOMLA_SITE_NAME: "Test Site"
       JOOMLA_ADMIN_USER: admin
       JOOMLA_ADMIN_USERNAME: admin
-      JOOMLA_ADMIN_PASSWORD: Admin123!
+      JOOMLA_ADMIN_PASSWORD: Admin123!@#
       JOOMLA_ADMIN_EMAIL: admin@test.local
     volumes:
       - joomla_data:/var/www/html
-      - ./extension.zip:/tmp/extension.zip:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -32,7 +31,7 @@ services:
 
   mysql:
     image: mysql:8.0
-    container_name: j2store_cleanup_mysql
+    container_name: com_j2store_cleanup_test_mysql
     environment:
       MYSQL_ROOT_PASSWORD: root_pass
       MYSQL_DATABASE: joomla_db

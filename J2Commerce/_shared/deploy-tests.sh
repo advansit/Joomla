@@ -15,29 +15,35 @@ for ext in "${EXTENSIONS[@]}"; do
     
     echo "=== Deploying to $dir ==="
     
-    # Create Dockerfile
-    sed "s/EXTENSION_NAME_PLACEHOLDER/$name/" _shared/Dockerfile.template > "$dir/tests/Dockerfile"
+    # Create Dockerfile (use | as delimiter to avoid issues with / in names)
+    sed "s|EXTENSION_NAME_PLACEHOLDER|$name|" _shared/Dockerfile.template > "$dir/tests/Dockerfile"
     
     # Create docker-compose.yml
-    sed "s/CONTAINER_NAME_PLACEHOLDER/$container/g" _shared/docker-compose.yml.template > "$dir/tests/docker-compose.yml"
+    sed "s|CONTAINER_NAME_PLACEHOLDER|$container|g" _shared/docker-compose.yml.template > "$dir/tests/docker-compose.yml"
     
-    # Create run-tests.sh
-    sed "s/CONTAINER_NAME_PLACEHOLDER/$container/g; s/EXTENSION_NAME_PLACEHOLDER/$name/g" _shared/run-tests.sh.template > "$dir/tests/run-tests.sh"
+    # Create run-tests.sh (use | as delimiter to avoid issues with / in names)
+    sed "s|CONTAINER_NAME_PLACEHOLDER|$container|g; s|EXTENSION_NAME_PLACEHOLDER|$name|g" _shared/run-tests.sh.template > "$dir/tests/run-tests.sh"
     chmod +x "$dir/tests/run-tests.sh"
     
     # Create test scripts directory
     mkdir -p "$dir/tests/scripts"
     
-    # Copy generic test scripts
-    cp _shared/test-scripts/01-installation-verification.php "$dir/tests/scripts/"
-    cp _shared/test-scripts/02-uninstall-verification.php "$dir/tests/scripts/"
-    
-    # Customize for plugin type
+    # Copy test scripts based on extension type
     if [[ $dir == plg_* ]]; then
+        # Plugin: use plugin-specific installation verification
+        cp _shared/test-scripts/01-installation-verification.php "$dir/tests/scripts/"
+        cp _shared/test-scripts/02-uninstall-verification.php "$dir/tests/scripts/"
+        
+        # Customize for plugin type
         folder=$(echo $dir | cut -d'_' -f2)
         element=$(echo $dir | cut -d'_' -f3-)
         sed -i "s/FOLDER_PLACEHOLDER/$folder/g; s/ELEMENT_PLACEHOLDER/$element/g" "$dir/tests/scripts/"*.php
     elif [[ $dir == com_* ]]; then
+        # Component: use component-specific installation verification
+        cp _shared/test-scripts/01-installation-verification-component.php "$dir/tests/scripts/01-installation-verification.php"
+        cp _shared/test-scripts/02-uninstall-verification.php "$dir/tests/scripts/"
+        
+        # Customize for component
         component=$(echo $dir | sed 's/com_//')
         sed -i "s/COMPONENT_PLACEHOLDER/$component/g" "$dir/tests/scripts/"*.php
     fi

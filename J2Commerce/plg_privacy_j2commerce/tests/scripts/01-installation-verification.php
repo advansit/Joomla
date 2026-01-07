@@ -12,8 +12,8 @@ class InstallationVerificationTest {
     private $passed = 0;
     private $failed = 0;
     private $type = 'plugin';
-    private $folder = 'FOLDER_PLACEHOLDER';
-    private $element = 'ELEMENT_PLACEHOLDER';
+    private $folder = 'privacy';
+    private $element = 'j2commerce';
 
     public function __construct() {
         $this->db = Factory::getDbo();
