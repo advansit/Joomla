@@ -63,7 +63,7 @@ jobs:
           docker compose up -d
           sleep 60
           chmod +x run-tests.sh
-          ./run-tests.sh installation
+          ./run-tests.sh all
       - if: always()
         uses: actions/upload-artifact@v6
         with:
