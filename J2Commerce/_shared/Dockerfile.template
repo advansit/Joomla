@@ -1,25 +1,17 @@
 FROM joomla:5-php8.2-apache
 
-# Install additional tools
 RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy extension package
 COPY extension.zip /tmp/extension.zip
-
-# Copy shared installation script
 COPY ../../_shared/install-extension-http.php /usr/local/bin/install-extension-http.php
-RUN chmod +x /usr/local/bin/install-extension-http.php
-
-# Copy shared entrypoint
 COPY ../../_shared/docker-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
-RUN chmod +x /usr/local/bin/custom-entrypoint.sh
+RUN chmod +x /usr/local/bin/install-extension-http.php /usr/local/bin/custom-entrypoint.sh
 
-# Set extension name for entrypoint
-ENV EXTENSION_NAME="AcyMailing Integration Plugin"
+ENV EXTENSION_NAME="EXTENSION_NAME_PLACEHOLDER"
 
 ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]
 CMD ["apache2-foreground"]

@@ -36,7 +36,7 @@ jobs:
       - working-directory: J2Commerce/plg_j2commerce_productcompare/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
           chmod +x run-tests.sh
           ./run-tests.sh installation
       - if: always()
@@ -61,7 +61,7 @@ jobs:
       - working-directory: J2Commerce/plg_j2commerce_productcompare/tests
         run: |
           docker compose up -d
-          sleep 120
+          sleep 30
           chmod +x run-tests.sh
           ./run-tests.sh uninstall
       - if: always()
