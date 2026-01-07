@@ -1,11 +1,19 @@
 #!/usr/bin/env php
 <?php
+// Write directly to STDERR to bypass any output buffering
+define('OUTPUT', STDERR);
+
 define('_JEXEC', 1);
 define('JPATH_BASE', '/var/www/html/administrator');
 require_once JPATH_BASE . '/includes/defines.php';
 require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
+
+// Helper function to write output
+function write_output($message) {
+    fwrite(OUTPUT, $message);
+}
 
 class InstallationVerificationTest {
     private $db;
@@ -18,7 +26,7 @@ class InstallationVerificationTest {
     }
 
     public function run(): bool {
-        echo "=== Installation Verification Tests ===\n\n";
+        write_output("=== Installation Verification Tests ===\n\n");
         $this->testExtensionRegistered();
         $this->testFilesExist();
         $this->printSummary();
@@ -26,7 +34,7 @@ class InstallationVerificationTest {
     }
 
     private function testExtensionRegistered(): void {
-        echo "Test: Component registered in database... ";
+        write_output("Test: Component registered in database... ");
         $query = $this->db->getQuery(true)
             ->select('*')
             ->from($this->db->quoteName('#__extensions'))
@@ -37,56 +45,45 @@ class InstallationVerificationTest {
         $ext = $this->db->loadObject();
         
         if ($ext) {
-            echo "✅ PASS\n";
-            echo "  Extension ID: {$ext->extension_id}\n";
-            echo "  Name: {$ext->name}\n";
+            write_output("✅ PASS\n");
+            write_output("  Extension ID: {$ext->extension_id}\n");
+            write_output("  Name: {$ext->name}\n");
             $this->passed++;
         } else {
-            echo "❌ FAIL\n";
+            write_output("❌ FAIL\n");
             $this->failed++;
         }
     }
 
     private function testFilesExist(): void {
-        echo "\nTest: Component files exist... ";
+        write_output("\nTest: Component files exist... ");
         $path = "/var/www/html/administrator/components/com_{$this->component}";
         
         if (is_dir($path)) {
-            echo "✅ PASS\n";
-            echo "  Path: $path\n";
+            write_output("✅ PASS\n");
+            write_output("  Path: $path\n");
             $this->passed++;
         } else {
-            echo "❌ FAIL\n";
+            write_output("❌ FAIL\n");
             $this->failed++;
         }
     }
 
     private function printSummary(): void {
-        echo "\n=== Summary ===\n";
-        echo "Passed: {$this->passed}\n";
-        echo "Failed: {$this->failed}\n";
-        if ($this->failed === 0) echo "✅ All tests passed\n";
-        else echo "❌ {$this->failed} test(s) failed\n";
+        write_output("\n=== Summary ===\n");
+        write_output("Passed: {$this->passed}\n");
+        write_output("Failed: {$this->failed}\n");
+        if ($this->failed === 0) write_output("✅ All tests passed\n");
+        else write_output("❌ {$this->failed} test(s) failed\n");
     }
 }
-
-// Ensure output is not buffered
-ob_implicit_flush(true);
-ob_end_flush();
 
 try {
     $app = Factory::getApplication('administrator');
     $test = new InstallationVerificationTest();
     $result = $test->run();
-    
-    // Force flush output
-    if (ob_get_level()) ob_end_flush();
-    flush();
-    
     exit($result ? 0 : 1);
 } catch (Exception $e) {
-    echo "\n❌ FATAL ERROR: " . $e->getMessage() . "\n";
-    if (ob_get_level()) ob_end_flush();
-    flush();
+    write_output("\n❌ FATAL ERROR: " . $e->getMessage() . "\n");
     exit(1);
 }
