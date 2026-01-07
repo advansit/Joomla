@@ -148,6 +148,10 @@ jobs:
         run: |
           mkdir -p J2Commerce/com_j2commerce_importexport/tests/logs
           
+          # Debug: Show artifact structure
+          echo "=== Artifact structure ==="
+          find test-artifacts/ -type f
+          
           # Copy all available logs
           find test-artifacts/ -name "*.txt" -exec cp {} J2Commerce/com_j2commerce_importexport/tests/logs/ \; 2>/dev/null || true
           
@@ -171,8 +175,15 @@ jobs:
           git config user.email "actions@github.com"
           git add -f J2Commerce/com_j2commerce_importexport/tests/logs/*.txt
           if ! git diff --staged --quiet; then
+            # Try direct push first (works if branch protection allows)
             git commit -m "Add test logs from run ${{ github.run_number }} [skip ci]"
-            git push || true
+            if ! git push 2>&1; then
+              echo "Direct push failed (branch protected), trying alternative..."
+              # Create a temporary branch and push there
+              BRANCH_NAME="test-logs-run-${{ github.run_number }}"
+              git checkout -b "$BRANCH_NAME"
+              git push -u origin "$BRANCH_NAME" || echo "Failed to push to branch $BRANCH_NAME"
+            fi
           else
             echo "No changes to commit"
           fi
