@@ -131,12 +131,11 @@ class InstallationTest
         echo "Test: Component files installed... ";
         
         $requiredFiles = [
-            '/var/www/html/administrator/components/com_j2commerce_importexport/j2commerce_importexport.php',
             '/var/www/html/administrator/components/com_j2commerce_importexport/services/provider.php',
-            '/var/www/html/administrator/components/com_j2commerce_importexport/src/Extension/J2Commerce Import/ExportComponent.php',
-            '/var/www/html/components/com_j2commerce_importexport/j2commerce_importexport.php',
-            '/var/www/html/components/com_j2commerce_importexport/src/Controller/ActivateController.php',
-            '/var/www/html/components/com_j2commerce_importexport/src/View/Activate/HtmlView.php',
+            '/var/www/html/administrator/components/com_j2commerce_importexport/src/Extension/J2CommerceImportExportComponent.php',
+            '/var/www/html/administrator/components/com_j2commerce_importexport/src/Controller/DisplayController.php',
+            '/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ImportModel.php',
+            '/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ExportModel.php',
         ];
         
         $missingFiles = [];
