@@ -30,10 +30,12 @@ if [ -f /var/www/html/configuration.php ]; then
     if [ -f /tmp/extension.zip ]; then
         echo ""
         echo "Installing extension via HTTP..."
-        php /usr/local/bin/install-extension-http.php || {
-            echo "⚠️  Extension installation failed, but continuing..."
-        }
-        echo "✅ Extension installation complete"
+        if php /usr/local/bin/install-extension-http.php; then
+            echo "✅ Extension installation complete"
+        else
+            echo "❌ Extension installation failed"
+            echo "Container will continue running for debugging"
+        fi
     else
         echo "⚠️  No extension package found at /tmp/extension.zip"
     fi

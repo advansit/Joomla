@@ -66,6 +66,11 @@ main() {
     }
     print_success "Joomla is ready"
     
+    print_header "Checking Joomla Installation"
+    docker exec "$CONTAINER" ls -lh /var/www/html/configuration.php || print_error "configuration.php not found"
+    docker exec "$CONTAINER" ls -lh /tmp/extension.zip || print_error "extension.zip not found"
+    echo ""
+    
     copy_test_scripts
     
     case $test_suite in
