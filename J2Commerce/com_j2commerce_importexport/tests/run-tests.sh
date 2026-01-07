@@ -84,6 +84,10 @@ main() {
     
     copy_test_scripts
     
+    # Debug: Test if output works at all
+    print_header "Testing Output Methods"
+    docker exec "$CONTAINER" php "/var/www/html/tests/scripts/test-output.php" 2>&1 || echo "test-output.php failed"
+    
     case $test_suite in
         "all"|"installation")
             tests=("Installation:01-installation-verification.php" "Uninstall:02-uninstall-verification.php")
