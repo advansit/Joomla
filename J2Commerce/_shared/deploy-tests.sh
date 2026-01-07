@@ -28,6 +28,10 @@ for ext in "${EXTENSIONS[@]}"; do
     # Create test scripts directory
     mkdir -p "$dir/tests/scripts"
     
+    # Copy Docker build scripts (needed by Dockerfile)
+    cp _shared/docker-entrypoint.sh "$dir/tests/scripts/"
+    cp _shared/install-extension-http.php "$dir/tests/scripts/"
+    
     # Copy test scripts based on extension type
     if [[ $dir == plg_* ]]; then
         # Plugin: use plugin-specific installation verification
@@ -37,7 +41,7 @@ for ext in "${EXTENSIONS[@]}"; do
         # Customize for plugin type
         folder=$(echo $dir | cut -d'_' -f2)
         element=$(echo $dir | cut -d'_' -f3-)
-        sed -i "s/FOLDER_PLACEHOLDER/$folder/g; s/ELEMENT_PLACEHOLDER/$element/g" "$dir/tests/scripts/"*.php
+        sed -i "s/FOLDER_PLACEHOLDER/$folder/g; s/ELEMENT_PLACEHOLDER/$element/g" "$dir/tests/scripts/01-installation-verification.php" "$dir/tests/scripts/02-uninstall-verification.php"
     elif [[ $dir == com_* ]]; then
         # Component: use component-specific installation verification
         cp _shared/test-scripts/01-installation-verification-component.php "$dir/tests/scripts/01-installation-verification.php"
@@ -45,7 +49,7 @@ for ext in "${EXTENSIONS[@]}"; do
         
         # Customize for component
         component=$(echo $dir | sed 's/com_//')
-        sed -i "s/COMPONENT_PLACEHOLDER/$component/g" "$dir/tests/scripts/"*.php
+        sed -i "s/COMPONENT_PLACEHOLDER/$component/g" "$dir/tests/scripts/01-installation-verification.php" "$dir/tests/scripts/02-uninstall-verification.php"
     fi
     
     echo "✅ Deployed to $dir"
