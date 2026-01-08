@@ -78,8 +78,8 @@ jobs:
         working-directory: J2Commerce/plg_j2commerce_acymailing/tests
         run: docker compose down -v
 
-  commit-logs:
-    name: 04 - Commit Test Logs
+  collect-results:
+    name: Collect Test Results
     runs-on: ubuntu-latest
     needs: [test-02-installation, test-03-uninstall]
     if: always()
@@ -88,20 +88,45 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref }}
-      - uses: actions/download-artifact@v7
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
         with:
-          pattern: '*-logs'
-          path: downloaded-logs
-          merge-multiple: true
+          path: artifacts
+
+      - name: Prepare logs directory
+        run: |
+          mkdir -p tests/logs/plg_j2commerce_acymailing
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          echo "TIMESTAMP=$timestamp" >> $GITHUB_ENV
+
       - name: Copy logs to repository
         run: |
-          mkdir -p J2Commerce/plg_j2commerce_acymailing/tests/logs
-          cp -f downloaded-logs/*.txt J2Commerce/plg_j2commerce_acymailing/tests/logs/ 2>/dev/null || echo "No logs to copy"
-      - name: Commit and push logs
+          if [ -d "artifacts/installation-logs" ]; then
+            cp artifacts/installation-logs/*.txt tests/logs/plg_j2commerce_acymailing/ 2>/dev/null || true
+          fi
+          if [ -d "artifacts/uninstall-logs" ]; then
+            cp artifacts/uninstall-logs/*.txt tests/logs/plg_j2commerce_acymailing/ 2>/dev/null || true
+          fi
+
+      - name: Commit logs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add J2Commerce/plg_j2commerce_acymailing/tests/logs/*.txt || true
-          git diff --staged --quiet || git commit -m "Update test logs for AcyMailing plugin [skip ci]"
-          git push || true
+          
+          if [ -n "$(git status --porcelain tests/logs/)" ]; then
+            git add tests/logs/
+            git commit -m "Add test logs for plg_j2commerce_acymailing - ${{ env.TIMESTAMP }} [skip ci]"
+            
+            # Try to push to main, if it fails due to branch protection, create a temporary branch
+            if ! git push origin main; then
+              branch_name="test-logs/plg_j2commerce_acymailing-${{ env.TIMESTAMP }}"
+              git checkout -b "$branch_name"
+              git push origin "$branch_name"
+              echo "::notice::Logs committed to branch $branch_name due to branch protection"
+            fi
+          else
+            echo "No new logs to commit"
+          fi
