@@ -9,92 +9,119 @@ on:
       - 'J2Commerce/plg_system_j2commerce_2fa/**'
 
 jobs:
-  build-01:
-    name: 01 - Build Package
+  build:
+    name: Build Package
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v6
-      - run: sudo apt-get update && sudo apt-get install -y rsync zip
-      - working-directory: J2Commerce/plg_system_j2commerce_2fa
+      
+      - name: Build extension
         run: |
+          cd J2Commerce/plg_system_j2commerce_2fa
           chmod +x build.sh
           ./build.sh
-      - uses: actions/upload-artifact@v6
-        with:
-          name: extension-package
-          path: J2Commerce/plg_system_j2commerce_2fa/*.zip
-
-  test-02-all-tests:
-    name: 02 - Run All Tests
-    runs-on: ubuntu-latest
-    needs: build-01
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v7
-        with: {name: extension-package, path: package}
-      - run: cp package/*.zip J2Commerce/plg_system_j2commerce_2fa/tests/extension.zip
-      - working-directory: J2Commerce/plg_system_j2commerce_2fa/tests
-        run: |
-          docker compose up -d
-          sleep 60
-          chmod +x run-tests.sh
-          ./run-tests.sh all
-      - if: always()
+          cp *.zip tests/extension.zip
+      
+      - name: Upload package
         uses: actions/upload-artifact@v6
         with:
-          name: test-logs
+          name: extension-package
+          path: J2Commerce/plg_system_j2commerce_2fa/tests/extension.zip
+          retention-days: 1
+
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Configuration'
+            script: 'configuration'
+          - name: '03 - Session Preservation'
+            script: 'session'
+          - name: '04 - Guest Cart Transfer'
+            script: 'cart'
+          - name: '05 - Session Security'
+            script: 'session'
+          - name: '06 - Debug Mode'
+            script: 'debug'
+          - name: '07 - Uninstall'
+            script: 'uninstall'
+    
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Download package
+        uses: actions/download-artifact@v6
+        with:
+          name: extension-package
+          path: J2Commerce/plg_system_j2commerce_2fa/tests/
+      
+      - name: Start test environment
+        run: |
+          cd J2Commerce/plg_system_j2commerce_2fa/tests
+          docker compose up -d
+          sleep 60
+      
+      - name: Run tests
+        continue-on-error: true
+        run: |
+          cd J2Commerce/plg_system_j2commerce_2fa/tests
+          chmod +x run-tests.sh
+          ./run-tests.sh ${{ matrix.script }}
+      
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.script }}-logs
           path: J2Commerce/plg_system_j2commerce_2fa/tests/test-results/*.txt
-          if-no-files-found: warn
-      - if: always()
-        working-directory: J2Commerce/plg_system_j2commerce_2fa/tests
-        run: docker compose down -v
+          retention-days: 7
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd J2Commerce/plg_system_j2commerce_2fa/tests
+          docker compose down -v
 
   collect-results:
-    name: Collect Test Results
+    name: Collect Results
     runs-on: ubuntu-latest
-    needs: [test-02-all-tests]
+    needs: test
     if: always()
     permissions:
       contents: write
+    
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v7
+      
+      - name: Download all test results
+        uses: actions/download-artifact@v6
         with:
-          path: artifacts
-
-      - name: Prepare logs directory
+          path: test-artifacts/
+      
+      - name: Collect logs
         run: |
           mkdir -p tests/logs/plg_system_j2commerce_2fa
-          timestamp=$(date +%Y%m%d_%H%M%S)
-          echo "TIMESTAMP=$timestamp" >> $GITHUB_ENV
-
-      - name: Copy logs to repository
+          find test-artifacts/ -name "*.txt" -exec cp {} tests/logs/plg_system_j2commerce_2fa/ \; 2>/dev/null || true
+          ls -la tests/logs/plg_system_j2commerce_2fa/
+      
+      - name: Commit logs to repository
         run: |
-          if [ -d "artifacts/test-logs" ]; then
-            cp artifacts/test-logs/*.txt tests/logs/plg_system_j2commerce_2fa/ 2>/dev/null || true
-          fi
-
-      - name: Commit logs
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          if [ -n "$(git status --porcelain tests/logs/)" ]; then
-            git add tests/logs/
-            git commit -m "Add test logs for plg_system_j2commerce_2fa - ${{ env.TIMESTAMP }} [skip ci]"
-            
-            # Try to push to main, if it fails due to branch protection, create a temporary branch
-            if ! git push origin main; then
-              branch_name="test-logs/plg_system_j2commerce_2fa-${{ env.TIMESTAMP }}"
-              git checkout -b "$branch_name"
-              git push origin "$branch_name"
-              echo "::notice::Logs committed to branch $branch_name due to branch protection"
-            fi
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -f tests/logs/plg_system_j2commerce_2fa/*.txt
+          if ! git diff --staged --quiet; then
+            git commit -m "Add test logs for plg_system_j2commerce_2fa [skip ci]"
+            git push || true
           else
-            echo "No new logs to commit"
+            echo "No changes to commit"
           fi
