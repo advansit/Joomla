@@ -76,17 +76,17 @@ main() {
     case $test_suite in
         "all")
             tests=(
-                "Installation:01-installation-verification.php"
+                "Installation:01-installation.php"
                 "Configuration:02-configuration.php"
                 "SessionPreservation:03-session-preservation.php"
                 "GuestCartTransfer:04-guest-cart-transfer.php"
                 "SessionSecurity:05-session-security.php"
                 "DebugMode:06-debug-mode.php"
-                "Uninstall:02-uninstall-verification.php"
+                "Uninstall:07-uninstall.php"
             )
             ;;
         "installation")
-            tests=("Installation:01-installation-verification.php")
+            tests=("Installation:01-installation.php")
             ;;
         "configuration")
             tests=("Configuration:02-configuration.php")
@@ -101,7 +101,7 @@ main() {
             tests=("DebugMode:06-debug-mode.php")
             ;;
         "uninstall")
-            tests=("Uninstall:02-uninstall-verification.php")
+            tests=("Uninstall:07-uninstall.php")
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
