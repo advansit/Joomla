@@ -7,7 +7,6 @@ on:
       - main
     paths:
       - 'J2Commerce/com_j2store_cleanup/**'
-      - '!J2Commerce/com_j2store_cleanup/tests/logs/**'
 
 jobs:
   build-01:
