@@ -5,46 +5,49 @@ require_once JPATH_BASE . '/includes/defines.php';
 require_once JPATH_BASE . '/includes/framework.php';
 use Joomla\CMS\Factory;
 
-class DebugModeTest
+class UninstallTest
 {
     private $db;
     public function __construct() { $this->db = Factory::getDbo(); }
     
     public function run(): bool
     {
-        echo "=== Debug Mode Tests ===\n\n";
+        echo "=== Uninstall Tests ===\n\n";
         $allPassed = true;
-        $allPassed = $this->testDebugParameter() && $allPassed;
+        $allPassed = $this->testPluginStillExists() && $allPassed;
         $this->printSummary();
         return $allPassed;
     }
     
-    private function testDebugParameter(): bool
+    private function testPluginStillExists(): bool
     {
-        echo "Test: Debug parameter... ";
+        echo "Test: Plugin still registered (before uninstall)... ";
         
         $query = $this->db->getQuery(true)
-            ->select('params')
+            ->select('extension_id')
             ->from($this->db->quoteName('#__extensions'))
             ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
             ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce_2fa'));
         
         $this->db->setQuery($query);
-        $paramsJson = $this->db->loadResult();
-        $params = json_decode($paramsJson, true);
+        $id = $this->db->loadResult();
         
-        $debug = isset($params['debug']) ? $params['debug'] : '0';
-        echo "PASS (Debug: {$debug})\n";
-        return true;
+        if ($id) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL\n";
+        return false;
     }
     
     private function printSummary(): void
     {
-        echo "\n=== Debug Mode Test Summary ===\n";
+        echo "\n=== Uninstall Test Summary ===\n";
         echo "All tests completed.\n";
     }
 }
 
-$test = new DebugModeTest();
+$test = new UninstallTest();
 exit($test->run() ? 0 : 1);

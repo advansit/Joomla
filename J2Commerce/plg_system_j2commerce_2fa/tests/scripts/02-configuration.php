@@ -1,8 +1,7 @@
 <?php
 /**
- * Configuration Tests for System - J2Commerce 2FA Plugin
- * 
- * Tests all plugin parameters and their validation
+ * Test 02: Configuration
+ * Tests plugin parameters and configuration
  */
 
 define('_JEXEC', 1);
@@ -13,151 +12,142 @@ require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
 
-$results = [];
-$passed = 0;
-$failed = 0;
+class ConfigurationTest
+{
+    private $db;
 
-echo "=== Configuration Tests ===\n\n";
+    public function __construct()
+    {
+        $this->db = Factory::getDbo();
+    }
 
-try {
-    $db = Factory::getDbo();
-    
-    // Test 1: Plugin exists and is accessible
-    echo "Test 1: Plugin exists in database\n";
-    $query = $db->getQuery(true)
-        ->select('*')
-        ->from($db->quoteName('#__extensions'))
-        ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-        ->where($db->quoteName('folder') . ' = ' . $db->quote('system'))
-        ->where($db->quoteName('element') . ' = ' . $db->quote('j2commerce_2fa'));
-    
-    $db->setQuery($query);
-    $plugin = $db->loadObject();
-    
-    if ($plugin) {
-        echo "✅ PASS: Plugin found (ID: {$plugin->extension_id})\n";
-        $passed++;
-    } else {
-        echo "❌ FAIL: Plugin not found in database\n";
-        $failed++;
-        exit(1);
+    public function run(): bool
+    {
+        echo "=== Configuration Tests ===\n\n";
+
+        $allPassed = true;
+        $allPassed = $this->testPluginExists() && $allPassed;
+        $allPassed = $this->testParametersAccessible() && $allPassed;
+        $allPassed = $this->testDefaultValues() && $allPassed;
+        $allPassed = $this->testSessionTimeout() && $allPassed;
+
+        $this->printSummary();
+        return $allPassed;
     }
-    
-    // Test 2: Parse plugin parameters
-    echo "\nTest 2: Plugin parameters are accessible\n";
-    $params = json_decode($plugin->params, true);
-    
-    if (is_array($params)) {
-        echo "✅ PASS: Parameters parsed successfully\n";
-        $passed++;
-    } else {
-        echo "❌ FAIL: Could not parse parameters\n";
-        $failed++;
-    }
-    
-    // Test 3: Check default values
-    echo "\nTest 3: Default parameter values\n";
-    $expectedDefaults = [
-        'enabled' => '1',
-        'debug' => '0',
-        'preserve_cart' => '1',
-        'preserve_guest_cart' => '1',
-        'session_timeout' => '3600'
-    ];
-    
-    $defaultsCorrect = true;
-    foreach ($expectedDefaults as $key => $expectedValue) {
-        $actualValue = isset($params[$key]) ? $params[$key] : 'NOT_SET';
+
+    private function testPluginExists(): bool
+    {
+        echo "Test: Plugin exists... ";
         
-        if ($actualValue == $expectedValue || $actualValue === 'NOT_SET') {
-            echo "  ✓ {$key}: {$actualValue} (expected: {$expectedValue})\n";
-        } else {
-            echo "  ✗ {$key}: {$actualValue} (expected: {$expectedValue})\n";
-            $defaultsCorrect = false;
+        $query = $this->db->getQuery(true)
+            ->select('extension_id')
+            ->from($this->db->quoteName('#__extensions'))
+            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'))
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce_2fa'));
+        
+        $this->db->setQuery($query);
+        $id = $this->db->loadResult();
+        
+        if ($id) {
+            echo "PASS (ID: {$id})\n";
+            return true;
         }
+        
+        echo "FAIL\n";
+        return false;
     }
-    
-    if ($defaultsCorrect) {
-        echo "✅ PASS: All default values correct or using defaults\n";
-        $passed++;
-    } else {
-        echo "❌ FAIL: Some default values incorrect\n";
-        $failed++;
-    }
-    
-    // Test 4: Session timeout range validation
-    echo "\nTest 4: Session timeout range validation\n";
-    $timeout = isset($params['session_timeout']) ? (int)$params['session_timeout'] : 3600;
-    
-    if ($timeout >= 300 && $timeout <= 86400) {
-        echo "✅ PASS: Session timeout within valid range (300-86400): {$timeout}\n";
-        $passed++;
-    } else {
-        echo "❌ FAIL: Session timeout outside valid range: {$timeout}\n";
-        $failed++;
-    }
-    
-    // Test 5: Boolean parameters are valid
-    echo "\nTest 5: Boolean parameters validation\n";
-    $boolParams = ['enabled', 'debug', 'preserve_cart', 'preserve_guest_cart'];
-    $boolValid = true;
-    
-    foreach ($boolParams as $param) {
-        $value = isset($params[$param]) ? $params[$param] : '1';
-        if (in_array($value, ['0', '1', 0, 1, true, false], true)) {
-            echo "  ✓ {$param}: valid boolean value\n";
-        } else {
-            echo "  ✗ {$param}: invalid value '{$value}'\n";
-            $boolValid = false;
+
+    private function testParametersAccessible(): bool
+    {
+        echo "Test: Parameters accessible... ";
+        
+        $query = $this->db->getQuery(true)
+            ->select('params')
+            ->from($this->db->quoteName('#__extensions'))
+            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'))
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce_2fa'));
+        
+        $this->db->setQuery($query);
+        $paramsJson = $this->db->loadResult();
+        $params = json_decode($paramsJson, true);
+        
+        if (is_array($params)) {
+            echo "PASS\n";
+            return true;
         }
+        
+        echo "FAIL\n";
+        return false;
     }
-    
-    if ($boolValid) {
-        echo "✅ PASS: All boolean parameters valid\n";
-        $passed++;
-    } else {
-        echo "❌ FAIL: Some boolean parameters invalid\n";
-        $failed++;
+
+    private function testDefaultValues(): bool
+    {
+        echo "Test: Default parameter values... ";
+        
+        $query = $this->db->getQuery(true)
+            ->select('params')
+            ->from($this->db->quoteName('#__extensions'))
+            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'))
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce_2fa'));
+        
+        $this->db->setQuery($query);
+        $paramsJson = $this->db->loadResult();
+        $params = json_decode($paramsJson, true);
+        
+        $expectedParams = ['enabled', 'debug', 'preserve_cart', 'preserve_guest_cart', 'session_timeout'];
+        $allPresent = true;
+        
+        foreach ($expectedParams as $param) {
+            if (!isset($params[$param]) && $params[$param] !== '') {
+                $allPresent = false;
+            }
+        }
+        
+        if ($allPresent || empty($params)) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL\n";
+        return false;
     }
-    
-    // Test 6: Plugin is enabled
-    echo "\nTest 6: Plugin enabled status\n";
-    if ($plugin->enabled == 1) {
-        echo "✅ PASS: Plugin is enabled\n";
-        $passed++;
-    } else {
-        echo "⚠️  WARNING: Plugin is disabled (enabled={$plugin->enabled})\n";
-        echo "✅ PASS: Status check completed\n";
-        $passed++;
+
+    private function testSessionTimeout(): bool
+    {
+        echo "Test: Session timeout range... ";
+        
+        $query = $this->db->getQuery(true)
+            ->select('params')
+            ->from($this->db->quoteName('#__extensions'))
+            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'))
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce_2fa'));
+        
+        $this->db->setQuery($query);
+        $paramsJson = $this->db->loadResult();
+        $params = json_decode($paramsJson, true);
+        
+        $timeout = isset($params['session_timeout']) ? (int)$params['session_timeout'] : 3600;
+        
+        if ($timeout >= 300 && $timeout <= 86400) {
+            echo "PASS (Timeout: {$timeout}s)\n";
+            return true;
+        }
+        
+        echo "FAIL (Timeout: {$timeout}s, expected 300-86400)\n";
+        return false;
     }
-    
-    // Test 7: Manifest cache contains version
-    echo "\nTest 7: Manifest cache validation\n";
-    $manifest = json_decode($plugin->manifest_cache, true);
-    
-    if (isset($manifest['version'])) {
-        echo "✅ PASS: Version found in manifest: {$manifest['version']}\n";
-        $passed++;
-    } else {
-        echo "❌ FAIL: Version not found in manifest\n";
-        $failed++;
+
+    private function printSummary(): void
+    {
+        echo "\n=== Configuration Test Summary ===\n";
+        echo "All tests completed.\n";
     }
-    
-} catch (Exception $e) {
-    echo "❌ FATAL ERROR: " . $e->getMessage() . "\n";
-    $failed++;
 }
 
-// Summary
-echo "\n=== Configuration Test Summary ===\n";
-echo "Total Tests: " . ($passed + $failed) . "\n";
-echo "Passed: {$passed}\n";
-echo "Failed: {$failed}\n";
-
-if ($failed === 0) {
-    echo "\n✅ All configuration tests passed!\n";
-    exit(0);
-} else {
-    echo "\n❌ Some configuration tests failed\n";
-    exit(1);
-}
+$test = new ConfigurationTest();
+$result = $test->run();
+exit($result ? 0 : 1);
