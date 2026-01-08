@@ -1,0 +1,6 @@
+=== Installation Tests ===
+
+❌ FATAL ERROR: Test suite did not run or failed before producing results
+
+=== Installation Test Summary ===
+Test execution failed in CI/CD pipeline.
