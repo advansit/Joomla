@@ -41,8 +41,8 @@ jobs:
           path: J2Commerce/com_j2commerce_importexport/*.zip
           retention-days: 30
 
-  test-02-installation:
-    name: 02 - Test Installation
+  test-02-all-tests:
+    name: 02 - Run All Tests
     runs-on: ubuntu-latest
     needs: build-01
     
@@ -68,53 +68,13 @@ jobs:
           echo "Waiting for Joomla initialization and extension installation..."
           sleep 60
           chmod +x run-tests.sh
-          ./run-tests.sh installation
-
-      - name: Upload test logs
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: installation-logs
-          path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Stop containers
-        if: always()
-        working-directory: J2Commerce/com_j2commerce_importexport/tests
-        run: docker compose down -v
-
-  test-03-uninstall:
-    name: 03 - Test Uninstall
-    runs-on: ubuntu-latest
-    needs: test-02-installation
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Download package
-        uses: actions/download-artifact@v7
-        with:
-          name: extension-package
-          path: package
-
-      - name: Prepare test environment
-        run: cp package/*.zip J2Commerce/com_j2commerce_importexport/tests/extension.zip
-
-      - name: Start Docker containers and run tests
-        working-directory: J2Commerce/com_j2commerce_importexport/tests
-        run: |
-          docker compose up -d
-          sleep 60
-          chmod +x run-tests.sh
           ./run-tests.sh all
 
       - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: uninstall-logs
+          name: test-logs
           path: J2Commerce/com_j2commerce_importexport/tests/test-results/*.txt
           retention-days: 7
           if-no-files-found: warn
@@ -127,7 +87,7 @@ jobs:
   collect-results:
     name: Collect Results
     runs-on: ubuntu-latest
-    needs: [test-02-installation, test-03-uninstall]
+    needs: [test-02-all-tests]
     if: always()
     permissions:
       contents: write
@@ -141,23 +101,39 @@ jobs:
       - name: Download all test results
         uses: actions/download-artifact@v7
         with:
-          path: test-artifacts/
+          path: artifacts/
 
-      - name: Collect logs
+      - name: Prepare logs directory
         run: |
-          mkdir -p J2Commerce/com_j2commerce_importexport/tests/logs
+          mkdir -p tests/logs/com_j2commerce_importexport
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          echo "TIMESTAMP=$timestamp" >> $GITHUB_ENV
+
+      - name: Copy logs to repository
+        run: |
+          if [ -d "artifacts/test-logs" ]; then
+            cp artifacts/test-logs/*.txt tests/logs/com_j2commerce_importexport/ 2>/dev/null || true
+          fi
+
+      - name: Commit logs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Debug: Show artifact structure
-          echo "=== Artifact structure ==="
-          find test-artifacts/ -type f
-          
-          # Copy all available logs
-          find test-artifacts/ -name "*.txt" -exec cp {} J2Commerce/com_j2commerce_importexport/tests/logs/ \; 2>/dev/null || true
-          
-          # Create placeholder logs for missing tests
-          for test in Installation Uninstall; do
-            if [ ! -f "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt" ]; then
-              echo "=== ${test} Tests ===" > "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt"
+          if [ -n "$(git status --porcelain tests/logs/)" ]; then
+            git add tests/logs/
+            git commit -m "Add test logs for com_j2commerce_importexport - ${{ env.TIMESTAMP }} [skip ci]"
+            
+            # Try to push to main, if it fails due to branch protection, create a temporary branch
+            if ! git push origin main; then
+              branch_name="test-logs/com_j2commerce_importexport-${{ env.TIMESTAMP }}"
+              git checkout -b "$branch_name"
+              git push origin "$branch_name"
+              echo "::notice::Logs committed to branch $branch_name due to branch protection"
+            fi
+          else
+            echo "No new logs to commit"
+          fi
               echo "" >> "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt"
               echo "❌ FATAL ERROR: Test suite did not run or failed before producing results" >> "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt"
               echo "" >> "J2Commerce/com_j2commerce_importexport/tests/logs/${test}.txt"
