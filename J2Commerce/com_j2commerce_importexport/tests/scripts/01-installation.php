@@ -48,7 +48,7 @@ class InstallationTest
     private function testPackageExists(): bool
     {
         echo "Test: Package file exists... ";
-        $packagePath = '/tmp/com_j2commerce_importexport.zip';
+        $packagePath = '/tmp/extension.zip';
         
         if (file_exists($packagePath)) {
             $size = filesize($packagePath);
