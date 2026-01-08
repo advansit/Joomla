@@ -102,11 +102,21 @@ main() {
     
     # Install extension via HTTP
     print_header "Installing Extension"
-    docker exec "$CONTAINER" php /usr/local/bin/install-extension-http.php || {
-        print_error "Extension installation failed"
+    
+    # Check if extension.zip exists in container
+    if docker exec "$CONTAINER" test -f /tmp/extension.zip; then
+        echo "✓ extension.zip found in container"
+        docker exec "$CONTAINER" ls -lh /tmp/extension.zip
+    else
+        print_error "extension.zip NOT found in container!"
         exit 1
-    }
-    print_success "Extension installed"
+    fi
+    
+    if docker exec "$CONTAINER" php /usr/local/bin/install-extension-http.php; then
+        print_success "Extension installed"
+    else
+        print_error "Extension installation failed - tests will likely fail"
+    fi
     
     # Copy test scripts
     copy_test_scripts
