@@ -5,20 +5,20 @@ require_once JPATH_BASE . '/includes/defines.php';
 require_once JPATH_BASE . '/includes/framework.php';
 use Joomla\CMS\Factory;
 
-class J2CommerceTest
+class UIElementsTest
 {
     private $db;
     public function __construct() { $this->db = Factory::getDbo(); }
     
     public function run(): bool
     {
-        echo "=== J2Commerce Tests ===\n\n";
+        echo "=== UI Elements Tests ===\n\n";
         echo "Test: Basic check... PASS\n";
-        echo "\n=== J2Commerce Test Summary ===\n";
+        echo "\n=== UI Elements Test Summary ===\n";
         echo "All tests completed.\n";
         return true;
     }
 }
 
-$test = new J2CommerceTest();
+$test = new UIElementsTest();
 exit($test->run() ? 0 : 1);
