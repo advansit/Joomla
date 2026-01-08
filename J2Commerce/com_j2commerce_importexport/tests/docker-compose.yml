@@ -23,6 +23,7 @@ services:
       J2COMMERCE_IMPORTEXPORT_TEST_MODE: "true"
     volumes:
       - joomla_data:/var/www/html
+      - ./extension.zip:/tmp/extension.zip:ro
     depends_on:
       mysql:
         condition: service_healthy
