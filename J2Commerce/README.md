@@ -52,33 +52,33 @@ This repository contains 6 production-ready extensions:
 
 ## Test Coverage
 
-All extensions have **100% test coverage** with comprehensive functional tests.
+All extensions have 100% test coverage with comprehensive functional tests.
 
 ### Test Statistics
 
 | Extension | Tests | Coverage |
 |-----------|-------|----------|
-| com_j2commerce_importexport | 10 | ✅ 100% |
-| plg_system_j2commerce_2fa | 7 | ✅ 100% |
-| plg_j2commerce_acymailing | 7 | ✅ 100% |
-| plg_j2commerce_productcompare | 7 | ✅ 100% |
-| plg_privacy_j2commerce | 7 | ✅ 100% |
-| com_j2store_cleanup | 9 | ✅ 100% |
-| **TOTAL** | **47** | **✅ 100%** |
+| com_j2commerce_importexport | 10 | 100% |
+| plg_system_j2commerce_2fa | 7 | 100% |
+| plg_j2commerce_acymailing | 7 | 100% |
+| plg_j2commerce_productcompare | 7 | 100% |
+| plg_privacy_j2commerce | 7 | 100% |
+| com_j2store_cleanup | 9 | 100% |
+| **TOTAL** | **47** | **100%** |
 
-### What's Tested
+### Test Scope
 
 Every extension includes tests for:
-- ✅ Installation & Uninstallation
-- ✅ Configuration parameters
-- ✅ Core functionality
-- ✅ Database operations
-- ✅ Integration with J2Store/J2Commerce
-- ✅ Error handling
-- ✅ Security
-- ✅ GDPR compliance (where applicable)
-- ✅ UI elements
-- ✅ API endpoints
+- Installation and uninstallation
+- Configuration parameters
+- Core functionality
+- Database operations
+- Integration with J2Store/J2Commerce
+- Error handling
+- Security
+- GDPR compliance (where applicable)
+- UI elements
+- API endpoints
 
 ---
 
@@ -145,7 +145,7 @@ All tests follow these principles:
 3. **Idempotent** - Can run multiple times without side effects
 4. **Independent** - Each test is self-contained
 5. **Mock data** - Creates and cleans up test data
-6. **Clear output** - ✅/❌ indicators with detailed messages
+6. **Clear output** - Structured output with pass/fail indicators
 
 ---
 
@@ -307,11 +307,11 @@ try {
     
     // Test logic here
     
-    echo "✅ PASS: Test description\n";
+    echo "PASS: Test description\n";
     $passed++;
     
 } catch (Exception $e) {
-    echo "❌ FATAL ERROR: " . $e->getMessage() . "\n";
+    echo "FATAL ERROR: " . $e->getMessage() . "\n";
     $failed++;
 }
 
@@ -444,9 +444,9 @@ Proprietary software. Copyright (C) 2025 Advans IT Solutions GmbH. All rights re
 
 ---
 
-## Contributing
+## Support
 
-This is a private repository. For bug reports or feature requests, please contact Advans IT Solutions GmbH.
+For technical support, bug reports, or feature requests, please contact Advans IT Solutions GmbH directly.
 
 ---
 
