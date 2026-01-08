@@ -74,14 +74,29 @@ main() {
     copy_test_scripts
     
     case $test_suite in
-        "all"|"installation")
-            tests=("Installation:01-installation-verification.php" "Uninstall:02-uninstall-verification.php")
+        "all")
+            tests=(
+                "Installation:01-installation-verification.php"
+                "Configuration:02-configuration.php"
+                "PrivacyPluginBase:03-privacy-plugin-base.php"
+                "Uninstall:02-uninstall-verification.php"
+            )
+            ;;
+        "configuration")
+            tests=("Configuration:02-configuration.php")
+            ;;
+        "privacy")
+            tests=("PrivacyPluginBase:03-privacy-plugin-base.php")
+            ;;
+        "installation")
+            tests=("Installation:01-installation-verification.php")
             ;;
         "uninstall")
             tests=("Uninstall:02-uninstall-verification.php")
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
+            echo "Available suites: all, installation, configuration, privacy, uninstall"
             exit 1
             ;;
     esac
