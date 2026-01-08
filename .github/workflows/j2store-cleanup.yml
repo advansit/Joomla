@@ -76,78 +76,54 @@ jobs:
         run: docker compose down -v
 
   collect-results:
-    name: Collect Results
+    name: Collect Test Results
     runs-on: ubuntu-latest
     needs: [test-02-installation, test-03-uninstall]
     if: always()
     permissions:
       contents: write
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download all test results
+      - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
-          path: test-artifacts/
+          path: artifacts
 
-      - name: Collect logs
+      - name: Prepare logs directory
         run: |
-          mkdir -p J2Commerce/com_j2store_cleanup/tests/logs
-          
-          # Debug: Show artifact structure
-          echo "=== Artifact structure ==="
-          find test-artifacts/ -type f
-          
-          # Copy all available logs
-          find test-artifacts/ -name "*.txt" -exec cp {} J2Commerce/com_j2store_cleanup/tests/logs/ \; 2>/dev/null || true
-          
-          # Create placeholder logs for missing tests
-          for test in Installation Uninstall; do
-            if [ ! -f "J2Commerce/com_j2store_cleanup/tests/logs/${test}.txt" ]; then
-              echo "=== ${test} Tests ===" > "J2Commerce/com_j2store_cleanup/tests/logs/${test}.txt"
-              echo "" >> "J2Commerce/com_j2store_cleanup/tests/logs/${test}.txt"
-              echo "❌ FATAL ERROR: Test suite did not run or failed before producing results" >> "J2Commerce/com_j2store_cleanup/tests/logs/${test}.txt"
-              echo "" >> "J2Commerce/com_j2store_cleanup/tests/logs/${test}.txt"
-              echo "=== ${test} Test Summary ===" >> "J2Commerce/com_j2store_cleanup/tests/logs/${test}.txt"
-              echo "Test execution failed in CI/CD pipeline." >> "J2Commerce/com_j2store_cleanup/tests/logs/${test}.txt"
-            fi
-          done
-          
-          ls -la J2Commerce/com_j2store_cleanup/tests/logs/
+          mkdir -p tests/logs/com_j2store_cleanup
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          echo "TIMESTAMP=$timestamp" >> $GITHUB_ENV
 
-      - name: Commit logs to repository
+      - name: Copy logs to repository
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add -f J2Commerce/com_j2store_cleanup/tests/logs/*.txt
-          if ! git diff --staged --quiet; then
-            # Try direct push first (works if branch protection allows)
-            git commit -m "Add test logs from run ${{ github.run_number }} [skip ci]"
-            if ! git push 2>&1; then
-              echo "Direct push failed (branch protected), trying alternative..."
-              # Create a temporary branch and push there
-              BRANCH_NAME="test-logs-run-${{ github.run_number }}"
-              git checkout -b "$BRANCH_NAME"
-              git push -u origin "$BRANCH_NAME" || echo "Failed to push to branch $BRANCH_NAME"
-            fi
-          else
-            echo "No changes to commit"
+          if [ -d "artifacts/installation-logs" ]; then
+            cp artifacts/installation-logs/*.txt tests/logs/com_j2store_cleanup/ 2>/dev/null || true
+          fi
+          if [ -d "artifacts/uninstall-logs" ]; then
+            cp artifacts/uninstall-logs/*.txt tests/logs/com_j2store_cleanup/ 2>/dev/null || true
           fi
 
-      - name: Create test summary
+      - name: Commit logs
         run: |
-          echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Test Suites" >> $GITHUB_STEP_SUMMARY
-          for file in test-artifacts/*/*.txt; do
-            if [ -f "$file" ]; then
-              echo "### $(basename $file .txt)" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              tail -20 "$file" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain tests/logs/)" ]; then
+            git add tests/logs/
+            git commit -m "Add test logs for com_j2store_cleanup - ${{ env.TIMESTAMP }} [skip ci]"
+            
+            # Try to push to main, if it fails due to branch protection, create a temporary branch
+            if ! git push origin main; then
+              branch_name="test-logs/com_j2store_cleanup-${{ env.TIMESTAMP }}"
+              git checkout -b "$branch_name"
+              git push origin "$branch_name"
+              echo "::notice::Logs committed to branch $branch_name due to branch protection"
             fi
-          done
+          else
+            echo "No new logs to commit"
+          fi

@@ -73,3 +73,56 @@ jobs:
       - if: always()
         working-directory: J2Commerce/plg_system_j2commerce_2fa/tests
         run: docker compose down -v
+
+  collect-results:
+    name: Collect Test Results
+    runs-on: ubuntu-latest
+    needs: [test-02-installation, test-03-uninstall]
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Prepare logs directory
+        run: |
+          mkdir -p tests/logs/plg_system_j2commerce_2fa
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          echo "TIMESTAMP=$timestamp" >> $GITHUB_ENV
+
+      - name: Copy logs to repository
+        run: |
+          if [ -d "artifacts/installation-logs" ]; then
+            cp artifacts/installation-logs/*.txt tests/logs/plg_system_j2commerce_2fa/ 2>/dev/null || true
+          fi
+          if [ -d "artifacts/uninstall-logs" ]; then
+            cp artifacts/uninstall-logs/*.txt tests/logs/plg_system_j2commerce_2fa/ 2>/dev/null || true
+          fi
+
+      - name: Commit logs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain tests/logs/)" ]; then
+            git add tests/logs/
+            git commit -m "Add test logs for plg_system_j2commerce_2fa - ${{ env.TIMESTAMP }} [skip ci]"
+            
+            # Try to push to main, if it fails due to branch protection, create a temporary branch
+            if ! git push origin main; then
+              branch_name="test-logs/plg_system_j2commerce_2fa-${{ env.TIMESTAMP }}"
+              git checkout -b "$branch_name"
+              git push origin "$branch_name"
+              echo "::notice::Logs committed to branch $branch_name due to branch protection"
+            fi
+          else
+            echo "No new logs to commit"
+          fi
