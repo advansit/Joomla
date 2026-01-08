@@ -1,0 +1,6 @@
+=== Uninstall Tests ===
+
+❌ FATAL ERROR: Test suite did not run or failed before producing results
+
+=== Uninstall Test Summary ===
+Test execution failed in CI/CD pipeline.
