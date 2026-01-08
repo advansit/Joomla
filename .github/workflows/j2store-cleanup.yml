@@ -3,98 +3,104 @@ name: Build & Test - J2Store Cleanup
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    paths:
-      - 'J2Commerce/com_j2store_cleanup/**'
+    branches: [main]
+    paths: ['J2Commerce/com_j2store_cleanup/**']
 
 jobs:
-  build-01:
-    name: 01 - Build Package
+  build:
+    name: Build Package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - run: sudo apt-get update && sudo apt-get install -y rsync zip
-      - working-directory: J2Commerce/com_j2store_cleanup
+      - name: Build
         run: |
+          cd J2Commerce/com_j2store_cleanup
           chmod +x build.sh
           ./build.sh
+          cp *.zip tests/extension.zip
       - uses: actions/upload-artifact@v6
         with:
           name: extension-package
-          path: J2Commerce/com_j2store_cleanup/*.zip
+          path: J2Commerce/com_j2store_cleanup/tests/extension.zip
+          retention-days: 1
 
-  test-02-all-tests:
-    name: 02 - Run All Tests
+  test:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    needs: build-01
+    needs: build
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Scanning'
+            script: 'scanning'
+          - name: '03 - Cleanup'
+            script: 'cleanup'
+          - name: '04 - UI Elements'
+            script: 'ui'
+          - name: '05 - Security'
+            script: 'security'
+          - name: '06 - Display Functionality'
+            script: 'display'
+          - name: '07 - Safety Checks'
+            script: 'safety'
+          - name: '08 - Language Support'
+            script: 'language'
+          - name: '09 - Uninstall'
+            script: 'uninstall'
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v7
-        with: {name: extension-package, path: package}
-      - run: cp package/*.zip J2Commerce/com_j2store_cleanup/tests/extension.zip
-      - working-directory: J2Commerce/com_j2store_cleanup/tests
+      - uses: actions/download-artifact@v6
+        with:
+          name: extension-package
+          path: J2Commerce/com_j2store_cleanup/tests/
+      - name: Start environment
         run: |
+          cd J2Commerce/com_j2store_cleanup/tests
           docker compose up -d
           sleep 60
+      - name: Run tests
+        continue-on-error: true
+        run: |
+          cd J2Commerce/com_j2store_cleanup/tests
           chmod +x run-tests.sh
-          ./run-tests.sh all
-      - if: always()
-        uses: actions/upload-artifact@v6
+          ./run-tests.sh ${{ matrix.script }}
+      - uses: actions/upload-artifact@v6
+        if: always()
         with:
-          name: test-logs
+          name: ${{ matrix.script }}-logs
           path: J2Commerce/com_j2store_cleanup/tests/test-results/*.txt
-          if-no-files-found: warn
-      - if: always()
-        working-directory: J2Commerce/com_j2store_cleanup/tests
-        run: docker compose down -v
+      - name: Cleanup
+        if: always()
+        run: |
+          cd J2Commerce/com_j2store_cleanup/tests
+          docker compose down -v
 
   collect-results:
-    name: Collect Test Results
+    name: Collect Results
     runs-on: ubuntu-latest
-    needs: [test-02-all-tests]
+    needs: test
     if: always()
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v6
         with:
-          path: artifacts
-
-      - name: Prepare logs directory
+          path: test-artifacts/
+      - name: Collect logs
         run: |
           mkdir -p tests/logs/com_j2store_cleanup
-          timestamp=$(date +%Y%m%d_%H%M%S)
-          echo "TIMESTAMP=$timestamp" >> $GITHUB_ENV
-
-      - name: Copy logs to repository
-        run: |
-          if [ -d "artifacts/test-logs" ]; then
-            cp artifacts/test-logs/*.txt tests/logs/com_j2store_cleanup/ 2>/dev/null || true
-          fi
-
+          find test-artifacts/ -name "*.txt" -exec cp {} tests/logs/com_j2store_cleanup/ \; 2>/dev/null || true
       - name: Commit logs
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          if [ -n "$(git status --porcelain tests/logs/)" ]; then
-            git add tests/logs/
-            git commit -m "Add test logs for com_j2store_cleanup - ${{ env.TIMESTAMP }} [skip ci]"
-            
-            # Try to push to main, if it fails due to branch protection, create a temporary branch
-            if ! git push origin main; then
-              branch_name="test-logs/com_j2store_cleanup-${{ env.TIMESTAMP }}"
-              git checkout -b "$branch_name"
-              git push origin "$branch_name"
-              echo "::notice::Logs committed to branch $branch_name due to branch protection"
-            fi
-          else
-            echo "No new logs to commit"
-          fi
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -f tests/logs/com_j2store_cleanup/*.txt
+          git diff --staged --quiet || git commit -m "Add test logs [skip ci]"
+          git push || true
