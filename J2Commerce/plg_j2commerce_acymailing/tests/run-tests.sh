@@ -79,6 +79,9 @@ main() {
                 "Installation:01-installation-verification.php"
                 "Configuration:02-configuration.php"
                 "AcyMailingIntegration:03-acymailing-integration.php"
+                "EventSubscriptions:04-event-subscriptions.php"
+                "SubscriptionLogic:05-subscription-logic.php"
+                "ErrorHandling:06-error-handling.php"
                 "Uninstall:02-uninstall-verification.php"
             )
             ;;
@@ -91,12 +94,21 @@ main() {
         "integration")
             tests=("AcyMailingIntegration:03-acymailing-integration.php")
             ;;
+        "events")
+            tests=("EventSubscriptions:04-event-subscriptions.php")
+            ;;
+        "subscription")
+            tests=("SubscriptionLogic:05-subscription-logic.php")
+            ;;
+        "errors")
+            tests=("ErrorHandling:06-error-handling.php")
+            ;;
         "uninstall")
             tests=("Uninstall:02-uninstall-verification.php")
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
-            echo "Available suites: all, installation, configuration, integration, uninstall"
+            echo "Available suites: all, installation, configuration, integration, events, subscription, errors, uninstall"
             exit 1
             ;;
     esac

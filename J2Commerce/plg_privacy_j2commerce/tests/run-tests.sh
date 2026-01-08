@@ -79,8 +79,14 @@ main() {
                 "Installation:01-installation-verification.php"
                 "Configuration:02-configuration.php"
                 "PrivacyPluginBase:03-privacy-plugin-base.php"
+                "DataExport:04-data-export.php"
+                "DataAnonymization:05-data-anonymization.php"
+                "GDPRCompliance:06-gdpr-compliance.php"
                 "Uninstall:02-uninstall-verification.php"
             )
+            ;;
+        "installation")
+            tests=("Installation:01-installation-verification.php")
             ;;
         "configuration")
             tests=("Configuration:02-configuration.php")
@@ -88,15 +94,21 @@ main() {
         "privacy")
             tests=("PrivacyPluginBase:03-privacy-plugin-base.php")
             ;;
-        "installation")
-            tests=("Installation:01-installation-verification.php")
+        "export")
+            tests=("DataExport:04-data-export.php")
+            ;;
+        "anonymization")
+            tests=("DataAnonymization:05-data-anonymization.php")
+            ;;
+        "gdpr")
+            tests=("GDPRCompliance:06-gdpr-compliance.php")
             ;;
         "uninstall")
             tests=("Uninstall:02-uninstall-verification.php")
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
-            echo "Available suites: all, installation, configuration, privacy, uninstall"
+            echo "Available suites: all, installation, configuration, privacy, export, anonymization, gdpr, uninstall"
             exit 1
             ;;
     esac
