@@ -92,6 +92,9 @@ main() {
                 "Cleanup:03-cleanup.php"
                 "UIElements:05-ui-elements.php"
                 "Security:06-security.php"
+                "DisplayFunctionality:07-display-functionality.php"
+                "SafetyChecks:08-safety-checks.php"
+                "LanguageSupport:09-language-support.php"
                 "Uninstall:04-uninstall.php"
             )
             ;;
@@ -110,12 +113,21 @@ main() {
         "security")
             tests=("Security:06-security.php")
             ;;
+        "display")
+            tests=("DisplayFunctionality:07-display-functionality.php")
+            ;;
+        "safety")
+            tests=("SafetyChecks:08-safety-checks.php")
+            ;;
+        "language")
+            tests=("LanguageSupport:09-language-support.php")
+            ;;
         "uninstall")
             tests=("Uninstall:04-uninstall.php")
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
-            echo "Available suites: all, installation, scanning, cleanup, ui, security, uninstall"
+            echo "Available suites: all, installation, scanning, cleanup, ui, security, display, safety, language, uninstall"
             exit 1
             ;;
     esac
