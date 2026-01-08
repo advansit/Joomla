@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache to pass environment variables to PHP
 RUN echo "PassEnv J2COMMERCE_IMPORTEXPORT_TEST_MODE" >> /etc/apache2/apache2.conf
 
-# Note: extension.zip is mounted as volume at runtime, not copied at build time
+# Copy component package (must exist before docker build)
+COPY extension.zip /tmp/extension.zip
 
 # Copy HTTP-based installation script
 COPY scripts/install-extension-http.php /usr/local/bin/install-extension-http.php
