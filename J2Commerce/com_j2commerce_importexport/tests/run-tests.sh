@@ -100,6 +100,14 @@ main() {
     }
     print_success "Joomla is ready"
     
+    # Install extension via HTTP
+    print_header "Installing Extension"
+    docker exec "$CONTAINER" php /usr/local/bin/install-extension-http.php || {
+        print_error "Extension installation failed"
+        exit 1
+    }
+    print_success "Extension installed"
+    
     # Copy test scripts
     copy_test_scripts
     
