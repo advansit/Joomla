@@ -70,7 +70,6 @@ jobs:
           sleep 60
       
       - name: Run tests
-        continue-on-error: true
         run: |
           cd J2Commerce/plg_system_j2commerce_2fa/tests
           chmod +x run-tests.sh
