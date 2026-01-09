@@ -84,8 +84,7 @@ class InstallationTest
         
         $requiredFiles = [
             '/var/www/html/plugins/system/j2commerce_2fa/j2commerce_2fa.xml',
-            '/var/www/html/plugins/system/j2commerce_2fa/services/provider.php',
-            '/var/www/html/plugins/system/j2commerce_2fa/src/Extension/J2Commerce2fa.php'
+            '/var/www/html/plugins/system/j2commerce_2fa/j2commerce_2fa.php'
         ];
         
         $missing = [];
@@ -106,11 +105,11 @@ class InstallationTest
 
     private function testServiceProvider(): bool
     {
-        echo "Test: Service provider exists... ";
+        echo "Test: Plugin class exists... ";
         
-        $providerFile = '/var/www/html/plugins/system/j2commerce_2fa/services/provider.php';
+        $classFile = '/var/www/html/plugins/system/j2commerce_2fa/j2commerce_2fa.php';
         
-        if (file_exists($providerFile)) {
+        if (file_exists($classFile)) {
             echo "PASS\n";
             return true;
         }

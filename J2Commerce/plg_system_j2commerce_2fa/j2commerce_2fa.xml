@@ -15,11 +15,8 @@
     
     <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
     
-    <namespace path="src">Advans\Plugin\System\J2Commerce2fa</namespace>
     
     <files>
-        <folder>services</folder>
-        <folder>src</folder>
         <folder>language</folder>
     </files>
     
