@@ -8,6 +8,9 @@ define('_JEXEC', 1);
 define('JPATH_BASE', '/var/www/html');
 
 require_once JPATH_BASE . '/includes/defines.php';
+// Set CLI environment for Joomla URI
+$_SERVER['HTTP_HOST'] = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
