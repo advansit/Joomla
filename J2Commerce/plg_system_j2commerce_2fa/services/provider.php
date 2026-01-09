@@ -37,13 +37,10 @@ return new class implements ServiceProviderInterface
         $container->set(
             PluginInterface::class,
             function (Container $container) {
-                $plugin = new J2Commerce2fa(
-                    $container->get(DispatcherInterface::class),
-                    (array) PluginHelper::getPlugin('system', 'j2commerce_2fa')
-                );
-                $plugin->setApplication(Factory::getApplication());
-
-                return $plugin;
+                $dispatcher = $container->get(DispatcherInterface::class);
+                $config = (array) PluginHelper::getPlugin('system', 'j2commerce_2fa');
+                
+                return new J2Commerce2fa($dispatcher, $config);
             }
         );
     }

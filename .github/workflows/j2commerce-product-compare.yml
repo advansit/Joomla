@@ -59,7 +59,6 @@ jobs:
           docker compose up -d
           sleep 60
       - name: Run tests
-        continue-on-error: true
         run: |
           cd J2Commerce/plg_j2commerce_productcompare/tests
           chmod +x run-tests.sh
