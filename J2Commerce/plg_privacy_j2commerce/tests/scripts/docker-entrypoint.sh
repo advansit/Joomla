@@ -25,7 +25,7 @@ if [ -f /var/www/html/configuration.php ]; then
     unzip -q extension.zip -d extracted
     
     # Get table prefix from configuration
-    TABLE_PREFIX=$(grep "public \$dbprefix" /var/www/html/configuration.php | grep -oP "'\K[^']+")
+    TABLE_PREFIX=$(grep "public \$dbprefix" /var/www/html/configuration.php | grep -oP "'\K[^']+" | tr -d '\n\r;')
     
     # Determine extension type and paths from manifest
     if [ -f extracted/*.xml ]; then
