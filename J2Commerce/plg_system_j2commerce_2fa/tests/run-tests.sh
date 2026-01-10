@@ -91,6 +91,12 @@ main() {
         "configuration")
             tests=("Configuration:02-configuration.php")
             ;;
+        "session-preservation")
+            tests=("SessionPreservation:03-session-preservation.php")
+            ;;
+        "session-security")
+            tests=("SessionSecurity:05-session-security.php")
+            ;;
         "session")
             tests=("SessionPreservation:03-session-preservation.php" "SessionSecurity:05-session-security.php")
             ;;
@@ -105,7 +111,7 @@ main() {
             ;;
         *)
             print_error "Unknown test suite: $test_suite"
-            echo "Available suites: all, installation, configuration, session, cart, debug, uninstall"
+            echo "Available suites: all, installation, configuration, session-preservation, session-security, session, cart, debug, uninstall"
             exit 1
             ;;
     esac
