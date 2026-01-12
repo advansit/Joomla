@@ -12,8 +12,8 @@ RUN echo "[client]\nskip-ssl" > /etc/mysql/conf.d/no-ssl.cnf
 # Copy extension package
 COPY extension.zip /tmp/extension.zip
 
-# Copy shared entrypoint script
-COPY ../../../shared/tests/scripts/docker-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
+# Copy custom entrypoint
+COPY scripts/docker-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
 RUN chmod +x /usr/local/bin/custom-entrypoint.sh
 
 ENV EXTENSION_NAME="J2Commerce Privacy Plugin"
