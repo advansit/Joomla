@@ -1,10 +1,5 @@
 # J2Commerce Product Compare Plugin
-
-![Pre-Release](https://img.shields.io/badge/status-pre--release-orange)
-
 Help customers make informed purchase decisions with side-by-side product comparison.
-
-⚠️ **Pre-Release Notice:** This extension is currently in pre-release status. While fully functional and tested, it has not yet been deployed in production environments. Use in production at your own discretion.
 
 ## Product Description
 

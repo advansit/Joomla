@@ -1,12 +1,8 @@
 # Privacy - J2Commerce Plugin
-
-**Status:** 🚧 Pre-Release v1.0.0  
 **Author:** Advans IT Solutions GmbH  
 **License:** Proprietary  
 **Joomla:** 4.x, 5.x, 6.x  
 **PHP:** 8.0+
-
-⚠️ **Pre-Release Notice:** This extension is currently in pre-release status. While fully functional and tested, it has not yet been deployed in production environments. Use in production at your own discretion.
 
 Enterprise-grade GDPR/DSGVO compliance solution for J2Commerce e-commerce platforms. Provides automated data retention management, configurable legal compliance frameworks, and intelligent handling of perpetual software licenses.
 

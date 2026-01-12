@@ -1,10 +1,5 @@
 # System - J2Commerce 2FA Plugin
-
-![Pre-Release](https://img.shields.io/badge/status-pre--release-orange)
-
 Seamless checkout experience with Two-Factor Authentication.
-
-⚠️ **Pre-Release Notice:** This extension is currently in pre-release status. While fully functional and tested, it has not yet been deployed in production environments. Use in production at your own discretion.
 
 ## Product Description
 
