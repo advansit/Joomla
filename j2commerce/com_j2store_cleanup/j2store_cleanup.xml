@@ -13,6 +13,8 @@
     
     <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
 
+    <namespace path="administrator/components/com_j2store_cleanup">Advans\Component\J2StoreCleanup\Administrator</namespace>
+
     <scriptfile>script.php</scriptfile>
 
     <administration>
