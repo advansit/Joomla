@@ -2,6 +2,7 @@
 *.zip
 !releases/*.zip
 build/
+!shared/build/
 packages/
 
 # Test results
