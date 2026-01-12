@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Privacy Plugin for J2Commerce -->
 <extension type="plugin" group="privacy" method="upgrade">
     <autoloadLanguage>true</autoloadLanguage>
     <scriptfile>script.php</scriptfile>
