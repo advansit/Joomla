@@ -1,10 +1,34 @@
 # Joomla Extensions Repository
 
+**Status:** 🚧 Pre-Release / Development
+
 Professional [Joomla](https://github.com/joomla/joomla-cms) and [J2Commerce](https://github.com/joomla-projects/j2commerce) extensions.
 
 This repository contains extensions developed and maintained by Advans IT Solutions GmbH.
 
-See the **J2Commerce** folder for all available extensions and their documentation.
+## 📁 Repository Structure
+
+```
+Joomla/
+├── joomla/          # Joomla Core Extensions (coming soon)
+├── j2commerce/      # J2Commerce Extensions
+├── shared/          # Shared build and test scripts
+└── .github/         # CI/CD workflows
+```
+
+## 📦 Available Extensions
+
+### J2Commerce Extensions
+
+See the **j2commerce/** folder for all available extensions and their documentation.
+
+**Current Extensions:**
+- Privacy Plugin - GDPR compliance for J2Commerce
+- 2FA Plugin - Two-Factor Authentication
+- AcyMailing Integration
+- Product Compare
+- Import/Export Component
+- Cleanup Component
 
 ## Testing
 
