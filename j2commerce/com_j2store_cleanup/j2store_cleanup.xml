@@ -22,12 +22,12 @@
         </files>
         
         <languages folder="administrator/language">
-            <language tag="en-CH">en-CH/en-CH.com_j2store_cleanup.ini</language>
-            <language tag="en-CH">en-CH/en-CH.com_j2store_cleanup.sys.ini</language>
-            <language tag="de-CH">de-CH/de-CH.com_j2store_cleanup.ini</language>
-            <language tag="de-CH">de-CH/de-CH.com_j2store_cleanup.sys.ini</language>
-            <language tag="fr-FR">fr-FR/fr-FR.com_j2store_cleanup.ini</language>
-            <language tag="fr-FR">fr-FR/fr-FR.com_j2store_cleanup.sys.ini</language>
+            <language tag="en-GB">en-GB/com_j2store_cleanup.ini</language>
+            <language tag="en-GB">en-GB/com_j2store_cleanup.sys.ini</language>
+            <language tag="de-CH">de-CH/com_j2store_cleanup.ini</language>
+            <language tag="de-CH">de-CH/com_j2store_cleanup.sys.ini</language>
+            <language tag="fr-FR">fr-FR/com_j2store_cleanup.ini</language>
+            <language tag="fr-FR">fr-FR/com_j2store_cleanup.sys.ini</language>
         </languages>
     </administration>
 
