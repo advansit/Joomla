@@ -104,7 +104,7 @@ test_configuration() {
 test_language_files() {
     echo -e "\n${YELLOW}=== Testing Language Files ===${NC}"
     
-    for lang in en-CH de-CH fr-FR; do
+    for lang in en-GB de-CH fr-FR; do
         if docker exec j2commerce_acymailing_test test -d /var/www/html/plugins/j2store/acymailing/language/$lang; then
             log_test "language" "$lang directory" "PASS" "$lang language found"
         else

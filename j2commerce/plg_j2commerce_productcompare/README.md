@@ -68,7 +68,7 @@ plg_j2commerce_productcompare/
 ├── build.sh
 ├── services/provider.php
 ├── src/Extension/ProductCompare.php
-├── language/ (en-CH, de-CH, fr-FR)
+├── language/ (en-GB, de-CH, fr-FR)
 ├── media/ (js, css)
 └── tests/
 ```
