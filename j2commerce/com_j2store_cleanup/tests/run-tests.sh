@@ -90,11 +90,11 @@ main() {
                 "Installation:01-installation.php"
                 "Scanning:02-scanning.php"
                 "Cleanup:03-cleanup.php"
-                "UIElements:05-ui-elements.php"
-                "Security:06-security.php"
-                "DisplayFunctionality:07-display-functionality.php"
-                "SafetyChecks:08-safety-checks.php"
-                "LanguageSupport:09-language-support.php"
+                "UIElements:04-ui-elements.php"
+                "Security:05-security.php"
+                "DisplayFunctionality:06-display-functionality.php"
+                "SafetyChecks:07-safety-checks.php"
+                "LanguageSupport:08-language-support.php"
                 "Uninstall:09-uninstall.php"
             )
             ;;
@@ -108,19 +108,19 @@ main() {
             tests=("Cleanup:03-cleanup.php")
             ;;
         "ui")
-            tests=("UIElements:05-ui-elements.php")
+            tests=("UIElements:04-ui-elements.php")
             ;;
         "security")
-            tests=("Security:06-security.php")
+            tests=("Security:05-security.php")
             ;;
         "display")
-            tests=("DisplayFunctionality:07-display-functionality.php")
+            tests=("DisplayFunctionality:06-display-functionality.php")
             ;;
         "safety")
-            tests=("SafetyChecks:08-safety-checks.php")
+            tests=("SafetyChecks:07-safety-checks.php")
             ;;
         "language")
-            tests=("LanguageSupport:09-language-support.php")
+            tests=("LanguageSupport:08-language-support.php")
             ;;
         "uninstall")
             tests=("Uninstall:09-uninstall.php")
