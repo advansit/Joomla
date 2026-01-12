@@ -15,6 +15,7 @@ use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
 use Joomla\Event\DispatcherInterface;
 use Advans\Plugin\Privacy\J2Commerce\Extension\J2Commerce;
+use Advans\Plugin\Privacy\J2Commerce\Task\AutoCleanupTask;
 
 return new class implements ServiceProviderInterface
 {
@@ -31,6 +32,21 @@ return new class implements ServiceProviderInterface
                 $plugin->setDatabase(Factory::getContainer()->get('DatabaseDriver'));
 
                 return $plugin;
+            }
+        );
+        
+        // Register auto-cleanup task
+        $container->set(
+            AutoCleanupTask::class,
+            function (Container $container) {
+                $task = new AutoCleanupTask(
+                    $container->get(DispatcherInterface::class),
+                    (array) PluginHelper::getPlugin('privacy', 'j2commerce')
+                );
+                $task->setApplication(Factory::getApplication());
+                $task->setDatabase(Factory::getContainer()->get('DatabaseDriver'));
+
+                return $task;
             }
         );
     }
