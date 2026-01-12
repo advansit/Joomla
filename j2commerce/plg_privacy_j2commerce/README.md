@@ -763,7 +763,7 @@ Status: Complete
 
 - • **German (Switzerland)** - `de-CH`
 - • **English (UK)** - `en-GB`
-- • **French (Switzerland)** - `fr-CH`
+- • **French (France)** - `fr-FR`
 
 ### Adding New Languages
 
@@ -935,7 +935,7 @@ plg_privacy_j2commerce/
 ├── language/
 │   ├── de-CH/                  # German (Switzerland)
 │   ├── en-GB/                  # English (UK)
-│   └── fr-CH/                  # French (Switzerland)
+│   └── fr-FR/                  # French (France)
 └── tests/                      # Integration tests
 ```
 
@@ -1023,7 +1023,7 @@ Proprietary software. Copyright (C) 2025 Advans IT Solutions GmbH. All rights re
 - Configurable retention periods
 - Multi-country legal basis support
 - Scheduled automatic cleanup
-- Multi-language support (de-CH, en-GB, fr-CH)
+- Multi-language support (de-CH, en-GB, fr-FR)
 - documentation
 
 **Known Limitations:**

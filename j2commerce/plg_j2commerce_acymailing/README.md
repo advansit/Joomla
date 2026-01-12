@@ -152,7 +152,7 @@ plg_j2commerce_acymailing/
 │   └── Extension/
 │       └── AcyMailing.php      # Main plugin class
 ├── language/
-│   ├── en-CH/                  # English (Swiss)
+│   ├── en-GB/                  # English (British)
 │   ├── de-CH/                  # German (Swiss)
 │   └── fr-FR/                  # French
 ├── tests/
