@@ -1,9 +1,10 @@
 # System - J2Commerce 2FA Plugin
-Seamless checkout experience with Two-Factor Authentication.
 
-## Product Description
+Two-Factor Authentication integration for J2Commerce.
 
-The System - J2Commerce 2FA Plugin solves a critical checkout problem: losing cart contents when customers log in with Two-Factor Authentication. This plugin preserves sessions, cart data, and return URLs throughout the 2FA process, ensuring customers complete their purchase without frustration. Essential for stores using [Joomla](https://github.com/joomla/joomla-cms)'s 2FA security feature.
+## Description
+
+Preserves cart contents when customers log in with Two-Factor Authentication. The plugin maintains sessions, cart data, and return URLs throughout the 2FA process for stores using [Joomla](https://github.com/joomla/joomla-cms)'s 2FA security feature.
 
 ## Features
 
@@ -22,19 +23,10 @@ The System - J2Commerce 2FA Plugin solves a critical checkout problem: losing ca
 - Joomla 2FA enabled
 
 ## Installation
-
-### For Users
 1. Download `plg_system_j2commerce_2fa.zip`
 2. **System → Extensions → Install**
 3. Upload and install
 4. Enable via **System → Plugins**
-
-### For Developers
-```bash
-cd dev/plg_system_j2commerce_2fa
-./build.sh
-```
-
 ## Configuration
 
 **System → Plugins → System - J2Commerce 2FA**

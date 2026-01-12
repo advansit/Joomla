@@ -4,7 +4,7 @@
 **Joomla:** 4.x, 5.x, 6.x  
 **PHP:** 8.0+
 
-Enterprise-grade GDPR/DSGVO compliance solution for J2Commerce e-commerce platforms. Provides automated data retention management, configurable legal compliance frameworks, and intelligent handling of perpetual software licenses.
+GDPR/DSGVO compliance solution for J2Commerce. Provides automated data retention management, configurable legal compliance frameworks, and handling of perpetual software licenses.
 
 ---
 
@@ -83,7 +83,7 @@ The plugin requires mandatory configuration before operation. A detailed setup w
 4. Configure retention periods and legal compliance parameters
 5. Establish automated cleanup scheduling
 
-**Critical:** Failure to complete the Custom Field configuration will result in incorrect license type detection and potential data retention violations.
+Note: Failure to complete the Custom Field configuration will result in incorrect license type detection and potential data retention violations.
 
 ---
 
@@ -852,7 +852,7 @@ AND field_name = 'is_lifetime_license';
 
 **Recommended Approach:**
 1. Use manual testing checklist: `tests/MANUAL_TESTING.md`
-2. Comprehensive test implementation planned: `tests/TODO_TESTS.md`
+2. test implementation planned: `tests/TODO_TESTS.md`
 3. Estimated effort for full test suite: 24-32 hours
 
 ### Manual Testing
@@ -1024,7 +1024,7 @@ Proprietary software. Copyright (C) 2025 Advans IT Solutions GmbH. All rights re
 - Multi-country legal basis support
 - Scheduled automatic cleanup
 - Multi-language support (de-CH, en-GB, fr-CH)
-- Comprehensive documentation
+- documentation
 
 **Known Limitations:**
 - Automated recurring subscription lifecycle management not included
