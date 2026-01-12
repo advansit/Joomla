@@ -10,11 +10,12 @@ This repository contains extensions developed and maintained by Advans IT Soluti
 
 ```
 Joomla/
-├── joomla/          # Joomla Core Extensions (coming soon)
 ├── j2commerce/      # J2Commerce Extensions
 ├── shared/          # Shared build and test scripts
 └── .github/         # CI/CD workflows
 ```
+
+Joomla Core extensions will be added directly to the root when available.
 
 ## 📦 Available Extensions
 
