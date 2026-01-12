@@ -1,6 +1,10 @@
 # J2Commerce Import/Export Component
 
+![Pre-Release](https://img.shields.io/badge/status-pre--release-orange)
+
 Professional data import and export solution for [J2Commerce](https://github.com/joomla-projects/j2commerce) stores.
+
+⚠️ **Pre-Release Notice:** This extension is currently in pre-release status. While fully functional and tested, it has not yet been deployed in production environments. Use in production at your own discretion.
 
 ## Product Description
 
@@ -131,6 +135,93 @@ com_j2commerce_importexport/
 │   ├── tmpl/
 │   └── language/ (en-CH, de-CH, fr-FR)
 └── tests/
+```
+
+## Troubleshooting
+
+### Import Fails with Memory Error
+**Problem:** Large imports exceed PHP memory limit  
+**Solution:** Reduce batch size in component options (try 50 or 25)
+
+### CSV Import Shows Wrong Characters
+**Problem:** Encoding issues with special characters  
+**Solution:** Ensure CSV file is UTF-8 encoded. Use Excel's "CSV UTF-8" export option.
+
+### Preview Shows No Data
+**Problem:** File format not recognized  
+**Solution:** Verify file format matches selected type. Check delimiter settings for CSV.
+
+### Import Completes but No Products Visible
+**Problem:** Products imported but not published  
+**Solution:** Check product status in J2Commerce. Import preserves status from file.
+
+### Export File is Empty
+**Problem:** No data matches export criteria  
+**Solution:** Verify data exists in J2Commerce. Check filter settings.
+
+## Performance Considerations
+
+### Large Imports
+- Use batch processing (default: 100 records)
+- Monitor server resources during import
+- Consider splitting very large files (>10,000 records)
+- Increase PHP max_execution_time if needed
+
+### Memory Usage
+- Each batch requires ~2MB memory per 100 records
+- Adjust batch size based on available memory
+- Monitor memory_limit in PHP configuration
+
+### Recommended Settings
+```ini
+; php.ini
+memory_limit = 256M
+max_execution_time = 300
+upload_max_filesize = 50M
+post_max_size = 50M
+```
+
+## Data Mapping
+
+### Product Fields
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| product_id | int | No | Existing product ID (for updates) |
+| sku | string | Yes | Unique product identifier |
+| title | string | Yes | Product name |
+| price | decimal | Yes | Base price |
+| stock | int | No | Stock quantity |
+| status | int | No | 0=unpublished, 1=published |
+| category_id | int | No | Category assignment |
+
+### Category Fields
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| category_id | int | No | Existing category ID |
+| title | string | Yes | Category name |
+| parent_id | int | No | Parent category ID |
+| ordering | int | No | Display order |
+
+### Variant Fields
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| variant_id | int | No | Existing variant ID |
+| product_id | int | Yes | Parent product ID |
+| sku | string | Yes | Variant SKU |
+| price_modifier | decimal | No | Price adjustment |
+| stock | int | No | Variant stock |
+
+## Multi-Language Support
+
+This extension supports the following languages:
+- **English (en-GB)** - Default
+- **German (de-CH)** - Swiss German
+- **French (fr-FR)** - French
+
+Users can add additional language files by creating new language folders following Joomla's language structure:
+```
+administrator/language/{language-tag}/com_j2commerce_importexport.ini
+administrator/language/{language-tag}/com_j2commerce_importexport.sys.ini
 ```
 
 ## Support & Contact

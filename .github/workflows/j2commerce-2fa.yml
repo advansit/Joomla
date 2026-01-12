@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'J2Commerce/plg_system_j2commerce_2fa/**'
+      - 'j2commerce/plg_system_j2commerce_2fa/**'
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
       
       - name: Build extension
         run: |
-          cd J2Commerce/plg_system_j2commerce_2fa
+          cd j2commerce/plg_system_j2commerce_2fa
           chmod +x build.sh
           ./build.sh
           cp *.zip tests/extension.zip
@@ -27,7 +27,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: extension-package
-          path: J2Commerce/plg_system_j2commerce_2fa/tests/extension.zip
+          path: j2commerce/plg_system_j2commerce_2fa/tests/extension.zip
           retention-days: 1
 
   test:
@@ -61,17 +61,17 @@ jobs:
         uses: actions/download-artifact@v6
         with:
           name: extension-package
-          path: J2Commerce/plg_system_j2commerce_2fa/tests/
+          path: j2commerce/plg_system_j2commerce_2fa/tests/
       
       - name: Start test environment
         run: |
-          cd J2Commerce/plg_system_j2commerce_2fa/tests
+          cd j2commerce/plg_system_j2commerce_2fa/tests
           docker compose up -d
           sleep 60
       
       - name: Run tests
         run: |
-          cd J2Commerce/plg_system_j2commerce_2fa/tests
+          cd j2commerce/plg_system_j2commerce_2fa/tests
           chmod +x run-tests.sh
           ./run-tests.sh ${{ matrix.script }}
       
@@ -80,13 +80,13 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.script }}-logs
-          path: J2Commerce/plg_system_j2commerce_2fa/tests/test-results/*.txt
+          path: j2commerce/plg_system_j2commerce_2fa/tests/test-results/*.txt
           retention-days: 7
       
       - name: Cleanup
         if: always()
         run: |
-          cd J2Commerce/plg_system_j2commerce_2fa/tests
+          cd j2commerce/plg_system_j2commerce_2fa/tests
           docker compose down -v
 
   collect-results:

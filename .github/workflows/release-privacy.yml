@@ -35,14 +35,14 @@ jobs:
 
       - name: Build extension
         run: |
-          cd J2Commerce/plg_privacy_j2commerce
+          cd j2commerce/plg_privacy_j2commerce
           chmod +x build.sh
           ./build.sh
 
       - name: Find package file
         id: package
         run: |
-          cd J2Commerce/plg_privacy_j2commerce
+          cd j2commerce/plg_privacy_j2commerce
           PACKAGE=$(ls -1 plg_privacy_j2commerce_*.zip | head -1)
           echo "file=$PACKAGE" >> $GITHUB_OUTPUT
           echo "Package: $PACKAGE"
@@ -54,7 +54,7 @@ jobs:
           if [ -z "$PREV_TAG" ]; then
             echo "changelog=Initial release" >> $GITHUB_OUTPUT
           else
-            CHANGELOG=$(git log ${PREV_TAG}..privacy-v${{ steps.version.outputs.version }} --pretty=format:"- %s" --no-merges -- J2Commerce/plg_privacy_j2commerce/)
+            CHANGELOG=$(git log ${PREV_TAG}..privacy-v${{ steps.version.outputs.version }} --pretty=format:"- %s" --no-merges -- j2commerce/plg_privacy_j2commerce/)
             if [ -z "$CHANGELOG" ]; then
               CHANGELOG="- Bug fixes and improvements"
             fi
@@ -95,7 +95,7 @@ jobs:
             - J2Commerce 3.x or higher
             - Joomla Privacy Component enabled
           files: |
-            J2Commerce/plg_privacy_j2commerce/${{ steps.package.outputs.file }}
+            j2commerce/plg_privacy_j2commerce/${{ steps.package.outputs.file }}
           draft: false
           prerelease: false
         env:
