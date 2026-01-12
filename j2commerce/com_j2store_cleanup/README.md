@@ -1,7 +1,7 @@
 # J2Store Extension Cleanup Component
 Safe migration tool for transitioning from J2Store to [J2Commerce](https://github.com/joomla-projects/j2commerce).
 
-## Product Description
+## Description
 
 Until now, there was no automated way to remove old J2Store extensions that are no longer compatible with J2Commerce. The J2Store Cleanup Component solves this problem by identifying and safely removing incompatible J2Store extensions. Scan your [Joomla](https://github.com/joomla/joomla-cms) installation, review detailed extension information, and remove outdated components with confidence. Protects your valuable data while cleaning up legacy extensions that could cause conflicts.
 
@@ -22,19 +22,10 @@ Until now, there was no automated way to remove old J2Store extensions that are 
 - ⚠️ Backup recommended before use
 
 ## Installation
-
-### For Users
 1. Download `com_j2store_cleanup.zip`
 2. **System → Extensions → Install**
 3. Upload and install
 4. Access via **Components → J2Store Cleanup**
-
-### For Developers
-```bash
-cd dev/com_j2store_cleanup
-./build.sh
-```
-
 ## Usage
 
 ### Scanning
@@ -68,7 +59,7 @@ cd dev/com_j2store_cleanup
 
 ## Automated Testing
 
-This component has comprehensive automated tests that run on every push via GitHub Actions.
+This component has automated tests that run on every push via GitHub Actions.
 
 ### Test Suites
 

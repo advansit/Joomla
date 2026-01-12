@@ -1,7 +1,7 @@
 # J2Commerce Import/Export Component
 Professional data import and export solution for [J2Commerce](https://github.com/joomla-projects/j2commerce) stores.
 
-## Product Description
+## Description
 
 The J2Commerce Import/Export Component streamlines bulk data management for your online store. Import thousands of products, update prices across your catalog, or export data for analysis - all with a user-friendly interface and reliable batch processing. Supports CSV, XML, and JSON formats with preview functionality to ensure data accuracy before import.
 
@@ -23,19 +23,10 @@ The J2Commerce Import/Export Component streamlines bulk data management for your
 - Sufficient memory for large imports
 
 ## Installation
-
-### For Users
 1. Download `com_j2commerce_importexport.zip`
 2. **System → Extensions → Install**
 3. Upload and install
 4. Access via **Components → J2Commerce Import/Export**
-
-### For Developers
-```bash
-cd dev/com_j2commerce_importexport
-./build.sh
-```
-
 ## Configuration
 
 **Components → J2Commerce Import/Export → Options**
@@ -93,7 +84,7 @@ product_id,sku,title,price,stock
 
 ## Automated Testing
 
-This extension has comprehensive automated tests that run on every push via GitHub Actions.
+This extension has automated tests that run on every push via GitHub Actions.
 
 ### Test Suites
 

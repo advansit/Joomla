@@ -1,7 +1,7 @@
 # J2Commerce Product Compare Plugin
 Help customers make informed purchase decisions with side-by-side product comparison.
 
-## Product Description
+## Description
 
 The J2Commerce Product Compare Plugin adds a visual comparison feature to your store. Customers can select multiple products and view them side-by-side in an elegant modal interface. A persistent comparison bar keeps track of selected products across pages. Fully responsive design works on all devices, with configurable maximum products and customizable styling to match your store's theme.
 
@@ -24,19 +24,10 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 - J2Commerce 3.x or higher
 
 ## Installation
-
-### For Users
 1. Download `plg_j2commerce_productcompare.zip`
 2. **System → Extensions → Install**
 3. Upload and install
 4. Enable via **System → Plugins**
-
-### For Developers
-```bash
-cd dev/plg_j2commerce_productcompare
-./build.sh
-```
-
 ## Configuration
 
 **System → Plugins → J2Commerce - Product Compare**

@@ -1,9 +1,10 @@
 # J2Commerce AcyMailing Integration Plugin
-Seamless newsletter subscription integration for your [J2Commerce](https://github.com/joomla-projects/j2commerce) store.
 
-## Product Description
+Newsletter subscription integration for [J2Commerce](https://github.com/joomla-projects/j2commerce).
 
-The J2Commerce AcyMailing Plugin connects your e-commerce checkout with AcyMailing newsletter management. Grow your subscriber base by offering newsletter opt-in during checkout, on product pages, or automatically. Supports multiple mailing lists, double opt-in for GDPR compliance, and guest subscriptions. Turn every customer into a potential newsletter subscriber with minimal friction.
+## Description
+
+Connects J2Commerce checkout with AcyMailing newsletter management. Offers newsletter opt-in during checkout, on product pages, or automatically. Supports multiple mailing lists, double opt-in for GDPR compliance, and guest subscriptions.
 
 ## Features
 
@@ -24,27 +25,11 @@ The J2Commerce AcyMailing Plugin connects your e-commerce checkout with AcyMaili
 
 ## Installation
 
-### For Users
-
 1. Download `plg_j2commerce_acymailing.zip`
 2. Go to **System → Extensions → Install**
 3. Upload and install the package
 4. Enable via **System → Plugins**
 5. Configure settings
-
-### For Developers
-
-```bash
-# Clone repository
-git clone https://github.com/advansit/advans.ch.git
-cd advans.ch/dev/plg_j2commerce_acymailing
-
-# Build package
-./build.sh
-
-# Package will be created as plg_j2commerce_acymailing.zip
-```
-
 ## Configuration
 
 Access via **System → Plugins → J2Commerce - AcyMailing**.
