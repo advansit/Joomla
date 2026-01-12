@@ -1,7 +1,5 @@
 # Joomla Extensions Repository
 
-**Status:** 🚧 Pre-Release / Development
-
 Professional [Joomla](https://github.com/joomla/joomla-cms) and [J2Commerce](https://github.com/joomla-projects/j2commerce) extensions.
 
 This repository contains extensions developed and maintained by Advans IT Solutions GmbH.

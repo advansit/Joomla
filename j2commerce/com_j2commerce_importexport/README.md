@@ -1,10 +1,5 @@
 # J2Commerce Import/Export Component
-
-![Pre-Release](https://img.shields.io/badge/status-pre--release-orange)
-
 Professional data import and export solution for [J2Commerce](https://github.com/joomla-projects/j2commerce) stores.
-
-⚠️ **Pre-Release Notice:** This extension is currently in pre-release status. While fully functional and tested, it has not yet been deployed in production environments. Use in production at your own discretion.
 
 ## Product Description
 

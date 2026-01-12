@@ -1,10 +1,5 @@
 # J2Store Extension Cleanup Component
-
-![Pre-Release](https://img.shields.io/badge/status-pre--release-orange)
-
 Safe migration tool for transitioning from J2Store to [J2Commerce](https://github.com/joomla-projects/j2commerce).
-
-⚠️ **Pre-Release Notice:** This extension is currently in pre-release status. While fully functional and tested, it has not yet been deployed in production environments. Use in production at your own discretion.
 
 ## Product Description
 
