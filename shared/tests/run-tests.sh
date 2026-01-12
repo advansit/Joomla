@@ -90,9 +90,9 @@ main() {
         IFS=':' read -r test_name test_script <<< "$test_entry"
         
         if [ "$test_suite" = "all" ] || [ "$test_suite" = "$(echo $test_name | tr '[:upper:]' '[:lower:]')" ]; then
-            ((total_tests++))
+            total_tests=$((total_tests + 1))
             if ! run_test "$test_name" "$test_script"; then
-                ((failed_tests++))
+                failed_tests=$((failed_tests + 1))
             fi
         fi
     done
