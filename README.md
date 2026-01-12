@@ -10,19 +10,6 @@ See the **J2Commerce** folder for all available extensions and their documentati
 
 Each extension has automated tests that run via GitHub Actions.
 
-### Test Workflows
-
-**Location:** `.github/workflows/`
-
-- `j2commerce-2fa.yml` - Tests for 2FA plugin
-- `j2commerce-acymailing.yml` - Tests for AcyMailing plugin
-- `j2commerce-import-export.yml` - Tests for Import/Export component
-- `j2commerce-privacy.yml` - Tests for Privacy plugin
-- `j2commerce-product-compare.yml` - Tests for Product Compare plugin
-- `j2store-cleanup.yml` - Tests for Cleanup component
-
-### How Tests Run
-
 **Automatic:** Tests run automatically when files in the respective extension directory are modified.
 
 **Manual:** Go to **Actions** → Select workflow → **Run workflow**

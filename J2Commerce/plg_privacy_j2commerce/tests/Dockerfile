@@ -16,7 +16,7 @@ COPY extension.zip /tmp/extension.zip
 COPY scripts/docker-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
 RUN chmod +x /usr/local/bin/custom-entrypoint.sh
 
-ENV EXTENSION_NAME="Privacy Plugin"
+ENV EXTENSION_NAME="J2Commerce Privacy Plugin"
 
 ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]
 CMD ["apache2-foreground"]

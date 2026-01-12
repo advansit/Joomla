@@ -62,6 +62,39 @@
                     <option value="0">JNO</option>
                 </field>
             </fieldset>
+
+            <fieldset name="retention" label="PLG_PRIVACY_J2COMMERCE_RETENTION_FIELDSET_LABEL">
+                <field
+                    name="retention_years"
+                    type="number"
+                    label="PLG_PRIVACY_J2COMMERCE_RETENTION_YEARS_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_RETENTION_YEARS_DESC"
+                    default="10"
+                    min="1"
+                    max="30"
+                    step="1"
+                    hint="10"
+                />
+
+                <field
+                    name="legal_basis"
+                    type="textarea"
+                    label="PLG_PRIVACY_J2COMMERCE_LEGAL_BASIS_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_LEGAL_BASIS_DESC"
+                    rows="3"
+                    cols="50"
+                    default="• Switzerland: OR Art. 958f (10 years)&#10;• Germany: AO §147 (10 years)&#10;• EU: National tax laws (6-10 years)"
+                />
+
+                <field
+                    name="support_email"
+                    type="email"
+                    label="PLG_PRIVACY_J2COMMERCE_SUPPORT_EMAIL_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_SUPPORT_EMAIL_DESC"
+                    default="support@example.com"
+                    required="true"
+                />
+            </fieldset>
         </fields>
     </config>
 
