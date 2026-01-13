@@ -74,6 +74,8 @@ rsync -av --exclude="$BUILD_DIR" \
     --exclude="node_modules" \
     --exclude=".phpunit.cache" \
     --exclude="vendor" \
+    --exclude="phpunit.xml" \
+    --exclude="composer.json" \
     ./ "$BUILD_DIR/"
 
 # Create installation package
