@@ -14,8 +14,12 @@
     <description>PLG_SYSTEM_J2COMMERCE_2FA_XML_DESCRIPTION</description>
     
     <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+
+    <namespace path="src">Advans\Plugin\System\J2Commerce2FA</namespace>
     
     <files>
+        <folder>services</folder>
+        <folder>src</folder>
         <folder>language</folder>
     </files>
     

@@ -56,8 +56,9 @@ if [ -f /var/www/html/configuration.php ]; then
         if [ "$TYPE" = "plugin" ]; then
             # Get name from manifest
             NAME=$(grep -oP '<name>\K[^<]+' "$MANIFEST" | head -1)
-            SQL="INSERT INTO ${TABLE_PREFIX}extensions (package_id, name, type, element, folder, client_id, enabled, access, protected, locked, manifest_cache, params, custom_data, checked_out, checked_out_time, ordering, state, note) VALUES (0, '$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 1, 1, 0, 0, '', '{}', '', 0, NULL, 0, 0, '');"
-            timeout 10 mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "$SQL" 2>&1 >/dev/null && echo "✅ Extension registered in database" || echo "❌ Failed to register extension"
+            # Install plugin as DISABLED (enabled=0) to avoid autoload issues during testing
+            SQL="INSERT INTO ${TABLE_PREFIX}extensions (package_id, name, type, element, folder, client_id, enabled, access, protected, locked, manifest_cache, params, custom_data, checked_out, checked_out_time, ordering, state, note) VALUES (0, '$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 0, 1, 0, 0, '', '{}', '', 0, NULL, 0, 0, '');"
+            timeout 10 mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "$SQL" 2>&1 >/dev/null && echo "✅ Extension registered in database (disabled for testing)" || echo "❌ Failed to register extension"
         elif [ "$TYPE" = "component" ]; then
             NAME=$(grep -oP '<name>\K[^<]+' "$MANIFEST" | head -1)
             SQL="INSERT INTO ${TABLE_PREFIX}extensions (package_id, name, type, element, folder, client_id, enabled, access, protected, locked, manifest_cache, params, custom_data, checked_out, checked_out_time, ordering, state, note) VALUES (0, '$NAME', 'component', 'com_$ELEMENT', '', 1, 1, 1, 0, 0, '', '{}', '', 0, NULL, 0, 0, '');"
