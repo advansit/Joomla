@@ -1,57 +1,24 @@
 <?php
-/**
- * @package     J2Commerce 2FA Plugin
- * @subpackage  Extension
- * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
- * @license     Proprietary
- */
-
-namespace Advans\Plugin\System\J2Commerce2FA\Extension;
-
 defined('_JEXEC') or die;
 
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Factory;
-use Joomla\Event\Event;
-use Joomla\Event\SubscriberInterface;
 
-class J2Commerce2FA extends CMSPlugin implements SubscriberInterface
+class PlgSystemJ2commerce_2fa extends CMSPlugin
 {
     protected $autoloadLanguage = true;
 
     /**
-     * Returns an array of events this subscriber will listen to.
-     *
-     * @return  array
-     *
-     * @since   1.0.0
-     */
-    public static function getSubscribedEvents(): array
-    {
-        return [
-            'onUserAfterLogin' => 'onUserAfterLogin',
-        ];
-    }
-
-    /**
      * Handle user login - preserve session and cart data after 2FA
      *
-     * @param   Event  $event  The event object
+     * @param   array  $user     User data
+     * @param   array  $options  Login options
      *
-     * @return  void
-     *
-     * @since   1.0.0
+     * @return  boolean
      */
-    public function onUserAfterLogin(Event $event): void
+    public function onUserAfterLogin($user, $options = [])
     {
         try {
-            $user = $event->getArgument('user') ?? $event->getArgument(0);
-            $options = $event->getArgument('options') ?? $event->getArgument(1) ?? [];
-            
-            if (!$user) {
-                return;
-            }
-            
             $app = Factory::getApplication();
             $session = $app->getSession();
             
@@ -88,6 +55,8 @@ class J2Commerce2FA extends CMSPlugin implements SubscriberInterface
                 );
             }
         }
+        
+        return true;
     }
 
     /**
@@ -96,8 +65,6 @@ class J2Commerce2FA extends CMSPlugin implements SubscriberInterface
      * @param   object  $session  Session object
      *
      * @return  void
-     *
-     * @since   1.0.0
      */
     private function preserveCartData($session)
     {
@@ -120,8 +87,6 @@ class J2Commerce2FA extends CMSPlugin implements SubscriberInterface
      * @param   object  $session  Session object
      *
      * @return  void
-     *
-     * @since   1.0.0
      */
     private function preserveSessionData($session)
     {
@@ -145,8 +110,6 @@ class J2Commerce2FA extends CMSPlugin implements SubscriberInterface
      * @param   array   $user     User data
      *
      * @return  void
-     *
-     * @since   1.0.0
      */
     private function transferGuestCart($session, $user)
     {
