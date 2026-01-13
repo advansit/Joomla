@@ -28,10 +28,15 @@ if [ -f /var/www/html/configuration.php ]; then
     TABLE_PREFIX=$(grep "public \$dbprefix" /var/www/html/configuration.php | grep -oP "'\K[^']+" | tr -d '\n\r;')
     
     # Determine extension type and paths from manifest
-    MANIFEST=$(ls extracted/*.xml 2>/dev/null | head -1)
+    MANIFEST=$(ls extracted/*.xml 2>/dev/null | grep -v phpunit | head -1)
     if [ -f "$MANIFEST" ]; then
-        ELEMENT=$(basename "$MANIFEST" .xml)
         TYPE=$(grep -oP 'type="\K[^"]+' "$MANIFEST" | head -1)
+        ELEMENT=$(grep -oP '<element>\K[^<]+' "$MANIFEST" | head -1)
+        
+        # Fallback to filename if <element> tag not found
+        if [ -z "$ELEMENT" ]; then
+            ELEMENT=$(basename "$MANIFEST" .xml)
+        fi
         
         if [ "$TYPE" = "plugin" ]; then
             FOLDER=$(grep -oP 'group="\K[^"]+' "$MANIFEST" | head -1)
