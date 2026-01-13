@@ -1,10 +1,19 @@
 <?php
+/**
+ * @package     J2Commerce 2FA Plugin
+ * @subpackage  Extension
+ * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+ * @license     Proprietary
+ */
+
+namespace Advans\Plugin\System\J2Commerce2FA\Extension;
+
 defined('_JEXEC') or die;
 
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Factory;
 
-class PlgSystemJ2commerce_2fa extends CMSPlugin
+class J2Commerce2FA extends CMSPlugin
 {
     protected $autoloadLanguage = true;
 
@@ -15,6 +24,8 @@ class PlgSystemJ2commerce_2fa extends CMSPlugin
      * @param   array  $options  Login options
      *
      * @return  boolean
+     *
+     * @since   1.0.0
      */
     public function onUserAfterLogin($user, $options = [])
     {
@@ -65,6 +76,8 @@ class PlgSystemJ2commerce_2fa extends CMSPlugin
      * @param   object  $session  Session object
      *
      * @return  void
+     *
+     * @since   1.0.0
      */
     private function preserveCartData($session)
     {
@@ -87,6 +100,8 @@ class PlgSystemJ2commerce_2fa extends CMSPlugin
      * @param   object  $session  Session object
      *
      * @return  void
+     *
+     * @since   1.0.0
      */
     private function preserveSessionData($session)
     {
@@ -110,6 +125,8 @@ class PlgSystemJ2commerce_2fa extends CMSPlugin
      * @param   array   $user     User data
      *
      * @return  void
+     *
+     * @since   1.0.0
      */
     private function transferGuestCart($session, $user)
     {

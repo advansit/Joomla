@@ -84,7 +84,7 @@ class InstallationTest
         
         $requiredFiles = [
             '/var/www/html/plugins/system/j2commerce_2fa/plg_system_j2commerce_2fa.xml',
-            '/var/www/html/plugins/system/j2commerce_2fa/j2commerce_2fa.php'
+            '/var/www/html/plugins/system/j2commerce_2fa/services/provider.php'
         ];
         
         $missing = [];
@@ -107,7 +107,7 @@ class InstallationTest
     {
         echo "Test: Plugin class exists... ";
         
-        $classFile = '/var/www/html/plugins/system/j2commerce_2fa/j2commerce_2fa.php';
+        $classFile = '/var/www/html/plugins/system/j2commerce_2fa/src/Extension/J2Commerce2FA.php';
         
         if (file_exists($classFile)) {
             echo "PASS\n";
