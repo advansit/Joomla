@@ -83,7 +83,7 @@ class InstallationTest
         echo "Test: Plugin files installed... ";
         
         $requiredFiles = [
-            '/var/www/html/plugins/system/j2commerce_2fa/j2commerce_2fa.xml',
+            '/var/www/html/plugins/system/j2commerce_2fa/plg_system_j2commerce_2fa.xml',
             '/var/www/html/plugins/system/j2commerce_2fa/j2commerce_2fa.php'
         ];
         

@@ -57,7 +57,7 @@ class UninstallTest
         
         // Test 3: Verify plugin structure
         $this->test('Plugin manifest exists', 
-            file_exists($pluginPath . '/j2commerce.xml'));
+            file_exists($pluginPath . '/plg_privacy_j2commerce.xml'));
         $this->test('Plugin class exists', 
             file_exists($pluginPath . '/src/Extension/J2Commerce.php'));
         $this->test('Plugin services exists', 
