@@ -30,7 +30,6 @@ if [ -f /var/www/html/configuration.php ]; then
     # Determine extension type and paths from manifest
     MANIFEST=$(ls extracted/*.xml 2>/dev/null | head -1)
     if [ -f "$MANIFEST" ]; then
-        MANIFEST=$(ls extracted/*.xml | head -1)
         ELEMENT=$(basename "$MANIFEST" .xml)
         TYPE=$(grep -oP 'type="\K[^"]+' "$MANIFEST" | head -1)
         
