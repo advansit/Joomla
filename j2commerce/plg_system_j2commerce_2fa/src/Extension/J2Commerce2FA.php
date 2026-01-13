@@ -12,24 +12,46 @@ defined('_JEXEC') or die;
 
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Factory;
+use Joomla\Event\Event;
+use Joomla\Event\SubscriberInterface;
 
-class J2Commerce2FA extends CMSPlugin
+class J2Commerce2FA extends CMSPlugin implements SubscriberInterface
 {
     protected $autoloadLanguage = true;
 
     /**
-     * Handle user login - preserve session and cart data after 2FA
+     * Returns an array of events this subscriber will listen to.
      *
-     * @param   array  $user     User data
-     * @param   array  $options  Login options
-     *
-     * @return  boolean
+     * @return  array
      *
      * @since   1.0.0
      */
-    public function onUserAfterLogin($user, $options = [])
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            'onUserAfterLogin' => 'onUserAfterLogin',
+        ];
+    }
+
+    /**
+     * Handle user login - preserve session and cart data after 2FA
+     *
+     * @param   Event  $event  The event object
+     *
+     * @return  void
+     *
+     * @since   1.0.0
+     */
+    public function onUserAfterLogin(Event $event): void
     {
         try {
+            $user = $event->getArgument('user') ?? $event->getArgument(0);
+            $options = $event->getArgument('options') ?? $event->getArgument(1) ?? [];
+            
+            if (!$user) {
+                return;
+            }
+            
             $app = Factory::getApplication();
             $session = $app->getSession();
             
@@ -66,8 +88,6 @@ class J2Commerce2FA extends CMSPlugin
                 );
             }
         }
-        
-        return true;
     }
 
     /**
