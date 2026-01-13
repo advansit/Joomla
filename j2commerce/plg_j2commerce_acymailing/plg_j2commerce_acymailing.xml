@@ -2,7 +2,7 @@
 <extension type="plugin" group="j2store" method="upgrade">
     <autoloadLanguage>true</autoloadLanguage>
     <scriptfile>script.php</scriptfile>
-    <name>PLG_J2STORE_ACYMAILING</name>
+    <name>PLG_J2COMMERCE_ACYMAILING</name>
     <element>acymailing</element>
     <author>Advans IT Solutions GmbH</author>
     <creationDate>December 2025</creationDate>
@@ -11,7 +11,7 @@
     <authorEmail></authorEmail>
     <authorUrl>https://advans.ch</authorUrl>
     <version>1.0.0</version>
-    <description>PLG_J2STORE_ACYMAILING_XML_DESCRIPTION</description>
+    <description>PLG_J2COMMERCE_ACYMAILING_XML_DESCRIPTION</description>
     
     <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
 
@@ -30,24 +30,24 @@
                 <field
                     name="list_id"
                     type="text"
-                    label="PLG_J2STORE_ACYMAILING_LIST_ID_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_LIST_ID_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_LIST_ID_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_LIST_ID_DESC"
                     default=""
                 />
 
                 <field
                     name="checkbox_label"
                     type="text"
-                    label="PLG_J2STORE_ACYMAILING_CHECKBOX_LABEL_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_CHECKBOX_LABEL_DESC"
-                    default="PLG_J2STORE_ACYMAILING_DEFAULT_CHECKBOX_LABEL"
+                    label="PLG_J2COMMERCE_ACYMAILING_CHECKBOX_LABEL_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_CHECKBOX_LABEL_DESC"
+                    default="PLG_J2COMMERCE_ACYMAILING_DEFAULT_CHECKBOX_LABEL"
                 />
 
                 <field
                     name="checkbox_default"
                     type="radio"
-                    label="PLG_J2STORE_ACYMAILING_CHECKBOX_DEFAULT_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_CHECKBOX_DEFAULT_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_CHECKBOX_DEFAULT_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_CHECKBOX_DEFAULT_DESC"
                     default="0"
                     class="btn-group btn-group-yesno"
                 >
@@ -58,8 +58,8 @@
                 <field
                     name="double_optin"
                     type="radio"
-                    label="PLG_J2STORE_ACYMAILING_DOUBLE_OPTIN_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_DOUBLE_OPTIN_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_DOUBLE_OPTIN_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_DOUBLE_OPTIN_DESC"
                     default="1"
                     class="btn-group btn-group-yesno"
                 >
@@ -70,8 +70,8 @@
                 <field
                     name="show_in_checkout"
                     type="radio"
-                    label="PLG_J2STORE_ACYMAILING_SHOW_IN_CHECKOUT_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_SHOW_IN_CHECKOUT_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_SHOW_IN_CHECKOUT_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_SHOW_IN_CHECKOUT_DESC"
                     default="1"
                     class="btn-group btn-group-yesno"
                 >
@@ -82,8 +82,8 @@
                 <field
                     name="auto_subscribe"
                     type="radio"
-                    label="PLG_J2STORE_ACYMAILING_AUTO_SUBSCRIBE_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_AUTO_SUBSCRIBE_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_AUTO_SUBSCRIBE_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_AUTO_SUBSCRIBE_DESC"
                     default="0"
                     class="btn-group btn-group-yesno"
                 >
@@ -94,8 +94,8 @@
                 <field
                     name="show_in_products"
                     type="radio"
-                    label="PLG_J2STORE_ACYMAILING_SHOW_IN_PRODUCTS_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_SHOW_IN_PRODUCTS_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_SHOW_IN_PRODUCTS_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_SHOW_IN_PRODUCTS_DESC"
                     default="0"
                     class="btn-group btn-group-yesno"
                 >
@@ -106,8 +106,8 @@
                 <field
                     name="guest_subscription"
                     type="radio"
-                    label="PLG_J2STORE_ACYMAILING_GUEST_SUBSCRIPTION_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_GUEST_SUBSCRIPTION_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_GUEST_SUBSCRIPTION_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_GUEST_SUBSCRIPTION_DESC"
                     default="1"
                     class="btn-group btn-group-yesno"
                 >
@@ -118,8 +118,8 @@
                 <field
                     name="multiple_lists"
                     type="text"
-                    label="PLG_J2STORE_ACYMAILING_MULTIPLE_LISTS_LABEL"
-                    description="PLG_J2STORE_ACYMAILING_MULTIPLE_LISTS_DESC"
+                    label="PLG_J2COMMERCE_ACYMAILING_MULTIPLE_LISTS_LABEL"
+                    description="PLG_J2COMMERCE_ACYMAILING_MULTIPLE_LISTS_DESC"
                     default=""
                     hint="1,2,3"
                 />
