@@ -51,7 +51,7 @@ jobs:
             script: 'uninstall'
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: extension-package
           path: j2commerce/plg_privacy_j2commerce/tests/
@@ -82,7 +82,7 @@ jobs:
     needs: test
     if: always()
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           path: test-artifacts/
       - name: Collect and display logs
