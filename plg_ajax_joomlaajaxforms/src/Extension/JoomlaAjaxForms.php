@@ -18,9 +18,11 @@ use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Plugin\CMSPlugin;
+use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\CMS\Session\Session;
 use Joomla\CMS\User\User;
 use Joomla\CMS\User\UserHelper;
+use Joomla\Component\Users\Administrator\Helper\Mfa as MfaHelper;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Event\DispatcherInterface;
 use Joomla\Event\SubscriberInterface;
@@ -117,6 +119,12 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 }
                 return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
 
+            case 'mfa_validate':
+                if ($this->params->get('enable_login', 1)) {
+                    return $this->handleMfaValidate();
+                }
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
+
             default:
                 return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_INVALID_TASK'));
         }
@@ -148,7 +156,56 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_ALREADY_LOGGED_IN'));
         }
 
-        // Prepare credentials
+        // First, authenticate without logging in to check MFA
+        $authenticate = Authentication::getInstance();
+        $response = $authenticate->authenticate([
+            'username' => $username,
+            'password' => $password,
+        ]);
+
+        if ($response->status !== Authentication::STATUS_SUCCESS) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_FAILED'));
+        }
+
+        // Get user to check MFA
+        $userId = (int) User::getInstance($username)->id;
+        
+        if ($userId === 0) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_FAILED'));
+        }
+
+        // Check if MFA is enabled for this user
+        $mfaRecords = $this->getUserMfaRecords($userId);
+        
+        if (!empty($mfaRecords)) {
+            // MFA is required - store credentials in session for second step
+            $session = $this->app->getSession();
+            $session->set('ajax_mfa_user_id', $userId);
+            $session->set('ajax_mfa_remember', $remember);
+            $session->set('ajax_mfa_return', $this->app->input->post->get('return', '', 'base64'));
+            $session->set('ajax_mfa_timestamp', time());
+
+            // Get available MFA methods
+            $methods = [];
+            foreach ($mfaRecords as $record) {
+                $methods[] = [
+                    'id'     => $record->id,
+                    'method' => $record->method,
+                    'title'  => $record->title,
+                ];
+            }
+
+            return $this->jsonSuccess(
+                Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_REQUIRED'),
+                [
+                    'mfa_required' => true,
+                    'methods'      => $methods,
+                    'default_id'   => $mfaRecords[0]->id,
+                ]
+            );
+        }
+
+        // No MFA - proceed with normal login
         $credentials = [
             'username' => $username,
             'password' => $password,
@@ -159,11 +216,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             'silent'   => true,
         ];
 
-        // Attempt login
         $result = $this->app->login($credentials, $options);
 
         if ($result === true) {
-            // Get the logged in user
             $user = $this->app->getIdentity();
             
             return $this->jsonSuccess(
@@ -179,8 +234,275 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             );
         }
 
-        // Login failed - generic error to prevent username enumeration
         return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_FAILED'));
+    }
+
+    /**
+     * Handle MFA validation request
+     *
+     * @return string JSON response
+     */
+    protected function handleMfaValidate(): string
+    {
+        $session = $this->app->getSession();
+        
+        // Get stored MFA session data
+        $userId = $session->get('ajax_mfa_user_id', 0);
+        $remember = $session->get('ajax_mfa_remember', false);
+        $timestamp = $session->get('ajax_mfa_timestamp', 0);
+        
+        // Validate session (max 5 minutes)
+        if (!$userId || (time() - $timestamp) > 300) {
+            $this->clearMfaSession();
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_SESSION_EXPIRED'));
+        }
+
+        $code = $this->app->input->post->get('code', '', 'string');
+        $recordId = $this->app->input->post->get('record_id', 0, 'int');
+
+        if (empty($code)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_REQUIRED'));
+        }
+
+        // Get the MFA record
+        $record = $this->getMfaRecord($recordId, $userId);
+        
+        if (!$record) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_INVALID_METHOD'));
+        }
+
+        // Validate the MFA code
+        if (!$this->validateMfaCode($record, $code)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_INVALID'));
+        }
+
+        // MFA validated - complete login
+        $user = User::getInstance($userId);
+        
+        // Clear MFA session data
+        $this->clearMfaSession();
+
+        // Force login the user
+        $options = [
+            'remember' => $remember,
+            'silent'   => true,
+        ];
+
+        // Set the user as logged in
+        $session->set('user', $user);
+        $this->app->loadIdentity($user);
+
+        // Trigger login event
+        PluginHelper::importPlugin('user');
+        $this->app->triggerEvent('onUserLogin', [(array) $user, $options]);
+
+        return $this->jsonSuccess(
+            Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
+            [
+                'user' => [
+                    'id'       => $user->id,
+                    'name'     => $user->name,
+                    'username' => $user->username,
+                ],
+                'redirect' => $this->getLoginRedirect(),
+            ]
+        );
+    }
+
+    /**
+     * Get MFA records for a user
+     *
+     * @param   int  $userId  User ID
+     *
+     * @return  array
+     */
+    protected function getUserMfaRecords(int $userId): array
+    {
+        // Check if MFA plugins are enabled
+        if (!PluginHelper::isEnabled('multifactorauth')) {
+            return [];
+        }
+
+        $db = $this->getDatabase();
+        $query = $db->getQuery(true)
+            ->select('*')
+            ->from($db->quoteName('#__user_mfa'))
+            ->where($db->quoteName('user_id') . ' = :userId')
+            ->bind(':userId', $userId, \Joomla\Database\ParameterType::INTEGER);
+
+        $db->setQuery($query);
+        
+        try {
+            return $db->loadObjectList() ?: [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Get a specific MFA record
+     *
+     * @param   int  $recordId  Record ID
+     * @param   int  $userId    User ID
+     *
+     * @return  object|null
+     */
+    protected function getMfaRecord(int $recordId, int $userId): ?object
+    {
+        $db = $this->getDatabase();
+        $query = $db->getQuery(true)
+            ->select('*')
+            ->from($db->quoteName('#__user_mfa'))
+            ->where($db->quoteName('id') . ' = :recordId')
+            ->where($db->quoteName('user_id') . ' = :userId')
+            ->bind(':recordId', $recordId, \Joomla\Database\ParameterType::INTEGER)
+            ->bind(':userId', $userId, \Joomla\Database\ParameterType::INTEGER);
+
+        $db->setQuery($query);
+        
+        try {
+            return $db->loadObject();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Validate MFA code
+     *
+     * @param   object  $record  MFA record
+     * @param   string  $code    User-provided code
+     *
+     * @return  bool
+     */
+    protected function validateMfaCode(object $record, string $code): bool
+    {
+        // Import MFA plugins
+        PluginHelper::importPlugin('multifactorauth');
+
+        // Get the MFA plugin for this method
+        $event = new \Joomla\CMS\Event\MultiFactor\Validate($record, $this->app->getIdentity() ?: User::getInstance($record->user_id), $code);
+        
+        try {
+            $this->app->getDispatcher()->dispatch('onUserMultifactorValidate', $event);
+            return $event->isValid();
+        } catch (\Exception $e) {
+            // Fallback: Manual TOTP validation for the most common case
+            if ($record->method === 'totp') {
+                return $this->validateTotpCode($record, $code);
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Validate TOTP code manually (fallback)
+     *
+     * @param   object  $record  MFA record
+     * @param   string  $code    User-provided code
+     *
+     * @return  bool
+     */
+    protected function validateTotpCode(object $record, string $code): bool
+    {
+        $options = json_decode($record->options, true);
+        
+        if (empty($options['key'])) {
+            return false;
+        }
+
+        $secret = $options['key'];
+        $code = preg_replace('/\s+/', '', $code);
+        
+        if (strlen($code) !== 6 || !ctype_digit($code)) {
+            return false;
+        }
+
+        // Check current and adjacent time windows (30 second intervals)
+        $timeSlice = floor(time() / 30);
+        
+        for ($i = -1; $i <= 1; $i++) {
+            $calculatedCode = $this->getTotpCode($secret, $timeSlice + $i);
+            if (hash_equals($calculatedCode, $code)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Calculate TOTP code for a given time slice
+     *
+     * @param   string  $secret     Base32 encoded secret
+     * @param   int     $timeSlice  Time slice
+     *
+     * @return  string
+     */
+    protected function getTotpCode(string $secret, int $timeSlice): string
+    {
+        // Decode base32 secret
+        $secret = $this->base32Decode($secret);
+        
+        // Pack time slice as 64-bit big-endian
+        $time = pack('N*', 0, $timeSlice);
+        
+        // Calculate HMAC-SHA1
+        $hash = hash_hmac('sha1', $time, $secret, true);
+        
+        // Get offset from last nibble
+        $offset = ord($hash[19]) & 0x0F;
+        
+        // Get 4 bytes from offset
+        $binary = (ord($hash[$offset]) & 0x7F) << 24
+            | (ord($hash[$offset + 1]) & 0xFF) << 16
+            | (ord($hash[$offset + 2]) & 0xFF) << 8
+            | (ord($hash[$offset + 3]) & 0xFF);
+        
+        // Get 6-digit code
+        return str_pad($binary % 1000000, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Decode base32 string
+     *
+     * @param   string  $input  Base32 encoded string
+     *
+     * @return  string
+     */
+    protected function base32Decode(string $input): string
+    {
+        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $input = strtoupper(rtrim($input, '='));
+        $output = '';
+        $buffer = 0;
+        $bitsLeft = 0;
+
+        for ($i = 0; $i < strlen($input); $i++) {
+            $buffer = ($buffer << 5) | strpos($alphabet, $input[$i]);
+            $bitsLeft += 5;
+            
+            if ($bitsLeft >= 8) {
+                $bitsLeft -= 8;
+                $output .= chr(($buffer >> $bitsLeft) & 0xFF);
+            }
+        }
+
+        return $output;
+    }
+
+    /**
+     * Clear MFA session data
+     *
+     * @return  void
+     */
+    protected function clearMfaSession(): void
+    {
+        $session = $this->app->getSession();
+        $session->clear('ajax_mfa_user_id');
+        $session->clear('ajax_mfa_remember');
+        $session->clear('ajax_mfa_return');
+        $session->clear('ajax_mfa_timestamp');
     }
 
     /**

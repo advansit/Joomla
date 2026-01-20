@@ -24,8 +24,12 @@ class LoginTest
         $allPassed = $this->testLoginFeatureConfig() && $allPassed;
         $allPassed = $this->testHandleLoginMethodExists() && $allPassed;
         $allPassed = $this->testHandleLogoutMethodExists() && $allPassed;
+        $allPassed = $this->testMfaValidateMethodExists() && $allPassed;
+        $allPassed = $this->testMfaHelperMethods() && $allPassed;
         $allPassed = $this->testLoginLanguageStrings() && $allPassed;
+        $allPassed = $this->testMfaLanguageStrings() && $allPassed;
         $allPassed = $this->testJavaScriptLoginHandler() && $allPassed;
+        $allPassed = $this->testJavaScriptMfaHandler() && $allPassed;
 
         $this->printSummary();
         return $allPassed;
@@ -121,6 +125,78 @@ class LoginTest
         return false;
     }
 
+    private function testMfaValidateMethodExists(): bool
+    {
+        echo "Test: handleMfaValidate method exists... ";
+        
+        $classFile = '/var/www/html/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
+        
+        if (!file_exists($classFile)) {
+            echo "FAIL (class file not found)\n";
+            return false;
+        }
+        
+        $content = file_get_contents($classFile);
+        
+        if (strpos($content, 'function handleMfaValidate') !== false) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL (method not found)\n";
+        return false;
+    }
+
+    private function testMfaHelperMethods(): bool
+    {
+        echo "Test: MFA helper methods exist... ";
+        
+        $classFile = '/var/www/html/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
+        
+        if (!file_exists($classFile)) {
+            echo "FAIL (class file not found)\n";
+            return false;
+        }
+        
+        $content = file_get_contents($classFile);
+        
+        $hasGetUserMfaRecords = strpos($content, 'function getUserMfaRecords') !== false;
+        $hasValidateMfaCode = strpos($content, 'function validateMfaCode') !== false;
+        $hasValidateTotpCode = strpos($content, 'function validateTotpCode') !== false;
+        
+        if ($hasGetUserMfaRecords && $hasValidateMfaCode && $hasValidateTotpCode) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL (MFA helper methods incomplete)\n";
+        return false;
+    }
+
+    private function testMfaLanguageStrings(): bool
+    {
+        echo "Test: MFA language strings exist... ";
+        
+        $langFile = '/var/www/html/plugins/ajax/joomlaajaxforms/language/en-GB/plg_ajax_joomlaajaxforms.ini';
+        
+        if (!file_exists($langFile)) {
+            echo "FAIL (language file not found)\n";
+            return false;
+        }
+        
+        $content = file_get_contents($langFile);
+        
+        if (strpos($content, 'MFA_REQUIRED') !== false && 
+            strpos($content, 'MFA_CODE_INVALID') !== false &&
+            strpos($content, 'MFA_SESSION_EXPIRED') !== false) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL (MFA language strings not found)\n";
+        return false;
+    }
+
     private function testJavaScriptLoginHandler(): bool
     {
         echo "Test: JavaScript login handler exists... ";
@@ -141,6 +217,30 @@ class LoginTest
         }
         
         echo "FAIL (login handler not found)\n";
+        return false;
+    }
+
+    private function testJavaScriptMfaHandler(): bool
+    {
+        echo "Test: JavaScript MFA handler exists... ";
+        
+        $jsFile = '/var/www/html/plugins/ajax/joomlaajaxforms/media/js/joomlaajaxforms.js';
+        
+        if (!file_exists($jsFile)) {
+            echo "FAIL (JS file not found)\n";
+            return false;
+        }
+        
+        $content = file_get_contents($jsFile);
+        
+        if (strpos($content, 'showMfaForm') !== false && 
+            strpos($content, 'submitMfaCode') !== false &&
+            strpos($content, 'mfa_required') !== false) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL (MFA handler not found)\n";
         return false;
     }
 
