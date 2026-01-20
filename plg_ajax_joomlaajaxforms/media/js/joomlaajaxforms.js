@@ -28,8 +28,54 @@ const JoomlaAjaxForms = {
      */
     init: function() {
         document.addEventListener('DOMContentLoaded', function() {
+            JoomlaAjaxForms.initLoginForm();
+            JoomlaAjaxForms.initRegistrationForm();
             JoomlaAjaxForms.initResetForm();
             JoomlaAjaxForms.initRemindForm();
+        });
+    },
+
+    /**
+     * Initialize login form
+     */
+    initLoginForm: function() {
+        // Standard Joomla login form selectors
+        const selectors = [
+            'form[action*="com_users"][action*="login"]',
+            '.login form.form-validate',
+            '#login-form',
+            'form.mod-login'
+        ];
+        
+        selectors.forEach(function(selector) {
+            const forms = document.querySelectorAll(selector);
+            forms.forEach(function(form) {
+                if (!form.dataset.ajaxInitialized) {
+                    JoomlaAjaxForms.convertLoginForm(form);
+                    form.dataset.ajaxInitialized = 'true';
+                }
+            });
+        });
+    },
+
+    /**
+     * Initialize registration form
+     */
+    initRegistrationForm: function() {
+        const selectors = [
+            'form[action*="com_users"][action*="registration"]',
+            '.registration form.form-validate',
+            '#member-registration'
+        ];
+        
+        selectors.forEach(function(selector) {
+            const forms = document.querySelectorAll(selector);
+            forms.forEach(function(form) {
+                if (!form.dataset.ajaxInitialized) {
+                    JoomlaAjaxForms.convertRegistrationForm(form);
+                    form.dataset.ajaxInitialized = 'true';
+                }
+            });
         });
     },
 
@@ -38,9 +84,10 @@ const JoomlaAjaxForms = {
      */
     initResetForm: function() {
         const form = document.querySelector('.reset form.form-validate, .reset #user-registration');
-        if (!form) return;
-
-        JoomlaAjaxForms.convertForm(form, 'reset');
+        if (form && !form.dataset.ajaxInitialized) {
+            JoomlaAjaxForms.convertForm(form, 'reset', ['email']);
+            form.dataset.ajaxInitialized = 'true';
+        }
     },
 
     /**
@@ -48,120 +95,75 @@ const JoomlaAjaxForms = {
      */
     initRemindForm: function() {
         const form = document.querySelector('.remind form.form-validate, .remind #user-registration');
-        if (!form) return;
-
-        JoomlaAjaxForms.convertForm(form, 'remind');
+        if (form && !form.dataset.ajaxInitialized) {
+            JoomlaAjaxForms.convertForm(form, 'remind', ['email']);
+            form.dataset.ajaxInitialized = 'true';
+        }
     },
 
     /**
-     * Convert a standard form to AJAX
+     * Convert login form to AJAX
      *
      * @param {HTMLFormElement} form - The form element
-     * @param {string} task - The task name (reset, remind, etc.)
      */
-    convertForm: function(form, task) {
-        // Create message container if not exists
-        let messageContainer = form.querySelector('.ajax-message');
-        if (!messageContainer) {
-            messageContainer = document.createElement('div');
-            messageContainer.className = 'ajax-message';
-            messageContainer.style.display = 'none';
-            form.insertBefore(messageContainer, form.firstChild);
-        }
+    convertLoginForm: function(form) {
+        const messageContainer = JoomlaAjaxForms.createMessageContainer(form);
 
-        // Handle form submission
         form.addEventListener('submit', function(e) {
             e.preventDefault();
 
-            // Get form data
             const formData = new FormData(form);
-            const email = formData.get('jform[email]') || formData.get('email') || '';
+            
+            // Get credentials - try different field name patterns
+            const username = formData.get('username') || formData.get('jform[username]') || '';
+            const password = formData.get('password') || formData.get('jform[password]') || '';
+            const remember = formData.get('remember') || formData.get('jform[remember]') || '';
+            const returnUrl = formData.get('return') || '';
 
-            // Get CSRF token
-            const tokenInput = form.querySelector('input[name^="csrf.token"], input[name*="token"]');
-            let tokenName = '';
-            if (tokenInput) {
-                tokenName = tokenInput.name;
-            } else {
-                // Find token from hidden inputs
-                const hiddenInputs = form.querySelectorAll('input[type="hidden"]');
-                hiddenInputs.forEach(function(input) {
-                    if (input.value === '1' && input.name.length === 32) {
-                        tokenName = input.name;
-                    }
-                });
-            }
-
-            // Build request URL
-            let url = JoomlaAjaxForms.config.baseUrl + '&task=' + task;
+            const tokenName = JoomlaAjaxForms.getTokenName(form);
+            let url = JoomlaAjaxForms.config.baseUrl + '&task=login';
             if (tokenName) {
                 url += '&' + tokenName + '=1';
             }
 
-            // Disable submit button
-            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
-            const originalBtnText = submitBtn ? (submitBtn.value || submitBtn.textContent) : '';
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.classList.add(JoomlaAjaxForms.config.loadingClass);
-                if (submitBtn.tagName === 'INPUT') {
-                    submitBtn.value = '...';
-                } else {
-                    submitBtn.textContent = '...';
-                }
-            }
-
-            // Hide previous messages
+            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
             messageContainer.style.display = 'none';
-            messageContainer.className = 'ajax-message';
 
-            // Send AJAX request
+            const body = new URLSearchParams();
+            body.append('username', username);
+            body.append('password', password);
+            if (remember) body.append('remember', '1');
+            if (returnUrl) body.append('return', returnUrl);
+
             fetch(url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'email=' + encodeURIComponent(email)
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
             })
-            .then(function(response) {
-                return response.json();
-            })
+            .then(response => response.json())
             .then(function(data) {
-                // Re-enable submit button
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove(JoomlaAjaxForms.config.loadingClass);
-                    if (submitBtn.tagName === 'INPUT') {
-                        submitBtn.value = originalBtnText;
-                    } else {
-                        submitBtn.textContent = originalBtnText;
-                    }
-                }
+                JoomlaAjaxForms.enableSubmit(submitBtn);
 
-                // Handle response
                 if (data.success) {
                     JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
-                    // Clear form
-                    form.reset();
+                    
+                    // Redirect after successful login
+                    if (data.data && data.data.redirect) {
+                        setTimeout(function() {
+                            window.location.href = data.data.redirect;
+                        }, 1000);
+                    } else {
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1000);
+                    }
                 } else {
-                    const errorMsg = data.error && data.error.warning 
-                        ? data.error.warning 
-                        : (data.message || 'An error occurred');
+                    const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
                     JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
                 }
             })
             .catch(function(error) {
-                // Re-enable submit button
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove(JoomlaAjaxForms.config.loadingClass);
-                    if (submitBtn.tagName === 'INPUT') {
-                        submitBtn.value = originalBtnText;
-                    } else {
-                        submitBtn.textContent = originalBtnText;
-                    }
-                }
-
+                JoomlaAjaxForms.enableSubmit(submitBtn);
                 JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
@@ -169,11 +171,229 @@ const JoomlaAjaxForms = {
     },
 
     /**
+     * Convert registration form to AJAX
+     *
+     * @param {HTMLFormElement} form - The form element
+     */
+    convertRegistrationForm: function(form) {
+        const messageContainer = JoomlaAjaxForms.createMessageContainer(form);
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            
+            // Get registration fields
+            const name = formData.get('jform[name]') || formData.get('name') || '';
+            const username = formData.get('jform[username]') || formData.get('username') || '';
+            const email = formData.get('jform[email1]') || formData.get('email') || '';
+            const email2 = formData.get('jform[email2]') || formData.get('email2') || email;
+            const password = formData.get('jform[password1]') || formData.get('password') || '';
+            const password2 = formData.get('jform[password2]') || formData.get('password2') || '';
+
+            const tokenName = JoomlaAjaxForms.getTokenName(form);
+            let url = JoomlaAjaxForms.config.baseUrl + '&task=register';
+            if (tokenName) {
+                url += '&' + tokenName + '=1';
+            }
+
+            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
+            messageContainer.style.display = 'none';
+
+            const body = new URLSearchParams();
+            body.append('name', name);
+            body.append('username', username);
+            body.append('email', email);
+            body.append('email2', email2);
+            body.append('password', password);
+            body.append('password2', password2);
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            })
+            .then(response => response.json())
+            .then(function(data) {
+                JoomlaAjaxForms.enableSubmit(submitBtn);
+
+                if (data.success) {
+                    JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
+                    form.reset();
+                } else {
+                    const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                    JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
+                }
+            })
+            .catch(function(error) {
+                JoomlaAjaxForms.enableSubmit(submitBtn);
+                JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
+                console.error('JoomlaAjaxForms Error:', error);
+            });
+        });
+    },
+
+    /**
+     * Convert a standard form to AJAX (for reset/remind)
+     *
+     * @param {HTMLFormElement} form - The form element
+     * @param {string} task - The task name
+     * @param {array} fields - Field names to send
+     */
+    convertForm: function(form, task, fields) {
+        const messageContainer = JoomlaAjaxForms.createMessageContainer(form);
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const tokenName = JoomlaAjaxForms.getTokenName(form);
+            
+            let url = JoomlaAjaxForms.config.baseUrl + '&task=' + task;
+            if (tokenName) {
+                url += '&' + tokenName + '=1';
+            }
+
+            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
+            messageContainer.style.display = 'none';
+
+            const body = new URLSearchParams();
+            fields.forEach(function(field) {
+                const value = formData.get('jform[' + field + ']') || formData.get(field) || '';
+                body.append(field, value);
+            });
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            })
+            .then(response => response.json())
+            .then(function(data) {
+                JoomlaAjaxForms.enableSubmit(submitBtn);
+
+                if (data.success) {
+                    JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
+                    form.reset();
+                } else {
+                    const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                    JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
+                }
+            })
+            .catch(function(error) {
+                JoomlaAjaxForms.enableSubmit(submitBtn);
+                JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
+                console.error('JoomlaAjaxForms Error:', error);
+            });
+        });
+    },
+
+    /**
+     * Create message container for form
+     *
+     * @param {HTMLFormElement} form
+     * @returns {HTMLElement}
+     */
+    createMessageContainer: function(form) {
+        let container = form.querySelector('.ajax-message');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'ajax-message';
+            container.style.display = 'none';
+            form.insertBefore(container, form.firstChild);
+        }
+        return container;
+    },
+
+    /**
+     * Get CSRF token name from form
+     *
+     * @param {HTMLFormElement} form
+     * @returns {string}
+     */
+    getTokenName: function(form) {
+        // Try standard token input
+        const tokenInput = form.querySelector('input[name^="csrf.token"], input[name*="token"]');
+        if (tokenInput) {
+            return tokenInput.name;
+        }
+
+        // Find token from hidden inputs (32 char name with value 1)
+        const hiddenInputs = form.querySelectorAll('input[type="hidden"]');
+        for (let i = 0; i < hiddenInputs.length; i++) {
+            const input = hiddenInputs[i];
+            if (input.value === '1' && input.name.length === 32) {
+                return input.name;
+            }
+        }
+
+        return '';
+    },
+
+    /**
+     * Disable submit button and return reference
+     *
+     * @param {HTMLFormElement} form
+     * @returns {object}
+     */
+    disableSubmit: function(form) {
+        const btn = form.querySelector('button[type="submit"], input[type="submit"]');
+        if (!btn) return null;
+
+        const originalText = btn.tagName === 'INPUT' ? btn.value : btn.textContent;
+        btn.disabled = true;
+        btn.classList.add(JoomlaAjaxForms.config.loadingClass);
+        
+        if (btn.tagName === 'INPUT') {
+            btn.value = '...';
+        } else {
+            btn.textContent = '...';
+        }
+
+        return { element: btn, originalText: originalText };
+    },
+
+    /**
+     * Re-enable submit button
+     *
+     * @param {object} btnData
+     */
+    enableSubmit: function(btnData) {
+        if (!btnData || !btnData.element) return;
+
+        const btn = btnData.element;
+        btn.disabled = false;
+        btn.classList.remove(JoomlaAjaxForms.config.loadingClass);
+        
+        if (btn.tagName === 'INPUT') {
+            btn.value = btnData.originalText;
+        } else {
+            btn.textContent = btnData.originalText;
+        }
+    },
+
+    /**
+     * Extract error message from response
+     *
+     * @param {object} data
+     * @returns {string}
+     */
+    getErrorMessage: function(data) {
+        if (data.error && data.error.warning) {
+            return data.error.warning;
+        }
+        if (data.message) {
+            return data.message;
+        }
+        return 'An error occurred';
+    },
+
+    /**
      * Show message in container
      *
-     * @param {HTMLElement} container - Message container
-     * @param {string} message - Message text
-     * @param {string} type - Message type (success, error)
+     * @param {HTMLElement} container
+     * @param {string} message
+     * @param {string} type - 'success' or 'error'
      */
     showMessage: function(container, message, type) {
         container.className = 'ajax-message ' + (type === 'success' 
@@ -181,9 +401,47 @@ const JoomlaAjaxForms = {
             : JoomlaAjaxForms.config.errorClass);
         container.textContent = message;
         container.style.display = 'block';
-
-        // Scroll to message
         container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+
+    /**
+     * Logout via AJAX
+     *
+     * @param {string} returnUrl - Optional return URL (base64 encoded)
+     * @returns {Promise}
+     */
+    logout: function(returnUrl) {
+        // Get token from page
+        let tokenName = '';
+        const tokenInput = document.querySelector('input[type="hidden"][value="1"]');
+        if (tokenInput && tokenInput.name.length === 32) {
+            tokenName = tokenInput.name;
+        }
+
+        let url = JoomlaAjaxForms.config.baseUrl + '&task=logout';
+        if (tokenName) {
+            url += '&' + tokenName + '=1';
+        }
+
+        const body = new URLSearchParams();
+        if (returnUrl) {
+            body.append('return', returnUrl);
+        }
+
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        })
+        .then(response => response.json())
+        .then(function(data) {
+            if (data.success && data.data && data.data.redirect) {
+                window.location.href = data.data.redirect;
+            } else if (data.success) {
+                window.location.reload();
+            }
+            return data;
+        });
     }
 };
 

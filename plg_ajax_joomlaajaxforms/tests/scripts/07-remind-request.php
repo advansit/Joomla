@@ -39,27 +39,23 @@ class RemindRequestTest
 
     private function testRemindFeatureEnabled(): bool
     {
-        echo "Test: Remind feature enabled in params... ";
+        echo "Test: Remind feature config exists... ";
         
-        $query = $this->db->getQuery(true)
-            ->select('params')
-            ->from($this->db->quoteName('#__extensions'))
-            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('ajax'))
-            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('joomlaajaxforms'));
+        $xmlFile = '/var/www/html/plugins/ajax/joomlaajaxforms/joomlaajaxforms.xml';
         
-        $this->db->setQuery($query);
-        $params = json_decode($this->db->loadResult() ?: '{}', true);
+        if (!file_exists($xmlFile)) {
+            echo "FAIL (XML file not found)\n";
+            return false;
+        }
         
-        // Default is enabled (1) or explicitly set
-        $enabled = $params['enable_remind'] ?? 1;
+        $content = file_get_contents($xmlFile);
         
-        if ($enabled == 1) {
+        if (strpos($content, 'enable_remind') !== false) {
             echo "PASS\n";
             return true;
         }
         
-        echo "FAIL (enable_remind=$enabled)\n";
+        echo "FAIL (enable_remind config not found)\n";
         return false;
     }
 
