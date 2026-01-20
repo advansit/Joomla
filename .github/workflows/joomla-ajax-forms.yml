@@ -63,7 +63,7 @@ jobs:
         run: |
           cd plg_ajax_joomlaajaxforms
           echo "Checking PHP syntax..."
-          find . -name "*.php" -exec php -l {} \; | grep -v "No syntax errors"
+          find . -name "*.php" -print0 | xargs -0 -n1 php -l
           echo "PHP syntax is valid"
       
       - name: Validate JavaScript syntax
