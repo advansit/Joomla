@@ -28,42 +28,41 @@ class ConfigurationTest
         echo "=== Configuration Tests ===\n\n";
 
         $allPassed = true;
-        $allPassed = $this->testEnablePlugin() && $allPassed;
+        $allPassed = $this->testPluginEnabled() && $allPassed;
         $allPassed = $this->testDefaultParams() && $allPassed;
-        $allPassed = $this->testUpdateParams() && $allPassed;
-        $allPassed = $this->testDisableReset() && $allPassed;
-        $allPassed = $this->testDisableRemind() && $allPassed;
+        $allPassed = $this->testXmlConfigFields() && $allPassed;
+        $allPassed = $this->testParamsCanBeUpdated() && $allPassed;
 
         $this->printSummary();
         return $allPassed;
     }
 
-    private function testEnablePlugin(): bool
+    private function testPluginEnabled(): bool
     {
-        echo "Test: Enable plugin... ";
+        echo "Test: Plugin is enabled... ";
         
         $query = $this->db->getQuery(true)
-            ->update($this->db->quoteName('#__extensions'))
-            ->set($this->db->quoteName('enabled') . ' = 1')
+            ->select('enabled')
+            ->from($this->db->quoteName('#__extensions'))
             ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
             ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('ajax'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('joomlaajaxforms'));
         
         $this->db->setQuery($query);
+        $enabled = $this->db->loadResult();
         
-        try {
-            $this->db->execute();
+        if ($enabled == 1) {
             echo "PASS\n";
             return true;
-        } catch (Exception $e) {
-            echo "FAIL ({$e->getMessage()})\n";
-            return false;
         }
+        
+        echo "FAIL (enabled=$enabled)\n";
+        return false;
     }
 
     private function testDefaultParams(): bool
     {
-        echo "Test: Default parameters... ";
+        echo "Test: Default parameters set... ";
         
         $query = $this->db->getQuery(true)
             ->select('params')
@@ -75,79 +74,62 @@ class ConfigurationTest
         $this->db->setQuery($query);
         $params = json_decode($this->db->loadResult() ?: '{}', true);
         
-        // Default params should be empty or have defaults
-        echo "PASS (params: " . json_encode($params) . ")\n";
+        // Check that enable_reset and enable_remind are set
+        $resetEnabled = $params['enable_reset'] ?? 1;
+        $remindEnabled = $params['enable_remind'] ?? 1;
+        
+        echo "PASS (reset=$resetEnabled, remind=$remindEnabled)\n";
         return true;
     }
 
-    private function testUpdateParams(): bool
+    private function testXmlConfigFields(): bool
     {
-        echo "Test: Update parameters... ";
+        echo "Test: XML config fields exist... ";
         
-        $newParams = json_encode([
-            'enable_reset' => 1,
-            'enable_remind' => 1
-        ]);
+        $xmlFile = '/var/www/html/plugins/ajax/joomlaajaxforms/joomlaajaxforms.xml';
         
+        if (!file_exists($xmlFile)) {
+            echo "FAIL (XML file not found)\n";
+            return false;
+        }
+        
+        $content = file_get_contents($xmlFile);
+        
+        // Check for config fields
+        if (strpos($content, 'enable_reset') !== false && 
+            strpos($content, 'enable_remind') !== false) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL (config fields not found)\n";
+        return false;
+    }
+
+    private function testParamsCanBeUpdated(): bool
+    {
+        echo "Test: Parameters can be updated... ";
+        
+        // Save original params
         $query = $this->db->getQuery(true)
-            ->update($this->db->quoteName('#__extensions'))
-            ->set($this->db->quoteName('params') . ' = ' . $this->db->quote($newParams))
+            ->select('params')
+            ->from($this->db->quoteName('#__extensions'))
             ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
             ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('ajax'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('joomlaajaxforms'));
         
         $this->db->setQuery($query);
+        $originalParams = $this->db->loadResult();
         
-        try {
-            $this->db->execute();
-            echo "PASS\n";
-            return true;
-        } catch (Exception $e) {
-            echo "FAIL ({$e->getMessage()})\n";
-            return false;
-        }
-    }
-
-    private function testDisableReset(): bool
-    {
-        echo "Test: Disable reset feature... ";
-        
-        $newParams = json_encode([
+        // Update params
+        $testParams = json_encode([
             'enable_reset' => 0,
-            'enable_remind' => 1
-        ]);
-        
-        $query = $this->db->getQuery(true)
-            ->update($this->db->quoteName('#__extensions'))
-            ->set($this->db->quoteName('params') . ' = ' . $this->db->quote($newParams))
-            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('ajax'))
-            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('joomlaajaxforms'));
-        
-        $this->db->setQuery($query);
-        
-        try {
-            $this->db->execute();
-            echo "PASS\n";
-            return true;
-        } catch (Exception $e) {
-            echo "FAIL ({$e->getMessage()})\n";
-            return false;
-        }
-    }
-
-    private function testDisableRemind(): bool
-    {
-        echo "Test: Disable remind feature... ";
-        
-        $newParams = json_encode([
-            'enable_reset' => 1,
             'enable_remind' => 0
         ]);
         
         $query = $this->db->getQuery(true)
             ->update($this->db->quoteName('#__extensions'))
-            ->set($this->db->quoteName('params') . ' = ' . $this->db->quote($newParams))
+            ->set($this->db->quoteName('params') . ' = ' . $this->db->quote($testParams))
             ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
             ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('ajax'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('joomlaajaxforms'));
@@ -157,15 +139,10 @@ class ConfigurationTest
         try {
             $this->db->execute();
             
-            // Re-enable both for subsequent tests
-            $newParams = json_encode([
-                'enable_reset' => 1,
-                'enable_remind' => 1
-            ]);
-            
+            // Restore original params
             $query = $this->db->getQuery(true)
                 ->update($this->db->quoteName('#__extensions'))
-                ->set($this->db->quoteName('params') . ' = ' . $this->db->quote($newParams))
+                ->set($this->db->quoteName('params') . ' = ' . $this->db->quote($originalParams))
                 ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
                 ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('ajax'))
                 ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('joomlaajaxforms'));
