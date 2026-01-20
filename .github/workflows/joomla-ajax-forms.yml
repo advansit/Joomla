@@ -24,6 +24,7 @@ jobs:
           zip -r "$PACKAGE" . -x "*.git*" -x "tests/*" -x "*.zip"
           echo "Built: $PACKAGE"
           ls -la "$PACKAGE"
+          cp "$PACKAGE" tests/extension.zip
       
       - name: Upload package
         uses: actions/upload-artifact@v6
@@ -31,6 +32,70 @@ jobs:
           name: extension-package
           path: plg_ajax_joomlaajaxforms/plg_ajax_joomlaajaxforms_*.zip
           retention-days: 7
+
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Configuration'
+            script: 'configuration'
+          - name: '03 - AJAX Endpoint'
+            script: 'ajax-endpoint'
+          - name: '04 - Reset Request'
+            script: 'reset-request'
+          - name: '05 - Remind Request'
+            script: 'remind-request'
+          - name: '06 - Security'
+            script: 'security'
+          - name: '07 - Uninstall'
+            script: 'uninstall'
+    
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Download package
+        uses: actions/download-artifact@v6
+        with:
+          name: extension-package
+          path: plg_ajax_joomlaajaxforms/tests/
+      
+      - name: Rename package
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests
+          mv plg_ajax_joomlaajaxforms_*.zip extension.zip
+      
+      - name: Start test environment
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests
+          docker compose up -d
+          sleep 60
+      
+      - name: Run tests
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests
+          chmod +x run-tests.sh
+          ./run-tests.sh ${{ matrix.script }}
+      
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.script }}-logs
+          path: plg_ajax_joomlaajaxforms/tests/test-results/*.txt
+          retention-days: 7
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests
+          docker compose down -v
 
   validate:
     name: Validate Package
@@ -90,3 +155,39 @@ jobs:
           test -f language/de-DE/plg_ajax_joomlaajaxforms.sys.ini || (echo "Missing DE-DE sys.ini file" && exit 1)
           
           echo "Language files are present"
+
+  collect-results:
+    name: Collect Results
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Download all test results
+        uses: actions/download-artifact@v6
+        with:
+          path: test-artifacts/
+      
+      - name: Collect logs
+        run: |
+          mkdir -p tests/logs/plg_ajax_joomlaajaxforms
+          find test-artifacts/ -name "*.txt" -exec cp {} tests/logs/plg_ajax_joomlaajaxforms/ \; 2>/dev/null || true
+          ls -la tests/logs/plg_ajax_joomlaajaxforms/
+      
+      - name: Commit logs to repository
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -f tests/logs/plg_ajax_joomlaajaxforms/*.txt
+          if ! git diff --staged --quiet; then
+            git commit -m "Add test logs for plg_ajax_joomlaajaxforms [skip ci]"
+            git push || true
+          else
+            echo "No changes to commit"
+          fi
