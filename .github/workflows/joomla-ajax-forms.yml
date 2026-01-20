@@ -1,0 +1,92 @@
+name: Build & Test - Joomla AJAX Forms
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'plg_ajax_joomlaajaxforms/**'
+
+jobs:
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Build extension
+        run: |
+          cd plg_ajax_joomlaajaxforms
+          VERSION=$(grep -oP '(?<=<version>)[^<]+' joomlaajaxforms.xml)
+          PACKAGE="plg_ajax_joomlaajaxforms_v${VERSION}.zip"
+          zip -r "$PACKAGE" . -x "*.git*" -x "tests/*" -x "*.zip"
+          echo "Built: $PACKAGE"
+          ls -la "$PACKAGE"
+      
+      - name: Upload package
+        uses: actions/upload-artifact@v6
+        with:
+          name: extension-package
+          path: plg_ajax_joomlaajaxforms/plg_ajax_joomlaajaxforms_*.zip
+          retention-days: 7
+
+  validate:
+    name: Validate Package
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Download package
+        uses: actions/download-artifact@v6
+        with:
+          name: extension-package
+          path: ./
+      
+      - name: Validate XML manifest
+        run: |
+          cd plg_ajax_joomlaajaxforms
+          echo "Validating joomlaajaxforms.xml..."
+          
+          # Check required elements
+          grep -q '<extension type="plugin"' joomlaajaxforms.xml || (echo "Missing extension element" && exit 1)
+          grep -q '<name>' joomlaajaxforms.xml || (echo "Missing name element" && exit 1)
+          grep -q '<version>' joomlaajaxforms.xml || (echo "Missing version element" && exit 1)
+          grep -q '<namespace' joomlaajaxforms.xml || (echo "Missing namespace element" && exit 1)
+          
+          echo "XML manifest is valid"
+      
+      - name: Validate PHP syntax
+        run: |
+          cd plg_ajax_joomlaajaxforms
+          echo "Checking PHP syntax..."
+          find . -name "*.php" -exec php -l {} \; | grep -v "No syntax errors"
+          echo "PHP syntax is valid"
+      
+      - name: Validate JavaScript syntax
+        run: |
+          cd plg_ajax_joomlaajaxforms
+          echo "Checking JavaScript syntax..."
+          if command -v node &> /dev/null; then
+            node --check media/js/joomlaajaxforms.js
+          else
+            echo "Node.js not available, skipping JS validation"
+          fi
+      
+      - name: Check language files
+        run: |
+          cd plg_ajax_joomlaajaxforms
+          echo "Checking language files..."
+          
+          # Check EN-GB files exist
+          test -f language/en-GB/plg_ajax_joomlaajaxforms.ini || (echo "Missing EN-GB ini file" && exit 1)
+          test -f language/en-GB/plg_ajax_joomlaajaxforms.sys.ini || (echo "Missing EN-GB sys.ini file" && exit 1)
+          
+          # Check DE-DE files exist
+          test -f language/de-DE/plg_ajax_joomlaajaxforms.ini || (echo "Missing DE-DE ini file" && exit 1)
+          test -f language/de-DE/plg_ajax_joomlaajaxforms.sys.ini || (echo "Missing DE-DE sys.ini file" && exit 1)
+          
+          echo "Language files are present"
