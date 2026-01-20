@@ -1,5 +1,11 @@
 # Joomla! AJAX Forms
 
+[![Build & Test](https://github.com/advansit/Joomla/actions/workflows/joomla-ajax-forms.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/joomla-ajax-forms.yml)
+[![Joomla 4](https://img.shields.io/badge/Joomla-4.x-blue.svg)](https://www.joomla.org/)
+[![Joomla 5](https://img.shields.io/badge/Joomla-5.x-blue.svg)](https://www.joomla.org/)
+[![Joomla 6](https://img.shields.io/badge/Joomla-6.x-blue.svg)](https://www.joomla.org/)
+[![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-purple.svg)](https://www.php.net/)
+
 A Joomla plugin that provides AJAX handling for core Joomla forms, delivering a seamless user experience without page reloads.
 
 ## Features
@@ -87,9 +93,19 @@ case 'myform':
 - Generic success messages to prevent email enumeration
 - Input validation and sanitization
 
+## Changelog
+
+### v1.0.0 (2026-01)
+- Initial release
+- Password reset via AJAX
+- Username reminder via AJAX
+- English and German translations
+
 ## License
 
 Proprietary License - Copyright (C) 2025-2026 Advans IT Solutions GmbH
+
+See [LICENSE.txt](../LICENSE.txt) for details.
 
 ## Support
 

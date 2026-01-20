@@ -6,26 +6,32 @@ Extensions for [Joomla](https://github.com/joomla/joomla-cms) and [J2Commerce](h
 
 ```
 Joomla/
-├── j2commerce/      # J2Commerce Extensions
-├── shared/          # Shared build and test scripts
-└── .github/         # CI/CD workflows
+├── j2commerce/               # J2Commerce Extensions
+├── plg_ajax_joomlaajaxforms/ # Joomla AJAX Forms Plugin
+├── shared/                   # Shared build and test scripts
+└── .github/                  # CI/CD workflows
 ```
 
-Joomla Core extensions will be added directly to the root when available.
-
 ## Available Extensions
+
+### Joomla Core Extensions
+
+| Extension | Description | Joomla Version |
+|-----------|-------------|----------------|
+| [Joomla! AJAX Forms](plg_ajax_joomlaajaxforms/) | AJAX handling for Joomla core forms (password reset, username reminder) | 4.x, 5.x, 6.x |
 
 ### J2Commerce Extensions
 
 See the `j2commerce/` folder for all available extensions and their documentation.
 
-**Extensions:**
-- Privacy Plugin - GDPR compliance for J2Commerce
-- 2FA Plugin - Two-Factor Authentication
-- AcyMailing Integration
-- Product Compare
-- Import/Export Component
-- Cleanup Component
+| Extension | Description |
+|-----------|-------------|
+| Privacy Plugin | GDPR compliance for J2Commerce |
+| 2FA Plugin | Two-Factor Authentication |
+| AcyMailing Integration | Newsletter integration |
+| Product Compare | Compare products side-by-side |
+| Import/Export Component | Bulk data management |
+| Cleanup Component | Database maintenance |
 
 ## Testing
 
@@ -138,7 +144,8 @@ Protected branch rules prevent force pushes and ensure code quality standards.
 #### GitHub Actions Workflows
 **Location:** `.github/workflows/`
 
-**Test Workflows (6):**
+**Test Workflows (7):**
+- `joomla-ajax-forms.yml` - Tests for Joomla AJAX Forms plugin
 - `j2commerce-2fa.yml` - Tests for 2FA plugin
 - `j2commerce-acymailing.yml` - Tests for AcyMailing plugin
 - `j2commerce-import-export.yml` - Tests for Import/Export component
@@ -148,7 +155,8 @@ Protected branch rules prevent force pushes and ensure code quality standards.
 
 Each workflow runs automatically when files in the respective extension directory are modified.
 
-**Release Workflows (6):**
+**Release Workflows (7):**
+- `release-joomla-ajax-forms.yml` - Creates releases for Joomla AJAX Forms plugin (tag: `ajaxforms-v*`)
 - `release-2fa.yml` - Creates releases for 2FA plugin
 - `release-acymailing.yml` - Creates releases for AcyMailing plugin
 - `release-cleanup.yml` - Creates releases for Cleanup component
@@ -156,7 +164,7 @@ Each workflow runs automatically when files in the respective extension director
 - `release-privacy.yml` - Creates releases for Privacy plugin
 - `release-productcompare.yml` - Creates releases for Product Compare plugin
 
-Each workflow is triggered by git tags (e.g., `acymailing-v1.0.0`) or can be run manually via GitHub Actions UI.
+Each workflow is triggered by git tags (e.g., `ajaxforms-v1.0.0`, `acymailing-v1.0.0`) or can be run manually via GitHub Actions UI.
 
 ### Security Policy
 
