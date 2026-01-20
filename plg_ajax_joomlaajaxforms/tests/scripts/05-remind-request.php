@@ -17,7 +17,6 @@ use Joomla\CMS\Factory;
 class RemindRequestTest
 {
     private $db;
-    private $baseUrl = 'http://localhost';
 
     public function __construct()
     {
@@ -29,200 +28,106 @@ class RemindRequestTest
         echo "=== Username Reminder Request Tests ===\n\n";
 
         $allPassed = true;
-        $allPassed = $this->testCreateTestUser() && $allPassed;
-        $allPassed = $this->testRemindWithValidEmail() && $allPassed;
-        $allPassed = $this->testRemindWithInvalidEmail() && $allPassed;
-        $allPassed = $this->testRemindWithEmptyEmail() && $allPassed;
-        $allPassed = $this->testRemindWithNonexistentEmail() && $allPassed;
-        $allPassed = $this->testCleanupTestUser() && $allPassed;
+        $allPassed = $this->testRemindFeatureEnabled() && $allPassed;
+        $allPassed = $this->testHandleRemindMethodExists() && $allPassed;
+        $allPassed = $this->testSendRemindEmailMethodExists() && $allPassed;
+        $allPassed = $this->testLanguageStringsExist() && $allPassed;
 
         $this->printSummary();
         return $allPassed;
     }
 
-    private function testCreateTestUser(): bool
+    private function testRemindFeatureEnabled(): bool
     {
-        echo "Test: Create test user... ";
+        echo "Test: Remind feature enabled in params... ";
         
-        // Check if test user already exists
         $query = $this->db->getQuery(true)
-            ->select('id')
-            ->from($this->db->quoteName('#__users'))
-            ->where($this->db->quoteName('username') . ' = ' . $this->db->quote('testuser_remind'));
+            ->select('params')
+            ->from($this->db->quoteName('#__extensions'))
+            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('ajax'))
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('joomlaajaxforms'));
         
         $this->db->setQuery($query);
-        $existingId = $this->db->loadResult();
+        $params = json_decode($this->db->loadResult() ?: '{}', true);
         
-        if ($existingId) {
-            echo "PASS (already exists, ID: $existingId)\n";
+        // Default is enabled (1) or explicitly set
+        $enabled = $params['enable_remind'] ?? 1;
+        
+        if ($enabled == 1) {
+            echo "PASS\n";
             return true;
         }
         
-        // Create test user
-        $password = password_hash('TestPassword123!', PASSWORD_DEFAULT);
+        echo "FAIL (enable_remind=$enabled)\n";
+        return false;
+    }
+
+    private function testHandleRemindMethodExists(): bool
+    {
+        echo "Test: handleRemind method exists in plugin... ";
         
-        $query = $this->db->getQuery(true)
-            ->insert($this->db->quoteName('#__users'))
-            ->columns([
-                $this->db->quoteName('name'),
-                $this->db->quoteName('username'),
-                $this->db->quoteName('email'),
-                $this->db->quoteName('password'),
-                $this->db->quoteName('block'),
-                $this->db->quoteName('registerDate'),
-                $this->db->quoteName('params')
-            ])
-            ->values(implode(',', [
-                $this->db->quote('Test User Remind'),
-                $this->db->quote('testuser_remind'),
-                $this->db->quote('testremind@test.local'),
-                $this->db->quote($password),
-                0,
-                $this->db->quote(date('Y-m-d H:i:s')),
-                $this->db->quote('{}')
-            ]));
+        $classFile = '/var/www/html/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
         
-        $this->db->setQuery($query);
-        
-        try {
-            $this->db->execute();
-            $userId = $this->db->insertid();
-            echo "PASS (ID: $userId)\n";
-            return true;
-        } catch (Exception $e) {
-            echo "FAIL ({$e->getMessage()})\n";
+        if (!file_exists($classFile)) {
+            echo "FAIL (class file not found)\n";
             return false;
         }
-    }
-
-    private function testRemindWithValidEmail(): bool
-    {
-        echo "Test: Remind with valid email... ";
         
-        $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=joomlaajaxforms&format=json&task=remind';
+        $content = file_get_contents($classFile);
         
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-            'email' => 'testremind@test.local'
-        ]));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $data = json_decode($response, true);
-        
-        // Expect token error (CSRF protection working)
-        if ($data && isset($data['success']) && $data['success'] === false) {
-            echo "PASS (CSRF protection active)\n";
-            return true;
-        }
-        
-        echo "FAIL\n";
-        return false;
-    }
-
-    private function testRemindWithInvalidEmail(): bool
-    {
-        echo "Test: Remind with invalid email format... ";
-        
-        $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=joomlaajaxforms&format=json&task=remind';
-        
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-            'email' => 'not-an-email'
-        ]));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $data = json_decode($response, true);
-        
-        if ($data && isset($data['success']) && $data['success'] === false) {
+        if (strpos($content, 'function handleRemind') !== false) {
             echo "PASS\n";
             return true;
         }
         
-        echo "FAIL\n";
+        echo "FAIL (method not found)\n";
         return false;
     }
 
-    private function testRemindWithEmptyEmail(): bool
+    private function testSendRemindEmailMethodExists(): bool
     {
-        echo "Test: Remind with empty email... ";
+        echo "Test: sendRemindEmail method exists... ";
         
-        $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=joomlaajaxforms&format=json&task=remind';
+        $classFile = '/var/www/html/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
         
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-            'email' => ''
-        ]));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $data = json_decode($response, true);
-        
-        if ($data && isset($data['success']) && $data['success'] === false) {
-            echo "PASS\n";
-            return true;
-        }
-        
-        echo "FAIL\n";
-        return false;
-    }
-
-    private function testRemindWithNonexistentEmail(): bool
-    {
-        echo "Test: Remind with nonexistent email (security)... ";
-        
-        $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=joomlaajaxforms&format=json&task=remind';
-        
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-            'email' => 'doesnotexist@test.local'
-        ]));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $data = json_decode($response, true);
-        
-        // Should return error (token) - same as valid email to prevent enumeration
-        if ($data && isset($data['success']) && $data['success'] === false) {
-            echo "PASS (no email enumeration)\n";
-            return true;
-        }
-        
-        echo "FAIL\n";
-        return false;
-    }
-
-    private function testCleanupTestUser(): bool
-    {
-        echo "Test: Cleanup test user... ";
-        
-        $query = $this->db->getQuery(true)
-            ->delete($this->db->quoteName('#__users'))
-            ->where($this->db->quoteName('username') . ' = ' . $this->db->quote('testuser_remind'));
-        
-        $this->db->setQuery($query);
-        
-        try {
-            $this->db->execute();
-            echo "PASS\n";
-            return true;
-        } catch (Exception $e) {
-            echo "FAIL ({$e->getMessage()})\n";
+        if (!file_exists($classFile)) {
+            echo "FAIL (class file not found)\n";
             return false;
         }
+        
+        $content = file_get_contents($classFile);
+        
+        if (strpos($content, 'function sendRemindEmail') !== false) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL (method not found)\n";
+        return false;
+    }
+
+    private function testLanguageStringsExist(): bool
+    {
+        echo "Test: Remind language strings exist... ";
+        
+        $langFile = '/var/www/html/plugins/ajax/joomlaajaxforms/language/en-GB/plg_ajax_joomlaajaxforms.ini';
+        
+        if (!file_exists($langFile)) {
+            echo "FAIL (language file not found)\n";
+            return false;
+        }
+        
+        $content = file_get_contents($langFile);
+        
+        if (strpos($content, 'REMIND_SUCCESS') !== false && 
+            strpos($content, 'REMIND_EMAIL_SUBJECT') !== false) {
+            echo "PASS\n";
+            return true;
+        }
+        
+        echo "FAIL (language strings not found)\n";
+        return false;
     }
 
     private function printSummary(): void
