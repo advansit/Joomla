@@ -7,7 +7,7 @@
     <license>Proprietary License - See LICENSE.txt</license>
     <authorEmail>info@advans.ch</authorEmail>
     <authorUrl>https://advans.ch</authorUrl>
-    <version>1.1.0</version>
+    <version>1.0.0</version>
     <description>PLG_AJAX_JOOMLAAJAXFORMS_DESC</description>
     <namespace path="src">Advans\Plugin\Ajax\JoomlaAjaxForms</namespace>
 
