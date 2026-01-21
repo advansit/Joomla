@@ -46,6 +46,7 @@ const JoomlaAjaxForms = {
      */
     init: function() {
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('[JoomlaAjaxForms] Initializing...');
             JoomlaAjaxForms.initLoginForm();
             JoomlaAjaxForms.initRegistrationForm();
             JoomlaAjaxForms.initResetForm();
@@ -101,8 +102,10 @@ const JoomlaAjaxForms = {
      * Initialize password reset form
      */
     initResetForm: function() {
-        const form = document.querySelector('.reset form.form-validate, .reset #user-registration');
+        const form = document.querySelector('.reset form.form-validate, .reset #user-registration, form[action*="reset.request"]');
+        console.log('[JoomlaAjaxForms] Reset form search:', form ? 'FOUND' : 'NOT FOUND');
         if (form && !form.dataset.ajaxInitialized) {
+            console.log('[JoomlaAjaxForms] Converting reset form to AJAX');
             JoomlaAjaxForms.convertForm(form, 'reset', ['email']);
             form.dataset.ajaxInitialized = 'true';
         }
@@ -112,8 +115,10 @@ const JoomlaAjaxForms = {
      * Initialize username reminder form
      */
     initRemindForm: function() {
-        const form = document.querySelector('.remind form.form-validate, .remind #user-registration');
+        const form = document.querySelector('.remind form.form-validate, .remind #user-registration, form[action*="remind.remind"]');
+        console.log('[JoomlaAjaxForms] Remind form search:', form ? 'FOUND' : 'NOT FOUND');
         if (form && !form.dataset.ajaxInitialized) {
+            console.log('[JoomlaAjaxForms] Converting remind form to AJAX');
             JoomlaAjaxForms.convertForm(form, 'remind', ['email']);
             form.dataset.ajaxInitialized = 'true';
         }
