@@ -36,6 +36,7 @@ return new class () implements ServiceProviderInterface {
                     (array) PluginHelper::getPlugin('ajax', 'joomlaajaxforms')
                 );
                 $plugin->setApplication(Factory::getApplication());
+                $plugin->setDatabase($container->get('DatabaseDriver'));
 
                 return $plugin;
             }
