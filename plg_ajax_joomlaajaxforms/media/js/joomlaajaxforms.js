@@ -467,8 +467,14 @@ const JoomlaAjaxForms = {
     convertForm: function(form, task, fields) {
         const messageContainer = JoomlaAjaxForms.createMessageContainer(form);
 
+        // Remove form-validate class to prevent Joomla's validator from submitting
+        form.classList.remove('form-validate');
+        
+        // Use capture phase to intercept before other handlers
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
 
             const formData = new FormData(form);
             const tokenName = JoomlaAjaxForms.getTokenName(form);
