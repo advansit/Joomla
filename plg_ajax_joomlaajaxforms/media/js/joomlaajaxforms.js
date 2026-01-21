@@ -24,6 +24,24 @@ const JoomlaAjaxForms = {
     },
 
     /**
+     * Unwrap com_ajax response to get plugin data
+     * com_ajax wraps plugin results in data[] as JSON strings
+     *
+     * @param {object} response - The com_ajax response
+     * @returns {object} - The unwrapped plugin response
+     */
+    unwrapResponse: function(response) {
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+            try {
+                return JSON.parse(response.data[0]);
+            } catch (e) {
+                return response;
+            }
+        }
+        return response;
+    },
+
+    /**
      * Initialize the handler
      */
     init: function() {
@@ -141,8 +159,9 @@ const JoomlaAjaxForms = {
                 body: body.toString()
             })
             .then(response => response.json())
-            .then(function(data) {
+            .then(function(rawData) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
+                const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
                 if (data.success) {
                     // Check if MFA is required
@@ -333,8 +352,9 @@ const JoomlaAjaxForms = {
             body: body.toString()
         })
         .then(response => response.json())
-        .then(function(data) {
+        .then(function(rawData) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
+            const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
             if (data.success) {
                 JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
@@ -412,8 +432,9 @@ const JoomlaAjaxForms = {
                 body: body.toString()
             })
             .then(response => response.json())
-            .then(function(data) {
+            .then(function(rawData) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
+                const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
                 if (data.success) {
                     JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
@@ -467,8 +488,9 @@ const JoomlaAjaxForms = {
                 body: body.toString()
             })
             .then(response => response.json())
-            .then(function(data) {
+            .then(function(rawData) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
+                const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
                 if (data.success) {
                     JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
@@ -632,7 +654,8 @@ const JoomlaAjaxForms = {
             body: body.toString()
         })
         .then(response => response.json())
-        .then(function(data) {
+        .then(function(rawData) {
+            const data = JoomlaAjaxForms.unwrapResponse(rawData);
             if (data.success && data.data && data.data.redirect) {
                 window.location.href = data.data.redirect;
             } else if (data.success) {
