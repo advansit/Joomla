@@ -25,6 +25,7 @@ use Joomla\CMS\User\UserHelper;
 use Joomla\Component\Users\Administrator\Helper\Mfa as MfaHelper;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Event\DispatcherInterface;
+use Joomla\Event\Event;
 use Joomla\Event\SubscriberInterface;
 
 /**
@@ -77,9 +78,22 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     /**
      * Main AJAX handler
      *
+     * @param   Event  $event  The event object
+     *
+     * @return  void
+     */
+    public function onAjaxJoomlaajaxforms(Event $event): void
+    {
+        $result = $this->handleRequest();
+        $event->addResult($result);
+    }
+
+    /**
+     * Handle the AJAX request
+     *
      * @return string JSON response
      */
-    public function onAjaxJoomlaajaxforms(): string
+    protected function handleRequest(): string
     {
         // Verify CSRF token
         if (!Session::checkToken('get') && !Session::checkToken('post')) {
