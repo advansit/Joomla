@@ -470,6 +470,9 @@ const JoomlaAjaxForms = {
         // Remove form-validate class to prevent Joomla's validator from submitting
         form.classList.remove('form-validate');
         
+        // Disable HTML5 validation
+        form.setAttribute('novalidate', 'novalidate');
+        
         // Use capture phase to intercept before other handlers
         form.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -516,7 +519,9 @@ const JoomlaAjaxForms = {
                 JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
-        });
+
+            return false;
+        }, true);
     },
 
     /**
