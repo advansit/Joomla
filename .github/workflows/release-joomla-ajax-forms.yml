@@ -1,4 +1,4 @@
-name: Release - Joomla AJAX Forms
+name: Release - Joomla Ajax Forms
 
 on:
   push:
@@ -17,87 +17,130 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
-      - uses: actions/checkout@v6
-      
-      - name: Determine version
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
-            VERSION="${GITHUB_REF#refs/tags/ajaxforms-v}"
+            VERSION=${GITHUB_REF#refs/tags/ajaxforms-v}
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
-      
-      - name: Update version in manifest
+
+      - name: Update version in files
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cd plg_ajax_joomlaajaxforms
+          echo "$VERSION" > VERSION 2>/dev/null || true
+          sed -i "s/<version>.*<\/version>/<version>$VERSION<\/version>/" joomlaajaxforms.xml
+
+      - name: Build extension
         run: |
           cd plg_ajax_joomlaajaxforms
-          VERSION="${{ steps.version.outputs.version }}"
-          sed -i "s|<version>.*</version>|<version>${VERSION}</version>|" joomlaajaxforms.xml
-          echo "Updated version to $VERSION"
-          grep "<version>" joomlaajaxforms.xml
-      
-      - name: Build release package
+          VERSION=$(grep -oP '(?<=<version>)[^<]+' joomlaajaxforms.xml)
+          PACKAGE="plg_ajax_joomlaajaxforms_${VERSION}.zip"
+          zip -r "$PACKAGE" . -x "*.git*" -x "tests/*" -x "*.zip"
+          echo "Built: $PACKAGE"
+
+      - name: Find package file
+        id: package
         run: |
           cd plg_ajax_joomlaajaxforms
+          PACKAGE=$(ls -1 plg_ajax_joomlaajaxforms_*.zip | head -1)
+          echo "file=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "Package: $PACKAGE"
+
+      - name: Update update.xml
+        run: |
           VERSION="${{ steps.version.outputs.version }}"
-          PACKAGE="plg_ajax_joomlaajaxforms_v${VERSION}.zip"
-          
-          # Create clean package
-          zip -r "$PACKAGE" . \
-            -x "*.git*" \
-            -x "tests/*" \
-            -x "*.zip" \
-            -x ".DS_Store" \
-            -x "Thumbs.db"
-          
-          echo "Created: $PACKAGE"
-          ls -la "$PACKAGE"
-          
-          # Move to workspace root for upload
-          mv "$PACKAGE" ../
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "Joomla! AJAX Forms v${{ steps.version.outputs.version }}"
-          tag_name: "ajaxforms-v${{ steps.version.outputs.version }}"
-          body: |
-            ## Joomla! AJAX Forms v${{ steps.version.outputs.version }}
-            
-            AJAX handling for Joomla core forms (password reset, username reminder).
-            
-            ### Features
-            - Password reset via AJAX
-            - Username reminder via AJAX
-            - J2Commerce compatible JSON format
-            - CSRF protection
-            - Email enumeration prevention
-            - Joomla 4, 5, 6 compatible
-            
-            ### Installation
-            1. Download the ZIP file
-            2. Install via Joomla Extension Manager
-            3. Enable the plugin under System → Plugins
-            
-            ### Requirements
-            - Joomla 4.x, 5.x, or 6.x
-            - PHP 8.1 or higher
-          files: plg_ajax_joomlaajaxforms_v${{ steps.version.outputs.version }}.zip
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Commit version update
+          PACKAGE="${{ steps.package.outputs.file }}"
+          cat > plg_ajax_joomlaajaxforms/updates/update.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <updates>
+              <update>
+                  <name>Joomla Ajax Forms</name>
+                  <description>Ajax form handling for Joomla</description>
+                  <element>joomlaajaxforms</element>
+                  <type>plugin</type>
+                  <folder>ajax</folder>
+                  <version>$VERSION</version>
+                  <infourl>https://github.com/advansit/Joomla/tree/main/plg_ajax_joomlaajaxforms</infourl>
+                  <downloads>
+                      <downloadurl type="full" format="zip">https://github.com/advansit/Joomla/releases/download/ajaxforms-v$VERSION/$PACKAGE</downloadurl>
+                  </downloads>
+                  <tags>
+                      <tag>stable</tag>
+                  </tags>
+                  <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+                  <php_minimum>8.1</php_minimum>
+              </update>
+          </updates>
+          EOF
+
+      - name: Commit version updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add plg_ajax_joomlaajaxforms/joomlaajaxforms.xml
+          git add plg_ajax_joomlaajaxforms/updates/update.xml
+          git diff --staged --quiet || git commit -m "Release ajaxforms v${{ steps.version.outputs.version }} [skip ci]"
+          git push origin HEAD:main || true
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null | grep "^ajaxforms-" || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "changelog=Initial release" >> $GITHUB_OUTPUT
+          else
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges -- plg_ajax_joomlaajaxforms/ | head -20)
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="- Bug fixes and improvements"
+            fi
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create or update tag
         if: github.event_name == 'workflow_dispatch'
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add plg_ajax_joomlaajaxforms/joomlaajaxforms.xml
-          git commit -m "Bump Joomla AJAX Forms version to ${{ steps.version.outputs.version }}" || echo "No changes to commit"
-          git push origin main || echo "Nothing to push"
+          git tag -fa ajaxforms-v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
+          git push origin ajaxforms-v${{ steps.version.outputs.version }} --force
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ajaxforms-v${{ steps.version.outputs.version }}
+          name: Joomla Ajax Forms v${{ steps.version.outputs.version }}
+          body: |
+            ## Joomla Ajax Forms Plugin v${{ steps.version.outputs.version }}
+            
+            Ajax form handling for Joomla (login, registration, password reset).
+            
+            ### Changes
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### Installation
+            1. Download `${{ steps.package.outputs.file }}`
+            2. Install via Joomla Extension Manager
+            3. Enable plugin in System → Plugins
+            
+            ### Requirements
+            - Joomla 4.x, 5.x or 6.x
+            - PHP 8.1 or higher
+          files: |
+            plg_ajax_joomlaajaxforms/${{ steps.package.outputs.file }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

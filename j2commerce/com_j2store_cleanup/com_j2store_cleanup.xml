@@ -47,7 +47,7 @@
 
     <updateservers>
         <server type="extension" priority="1" name="J2Store Cleanup">
-            https://advans.ch/updates/com_j2store_cleanup.xml
+            https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/com_j2store_cleanup/updates/update.xml
         </server>
     </updateservers>
 </extension>
