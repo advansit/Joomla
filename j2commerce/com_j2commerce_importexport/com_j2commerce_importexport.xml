@@ -3,12 +3,12 @@
     <name>COM_J2COMMERCE_IMPORTEXPORT</name>
     <element>com_j2commerce_importexport</element>
     <author>Advans IT Solutions GmbH</author>
-    <creationDate>December 2025</creationDate>
-    <copyright>Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.</copyright>
+    <creationDate>January 2026</creationDate>
+    <copyright>Copyright (C) 2025-2026 Advans IT Solutions GmbH. All rights reserved.</copyright>
     <license>Proprietary</license>
     <authorEmail></authorEmail>
     <authorUrl>https://advans.ch</authorUrl>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <description>COM_J2COMMERCE_IMPORTEXPORT_XML_DESCRIPTION</description>
     
     <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
@@ -61,7 +61,7 @@
                     type="list"
                     label="COM_J2COMMERCE_IMPORTEXPORT_DEFAULT_FORMAT_LABEL"
                     description="COM_J2COMMERCE_IMPORTEXPORT_DEFAULT_FORMAT_DESC"
-                    default="csv"
+                    default="json"
                 >
                     <option value="csv">CSV</option>
                     <option value="xml">XML</option>
@@ -94,9 +94,4 @@
         </fields>
     </config>
 
-    <updateservers>
-        <server type="extension" priority="1" name="J2Commerce Import/Export">
-            https://advans.ch/updates/com_j2commerce_importexport.xml
-        </server>
-    </updateservers>
 </extension>
