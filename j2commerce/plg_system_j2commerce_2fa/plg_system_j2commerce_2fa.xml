@@ -90,7 +90,7 @@
     
     <updateservers>
         <server type="extension" priority="1" name="J2Commerce 2FA">
-            https://advans.ch/updates/plg_system_j2commerce_2fa.xml
+            https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_system_j2commerce_2fa/updates/update.xml
         </server>
     </updateservers>
 </extension>

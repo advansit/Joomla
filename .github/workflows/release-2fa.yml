@@ -1,4 +1,4 @@
-name: Release - System J2Commerce 2FA
+name: Release - J2Commerce 2FA
 
 on:
   push:
@@ -15,12 +15,15 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract version
         id: version
@@ -32,6 +35,14 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
+
+      - name: Update version in files
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cd j2commerce/plg_system_j2commerce_2fa
+          echo "$VERSION" > VERSION
+          sed -i "s/VERSION=\".*\"/VERSION=\"$VERSION\"/" build.env
+          sed -i "s/<version>.*<\/version>/<version>$VERSION<\/version>/" plg_system_j2commerce_2fa.xml
 
       - name: Build extension
         run: |
@@ -47,14 +58,52 @@ jobs:
           echo "file=$PACKAGE" >> $GITHUB_OUTPUT
           echo "Package: $PACKAGE"
 
+      - name: Update update.xml
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PACKAGE="${{ steps.package.outputs.file }}"
+          cat > j2commerce/plg_system_j2commerce_2fa/updates/update.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <updates>
+              <update>
+                  <name>J2Commerce 2FA</name>
+                  <description>Two-factor authentication for J2Commerce</description>
+                  <element>j2commerce_2fa</element>
+                  <type>plugin</type>
+                  <folder>system</folder>
+                  <version>$VERSION</version>
+                  <infourl>https://github.com/advansit/Joomla/tree/main/j2commerce/plg_system_j2commerce_2fa</infourl>
+                  <downloads>
+                      <downloadurl type="full" format="zip">https://github.com/advansit/Joomla/releases/download/2fa-v$VERSION/$PACKAGE</downloadurl>
+                  </downloads>
+                  <tags>
+                      <tag>stable</tag>
+                  </tags>
+                  <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+                  <php_minimum>8.1</php_minimum>
+              </update>
+          </updates>
+          EOF
+
+      - name: Commit version updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add j2commerce/plg_system_j2commerce_2fa/VERSION
+          git add j2commerce/plg_system_j2commerce_2fa/build.env
+          git add j2commerce/plg_system_j2commerce_2fa/plg_system_j2commerce_2fa.xml
+          git add j2commerce/plg_system_j2commerce_2fa/updates/update.xml
+          git diff --staged --quiet || git commit -m "Release 2fa v${{ steps.version.outputs.version }} [skip ci]"
+          git push origin HEAD:main || true
+
       - name: Generate changelog
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2fa-v${{ steps.version.outputs.version }}^ 2>/dev/null | grep "^2fa-" || echo "")
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null | grep "^2fa-" || echo "")
           if [ -z "$PREV_TAG" ]; then
             echo "changelog=Initial release" >> $GITHUB_OUTPUT
           else
-            CHANGELOG=$(git log ${PREV_TAG}..2fa-v${{ steps.version.outputs.version }} --pretty=format:"- %s" --no-merges -- j2commerce/plg_system_j2commerce_2fa/)
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges -- j2commerce/plg_system_j2commerce_2fa/ | head -20)
             if [ -z "$CHANGELOG" ]; then
               CHANGELOG="- Bug fixes and improvements"
             fi
@@ -66,20 +115,18 @@ jobs:
       - name: Create or update tag
         if: github.event_name == 'workflow_dispatch'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a 2fa-v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
-          git push origin 2fa-v${{ steps.version.outputs.version }}
+          git tag -fa 2fa-v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
+          git push origin 2fa-v${{ steps.version.outputs.version }} --force
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: 2fa-v${{ steps.version.outputs.version }}
-          name: System - J2Commerce 2FA v${{ steps.version.outputs.version }}
+          name: J2Commerce 2FA v${{ steps.version.outputs.version }}
           body: |
-            ## System - J2Commerce 2FA Plugin v${{ steps.version.outputs.version }}
+            ## J2Commerce 2FA Plugin v${{ steps.version.outputs.version }}
             
-            Two-Factor Authentication session preservation for J2Commerce checkout.
+            Two-factor authentication for J2Commerce stores.
             
             ### Changes
             ${{ steps.changelog.outputs.changelog }}
@@ -91,9 +138,8 @@ jobs:
             
             ### Requirements
             - Joomla 4.x, 5.x or 6.x
-            - PHP 8.0 or higher
-            - J2Commerce 3.x or higher
-            - Joomla 2FA enabled
+            - PHP 8.1 or higher
+            - J2Commerce 4.x or higher
           files: |
             j2commerce/plg_system_j2commerce_2fa/${{ steps.package.outputs.file }}
           draft: false

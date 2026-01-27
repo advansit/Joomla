@@ -74,4 +74,9 @@
             </fieldset>
         </fields>
     </config>
+    <updateservers>
+        <server type="extension" priority="1" name="Joomla Ajax Forms">
+            https://raw.githubusercontent.com/advansit/Joomla/main/plg_ajax_joomlaajaxforms/updates/update.xml
+        </server>
+    </updateservers>
 </extension>

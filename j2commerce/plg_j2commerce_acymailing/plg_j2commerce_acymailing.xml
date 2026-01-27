@@ -129,7 +129,7 @@
 
     <updateservers>
         <server type="extension" priority="1" name="J2Store AcyMailing Integration">
-            https://advans.ch/updates/plg_j2store_acymailing.xml
+            https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_j2commerce_acymailing/updates/update.xml
         </server>
     </updateservers>
 </extension>

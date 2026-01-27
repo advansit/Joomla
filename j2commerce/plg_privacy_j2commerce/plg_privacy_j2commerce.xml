@@ -101,7 +101,7 @@
 
     <updateservers>
         <server type="extension" priority="1" name="J2Commerce Privacy Plugin">
-            https://advans.ch/updates/plg_privacy_j2commerce.xml
+            https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_privacy_j2commerce/updates/update.xml
         </server>
     </updateservers>
 </extension>
