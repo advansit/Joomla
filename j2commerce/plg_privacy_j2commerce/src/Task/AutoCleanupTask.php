@@ -1,12 +1,12 @@
 <?php
 /**
- * @package     Privacy J2Commerce Plugin
+ * @package     J2Commerce Privacy Plugin
  * @subpackage  Task
  * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
  * @license     Proprietary
  */
 
-namespace Advans\Plugin\Privacy\J2Commerce\Task;
+namespace Advans\Plugin\System\J2Commerce\Task;
 
 defined('_JEXEC') or die;
 
@@ -37,6 +37,22 @@ class AutoCleanupTask implements SubscriberInterface
             'method'          => 'autoCleanup',
         ],
     ];
+
+    /**
+     * Create a database query object (Joomla 4/5/6 compatible)
+     *
+     * @return  \Joomla\Database\QueryInterface
+     */
+    protected function createDbQuery()
+    {
+        $db = $this->getDatabase();
+        
+        if (method_exists($db, 'createQuery')) {
+            return $db->createQuery();
+        }
+        
+        return $db->getQuery(true);
+    }
 
     /**
      * Returns an array of events this subscriber will listen to.
@@ -78,7 +94,7 @@ class AutoCleanupTask implements SubscriberInterface
             $this->logTask("Cutoff date: {$cutoffDate}");
             
             // Find users with all orders older than retention period
-            $query = $db->getQuery(true)
+            $query = $this->createDbQuery()
                 ->select('DISTINCT o.user_id')
                 ->from($db->quoteName('#__j2store_orders', 'o'))
                 ->where($db->quoteName('o.user_id') . ' > 0')
@@ -148,7 +164,7 @@ class AutoCleanupTask implements SubscriberInterface
         $db = $this->getDatabase();
         
         // Get all product IDs from user's orders
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select('DISTINCT oi.product_id')
             ->from($db->quoteName('#__j2store_orders', 'o'))
             ->leftJoin(
@@ -167,7 +183,7 @@ class AutoCleanupTask implements SubscriberInterface
         }
         
         // Check if any product has the lifetime custom field set to 'Yes'
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select('COUNT(*)')
             ->from($db->quoteName('#__j2store_product_customfields'))
             ->where($db->quoteName('product_id') . ' IN (' . implode(',', array_map('intval', $productIds)) . ')')
@@ -195,7 +211,7 @@ class AutoCleanupTask implements SubscriberInterface
         
         // Anonymize orders but KEEP email for license activation
         if ($this->params->get('anonymize_orders', 1)) {
-            $query = $db->getQuery(true)
+            $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orders'))
                 ->set([
                     // Keep billing_email for license activation
@@ -226,7 +242,7 @@ class AutoCleanupTask implements SubscriberInterface
         
         // Delete addresses
         if ($this->params->get('delete_addresses', 1)) {
-            $query = $db->getQuery(true)
+            $query = $this->createDbQuery()
                 ->delete($db->quoteName('#__j2store_addresses'))
                 ->where($db->quoteName('user_id') . ' = :userid')
                 ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
@@ -251,7 +267,7 @@ class AutoCleanupTask implements SubscriberInterface
         
         // Anonymize orders
         if ($this->params->get('anonymize_orders', 1)) {
-            $query = $db->getQuery(true)
+            $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orders'))
                 ->set([
                     $db->quoteName('billing_email') . ' = ' . $db->quote('anonymized@example.com'),
@@ -282,7 +298,7 @@ class AutoCleanupTask implements SubscriberInterface
         
         // Delete addresses
         if ($this->params->get('delete_addresses', 1)) {
-            $query = $db->getQuery(true)
+            $query = $this->createDbQuery()
                 ->delete($db->quoteName('#__j2store_addresses'))
                 ->where($db->quoteName('user_id') . ' = :userid')
                 ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (e.g., 1.0.1)'
+        description: 'Version number (e.g., 2.0.0)'
         required: true
         type: string
 
@@ -66,11 +66,11 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <updates>
               <update>
-                  <name>J2Commerce Privacy</name>
+                  <name>System - J2Commerce Privacy</name>
                   <description>GDPR privacy compliance for J2Commerce</description>
                   <element>j2commerce</element>
                   <type>plugin</type>
-                  <folder>privacy</folder>
+                  <folder>system</folder>
                   <version>$VERSION</version>
                   <infourl>https://github.com/advansit/Joomla/tree/main/j2commerce/plg_privacy_j2commerce</infourl>
                   <downloads>
@@ -101,7 +101,7 @@ jobs:
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null | grep "^privacy-" || echo "")
           if [ -z "$PREV_TAG" ]; then
-            echo "changelog=Initial release" >> $GITHUB_OUTPUT
+            echo "changelog=Initial release of System Plugin version" >> $GITHUB_OUTPUT
           else
             CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges -- j2commerce/plg_privacy_j2commerce/ | head -20)
             if [ -z "$CHANGELOG" ]; then
@@ -124,9 +124,18 @@ jobs:
           tag_name: privacy-v${{ steps.version.outputs.version }}
           name: J2Commerce Privacy v${{ steps.version.outputs.version }}
           body: |
-            ## J2Commerce Privacy Plugin v${{ steps.version.outputs.version }}
+            ## J2Commerce Privacy System Plugin v${{ steps.version.outputs.version }}
             
-            GDPR privacy compliance for J2Commerce stores.
+            GDPR/Privacy compliance for J2Commerce stores.
+            
+            ### Features
+            - Privacy data export (GDPR Art. 15)
+            - Data retention management with legal compliance
+            - Lifetime license handling
+            - Checkout consent checkbox
+            - Privacy policy link integration
+            - Frontend address deletion
+            - Automatic data cleanup task
             
             ### Changes
             ${{ steps.changelog.outputs.changelog }}
@@ -134,12 +143,13 @@ jobs:
             ### Installation
             1. Download `${{ steps.package.outputs.file }}`
             2. Install via Joomla Extension Manager
-            3. Enable plugin in System → Plugins
+            3. Enable plugin in System → Plugins → System - J2Commerce Privacy
+            4. Configure retention period and consent settings
             
             ### Requirements
             - Joomla 4.x, 5.x or 6.x
             - PHP 8.1 or higher
-            - J2Commerce 4.x or higher
+            - J2Commerce/J2Store 4.x or higher
           files: |
             j2commerce/plg_privacy_j2commerce/${{ steps.package.outputs.file }}
           draft: false

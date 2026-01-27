@@ -40,7 +40,7 @@ class DataAnonymizationTest
             require_once $privacyPluginFile;
         }
         
-        $classFile = JPATH_BASE . '/plugins/privacy/j2commerce/src/Extension/J2Commerce.php';
+        $classFile = JPATH_BASE . '/plugins/system/j2commerce/src/Extension/J2Commerce.php';
         if (file_exists($classFile)) {
             require_once $classFile;
         }
