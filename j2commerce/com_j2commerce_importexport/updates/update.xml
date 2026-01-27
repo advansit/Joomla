@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<updates>
+    <update>
+        <name>J2Commerce Import/Export</name>
+        <description>Import and export J2Commerce products with all related Joomla data</description>
+        <element>com_j2commerce_importexport</element>
+        <type>component</type>
+        <version>1.0.0</version>
+        <infourl>https://github.com/advansit/Joomla/tree/main/j2commerce/com_j2commerce_importexport</infourl>
+        <downloads>
+            <downloadurl type="full" format="zip">https://github.com/advansit/Joomla/releases/download/importexport-v1.0.0/com_j2commerce_importexport_1.0.0.zip</downloadurl>
+        </downloads>
+        <tags>
+            <tag>stable</tag>
+        </tags>
+        <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+        <php_minimum>8.1</php_minimum>
+    </update>
+</updates>

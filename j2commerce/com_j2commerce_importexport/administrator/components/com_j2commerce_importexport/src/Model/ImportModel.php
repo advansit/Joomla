@@ -1,7 +1,6 @@
 <?php
 /**
  * @package     J2Commerce Import/Export Component
- * @subpackage  Administrator
  * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
  * @license     Proprietary
  */
@@ -13,621 +12,650 @@ defined('_JEXEC') or die;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
+use Joomla\CMS\Table\Table;
+use Joomla\CMS\Application\ApplicationHelper;
 
 class ImportModel extends BaseDatabaseModel
 {
-    /**
-     * Batch size for processing
-     */
     const BATCH_SIZE = 100;
 
-    /**
-     * Preview file contents
-     *
-     * @param   string  $filePath  Path to file
-     * @param   int     $limit     Number of rows to preview
-     * @return  array   Preview data
-     * @since   1.0.0
-     */
-    public function previewFile(string $filePath, int $limit = 10): array
+    public function importProductFull(array $data, array $options = []): array
     {
-        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-        
-        switch (strtolower($extension)) {
-            case 'csv':
-                return $this->previewCSV($filePath, $limit);
-            case 'json':
-                return $this->previewJSON($filePath, $limit);
-            case 'xml':
-                return $this->previewXML($filePath, $limit);
-            default:
-                throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_UNSUPPORTED_FORMAT'));
-        }
-    }
+        $db = $this->getDatabase();
+        $db->transactionStart();
 
-    /**
-     * Import data from file
-     *
-     * @param   string  $filePath  Path to file
-     * @param   string  $type      Import type (products, variants, etc.)
-     * @param   array   $mapping   Field mapping
-     * @param   array   $options   Import options
-     * @return  array   Import results
-     * @since   1.0.0
-     */
-    public function importData(string $filePath, string $type, array $mapping, array $options = []): array
-    {
-        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-        $data = $this->parseFile($filePath, $extension);
-        
-        $results = [
-            'total' => count($data),
-            'imported' => 0,
-            'updated' => 0,
-            'failed' => 0,
-            'errors' => []
-        ];
-        
-        // Process in batches
-        $batches = array_chunk($data, self::BATCH_SIZE);
-        
-        foreach ($batches as $batch) {
-            $batchResults = $this->processBatch($batch, $type, $mapping, $options);
-            $results['imported'] += $batchResults['imported'];
-            $results['updated'] += $batchResults['updated'];
-            $results['failed'] += $batchResults['failed'];
-            $results['errors'] = array_merge($results['errors'], $batchResults['errors']);
-        }
-        
-        return $results;
-    }
+        try {
+            // 1. Create/Update Category if needed
+            $catId = $this->ensureCategory($data, $options);
 
-    /**
-     * Process a batch of import data
-     *
-     * @param   array   $batch     Batch data
-     * @param   string  $type      Import type
-     * @param   array   $mapping   Field mapping
-     * @param   array   $options   Import options
-     * @return  array   Batch results
-     * @since   1.0.0
-     */
-    protected function processBatch(array $batch, string $type, array $mapping, array $options): array
-    {
-        $results = [
-            'imported' => 0,
-            'updated' => 0,
-            'failed' => 0,
-            'errors' => []
-        ];
-        
-        foreach ($batch as $index => $row) {
-            try {
-                $mappedRow = $this->mapFields($row, $mapping);
-                $result = $this->importRow($type, $mappedRow, $options);
-                
-                if ($result === 'inserted') {
-                    $results['imported']++;
-                } elseif ($result === 'updated') {
-                    $results['updated']++;
-                }
-                
-            } catch (\Exception $e) {
-                $results['failed']++;
-                $results['errors'][] = sprintf(
-                    'Row %d: %s',
-                    $index + 1,
-                    $e->getMessage()
-                );
+            // 2. Create/Update Joomla Article
+            $articleId = $this->importArticle($data, $catId, $options);
+
+            // 3. Create/Update J2Store Product
+            $productId = $this->importJ2StoreProduct($data, $articleId, $options);
+
+            // 4. Import Variants
+            $this->importVariants($data['variants'] ?? [], $productId, $options);
+
+            // 5. Import Images
+            $this->importProductImages($data['j2store_images'] ?? [], $productId);
+
+            // 6. Import Options
+            $this->importProductOptions($data['options'] ?? [], $productId);
+
+            // 7. Import Filters
+            $this->importProductFilters($data['filters'] ?? [], $productId);
+
+            // 8. Import Files
+            $this->importProductFiles($data['files'] ?? [], $productId);
+
+            // 9. Import Tags
+            $this->importArticleTags($data['tags'] ?? [], $articleId);
+
+            // 10. Import Custom Fields
+            $this->importCustomFields($data['custom_fields'] ?? [], $articleId);
+
+            // 11. Create Menu Item if requested
+            if (!empty($options['create_menu']) && !empty($data['menu_item'])) {
+                $this->importMenuItem($data['menu_item'], $articleId, $options);
             }
-        }
-        
-        return $results;
-    }
 
-    /**
-     * Import a single row
-     *
-     * @param   string  $type     Import type
-     * @param   array   $data     Row data
-     * @param   array   $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importRow(string $type, array $data, array $options): string
-    {
-        switch ($type) {
-            case 'products':
-                return $this->importProduct($data, $options);
-            case 'variants':
-                return $this->importVariant($data, $options);
-            case 'prices':
-                return $this->importPrice($data, $options);
-            case 'options':
-                return $this->importOption($data, $options);
-            case 'optionvalues':
-                return $this->importOptionValue($data, $options);
-            case 'images':
-                return $this->importImage($data, $options);
-            case 'filters':
-                return $this->importFilter($data, $options);
-            default:
-                throw new \Exception(Text::sprintf('COM_J2COMMERCE_IMPORTEXPORT_ERROR_INVALID_TYPE', $type));
+            $db->transactionCommit();
+            return ['success' => true, 'article_id' => $articleId, 'product_id' => $productId];
+
+        } catch (\Exception $e) {
+            $db->transactionRollback();
+            throw $e;
         }
     }
 
-    /**
-     * Import product
-     *
-     * @param   array  $data     Product data
-     * @param   array  $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importProduct(array $data, array $options): string
+    protected function ensureCategory(array $data, array $options): int
     {
+        if (!empty($data['catid'])) {
+            return (int) $data['catid'];
+        }
+
+        if (empty($data['category_path'])) {
+            return $options['default_category'] ?? 2; // Uncategorised
+        }
+
         $db = $this->getDatabase();
-        
-        // Check if product exists
-        $productId = $data['j2store_product_id'] ?? null;
-        $existingId = null;
-        
-        if ($productId) {
-            $query = $db->getQuery(true)
-                ->select('j2store_product_id')
-                ->from($db->quoteName('#__j2store_products'))
-                ->where($db->quoteName('j2store_product_id') . ' = :productid')
-                ->bind(':productid', $productId, \Joomla\Database\ParameterType::INTEGER);
-            
-            $db->setQuery($query);
-            $existingId = $db->loadResult();
-        }
-        
-        // Prepare product data
-        $product = (object)[
-            'product_source' => $data['product_source'] ?? 'com_content',
-            'product_source_id' => $data['product_source_id'] ?? 0,
-            'product_type' => $data['product_type'] ?? 'simple',
-            'visibility' => $data['visibility'] ?? 'both',
-            'enabled' => $data['enabled'] ?? 1,
-            'taxprofile_id' => $data['taxprofile_id'] ?? 0,
-            'vendor_id' => $data['vendor_id'] ?? 0,
-            'manufacturer_id' => $data['manufacturer_id'] ?? 0,
-            'created_on' => $data['created_on'] ?? Factory::getDate()->toSql(),
-            'modified_on' => Factory::getDate()->toSql(),
-        ];
-        
-        if ($existingId && ($options['update_existing'] ?? true)) {
-            // Update existing product
-            $product->j2store_product_id = $existingId;
-            $db->updateObject('#__j2store_products', $product, 'j2store_product_id');
-            return 'updated';
-        } else {
-            // Insert new product
-            $db->insertObject('#__j2store_products', $product);
-            return 'inserted';
-        }
-    }
-
-    /**
-     * Import variant
-     *
-     * @param   array  $data     Variant data
-     * @param   array  $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importVariant(array $data, array $options): string
-    {
-        $db = $this->getDatabase();
-        
-        // Check if variant exists by SKU
-        $sku = $data['sku'] ?? null;
-        $existingId = null;
-        
-        if ($sku) {
-            $query = $db->getQuery(true)
-                ->select('j2store_variant_id')
-                ->from($db->quoteName('#__j2store_variants'))
-                ->where($db->quoteName('sku') . ' = :sku')
-                ->bind(':sku', $sku);
-            
-            $db->setQuery($query);
-            $existingId = $db->loadResult();
-        }
-        
-        // Prepare variant data
-        $variant = (object)[
-            'product_id' => $data['product_id'] ?? 0,
-            'sku' => $sku,
-            'upc' => $data['upc'] ?? '',
-            'price' => $data['price'] ?? 0,
-            'stock' => $data['stock'] ?? 0,
-            'weight' => $data['weight'] ?? 0,
-            'length' => $data['length'] ?? 0,
-            'width' => $data['width'] ?? 0,
-            'height' => $data['height'] ?? 0,
-            'availability' => $data['availability'] ?? 1,
-            'is_master' => $data['is_master'] ?? 0,
-            'created_on' => $data['created_on'] ?? Factory::getDate()->toSql(),
-            'modified_on' => Factory::getDate()->toSql(),
-        ];
-        
-        if ($existingId && ($options['update_existing'] ?? true)) {
-            $variant->j2store_variant_id = $existingId;
-            $db->updateObject('#__j2store_variants', $variant, 'j2store_variant_id');
-            return 'updated';
-        } else {
-            $db->insertObject('#__j2store_variants', $variant);
-            return 'inserted';
-        }
-    }
-
-    /**
-     * Import price
-     *
-     * @param   array  $data     Price data
-     * @param   array  $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importPrice(array $data, array $options): string
-    {
-        $db = $this->getDatabase();
-        
-        // Check if price exists
-        $variantId = $data['variant_id'] ?? 0;
-        $clientId = $data['client_id'] ?? 0;
-        
         $query = $db->getQuery(true)
-            ->select('j2store_productprice_id')
-            ->from($db->quoteName('#__j2store_productprices'))
-            ->where($db->quoteName('variant_id') . ' = :variantid')
-            ->where($db->quoteName('client_id') . ' = :clientid')
-            ->bind(':variantid', $variantId, \Joomla\Database\ParameterType::INTEGER)
-            ->bind(':clientid', $clientId, \Joomla\Database\ParameterType::INTEGER);
-        
+            ->select('id')
+            ->from($db->quoteName('#__categories'))
+            ->where('path = :path')
+            ->where('extension = ' . $db->quote('com_content'))
+            ->bind(':path', $data['category_path']);
+
+        $db->setQuery($query);
+        $catId = $db->loadResult();
+
+        if ($catId) {
+            return (int) $catId;
+        }
+
+        // Create category
+        return $this->createCategory($data['category_title'] ?? 'Imported', $data['category_alias'] ?? null);
+    }
+
+    protected function createCategory(string $title, ?string $alias = null): int
+    {
+        $db = $this->getDatabase();
+        $alias = $alias ?: ApplicationHelper::stringURLSafe($title);
+
+        $category = (object) [
+            'parent_id' => 1,
+            'level' => 1,
+            'path' => $alias,
+            'extension' => 'com_content',
+            'title' => $title,
+            'alias' => $alias,
+            'published' => 1,
+            'access' => 1,
+            'language' => '*',
+            'created_user_id' => Factory::getApplication()->getIdentity()->id,
+            'created_time' => Factory::getDate()->toSql(),
+        ];
+
+        $db->insertObject('#__categories', $category);
+        $catId = $db->insertid();
+
+        // Rebuild nested set
+        Table::getInstance('Category')->rebuild();
+
+        return $catId;
+    }
+
+    protected function importArticle(array $data, int $catId, array $options): int
+    {
+        $db = $this->getDatabase();
+        $userId = Factory::getApplication()->getIdentity()->id;
+        $now = Factory::getDate()->toSql();
+
+        // Check if article exists
+        $existingId = null;
+        if (!empty($data['article_id'])) {
+            $query = $db->getQuery(true)
+                ->select('id')
+                ->from($db->quoteName('#__content'))
+                ->where('id = :id')
+                ->bind(':id', $data['article_id'], \Joomla\Database\ParameterType::INTEGER);
+            $db->setQuery($query);
+            $existingId = $db->loadResult();
+        }
+
+        $alias = $data['alias'] ?? ApplicationHelper::stringURLSafe($data['title']);
+
+        $article = (object) [
+            'title' => $data['title'],
+            'alias' => $alias,
+            'introtext' => $data['introtext'] ?? '',
+            'fulltext' => $data['fulltext'] ?? '',
+            'state' => $data['article_state'] ?? 1,
+            'catid' => $catId,
+            'access' => $data['access'] ?? 1,
+            'language' => $data['language'] ?? '*',
+            'featured' => $data['featured'] ?? 0,
+            'images' => $data['article_images'] ?? '{}',
+            'urls' => $data['urls'] ?? '{}',
+            'attribs' => $data['attribs'] ?? '{}',
+            'metakey' => $data['metakey'] ?? '',
+            'metadesc' => $data['metadesc'] ?? '',
+            'metadata' => $data['metadata'] ?? '{}',
+            'publish_up' => $data['publish_up'] ?? $now,
+            'publish_down' => $data['publish_down'] ?? null,
+            'modified' => $now,
+            'modified_by' => $userId,
+        ];
+
+        if ($existingId && ($options['update_existing'] ?? true)) {
+            $article->id = $existingId;
+            $db->updateObject('#__content', $article, 'id');
+            return $existingId;
+        }
+
+        $article->created = $now;
+        $article->created_by = $userId;
+        $db->insertObject('#__content', $article);
+        return $db->insertid();
+    }
+
+    protected function importJ2StoreProduct(array $data, int $articleId, array $options): int
+    {
+        $db = $this->getDatabase();
+        $userId = Factory::getApplication()->getIdentity()->id;
+        $now = Factory::getDate()->toSql();
+
+        // Check if product exists
+        $query = $db->getQuery(true)
+            ->select('j2store_product_id')
+            ->from($db->quoteName('#__j2store_products'))
+            ->where('product_source_id = :articleid')
+            ->where('product_source = ' . $db->quote('com_content'))
+            ->bind(':articleid', $articleId, \Joomla\Database\ParameterType::INTEGER);
+
         $db->setQuery($query);
         $existingId = $db->loadResult();
-        
-        // Prepare price data
-        $price = (object)[
-            'variant_id' => $variantId,
-            'client_id' => $clientId,
-            'price' => $data['price'] ?? 0,
-            'price_type' => $data['price_type'] ?? 'standard',
-            'quantity_from' => $data['quantity_from'] ?? 0,
-            'quantity_to' => $data['quantity_to'] ?? 0,
-            'date_from' => $data['date_from'] ?? '0000-00-00 00:00:00',
-            'date_to' => $data['date_to'] ?? '0000-00-00 00:00:00',
-        ];
-        
-        if ($existingId && ($options['update_existing'] ?? true)) {
-            $price->j2store_productprice_id = $existingId;
-            $db->updateObject('#__j2store_productprices', $price, 'j2store_productprice_id');
-            return 'updated';
-        } else {
-            $db->insertObject('#__j2store_productprices', $price);
-            return 'inserted';
-        }
-    }
 
-    /**
-     * Import product option
-     *
-     * @param   array  $data     Option data
-     * @param   array  $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importOption(array $data, array $options): string
-    {
-        $db = $this->getDatabase();
-        
-        // Check if option exists
-        $optionId = $data['j2store_option_id'] ?? null;
-        $existingId = null;
-        
-        if ($optionId) {
-            $query = $db->getQuery(true)
-                ->select('j2store_option_id')
-                ->from($db->quoteName('#__j2store_options'))
-                ->where($db->quoteName('j2store_option_id') . ' = :optionid')
-                ->bind(':optionid', $optionId, \Joomla\Database\ParameterType::INTEGER);
-            
-            $db->setQuery($query);
-            $existingId = $db->loadResult();
-        }
-        
-        // Prepare option data
-        $option = (object)[
-            'option_name' => $data['option_name'] ?? '',
-            'option_type' => $data['option_type'] ?? 'select',
-            'option_required' => $data['option_required'] ?? 0,
-            'ordering' => $data['ordering'] ?? 0,
+        $product = (object) [
+            'product_source' => 'com_content',
+            'product_source_id' => $articleId,
+            'product_type' => $data['product_type'] ?? 'simple',
+            'visibility' => $data['visibility'] ?? 1,
             'enabled' => $data['enabled'] ?? 1,
+            'taxprofile_id' => $data['taxprofile_id'] ?? 0,
+            'manufacturer_id' => $data['manufacturer_id'] ?? 0,
+            'vendor_id' => $data['vendor_id'] ?? 0,
+            'has_options' => $data['has_options'] ?? 0,
+            'addtocart_text' => $data['addtocart_text'] ?? '',
+            'params' => $data['params'] ?? '{}',
+            'plugins' => $data['plugins'] ?? '',
+            'up_sells' => $data['up_sells'] ?? '',
+            'cross_sells' => $data['cross_sells'] ?? '',
+            'main_tag' => $data['main_tag'] ?? '',
+            'modified_on' => $now,
+            'modified_by' => $userId,
         ];
-        
+
         if ($existingId && ($options['update_existing'] ?? true)) {
-            $option->j2store_option_id = $existingId;
-            $db->updateObject('#__j2store_options', $option, 'j2store_option_id');
-            return 'updated';
-        } else {
-            $db->insertObject('#__j2store_options', $option);
-            return 'inserted';
+            $product->j2store_product_id = $existingId;
+            $db->updateObject('#__j2store_products', $product, 'j2store_product_id');
+            return $existingId;
         }
+
+        $product->created_on = $now;
+        $product->created_by = $userId;
+        $db->insertObject('#__j2store_products', $product);
+        return $db->insertid();
     }
 
-    /**
-     * Import option value
-     *
-     * @param   array  $data     Option value data
-     * @param   array  $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importOptionValue(array $data, array $options): string
+    protected function importVariants(array $variants, int $productId, array $options): void
     {
         $db = $this->getDatabase();
-        
-        // Check if option value exists
-        $valueId = $data['j2store_optionvalue_id'] ?? null;
-        $existingId = null;
-        
-        if ($valueId) {
-            $query = $db->getQuery(true)
-                ->select('j2store_optionvalue_id')
-                ->from($db->quoteName('#__j2store_optionvalues'))
-                ->where($db->quoteName('j2store_optionvalue_id') . ' = :valueid')
-                ->bind(':valueid', $valueId, \Joomla\Database\ParameterType::INTEGER);
-            
-            $db->setQuery($query);
-            $existingId = $db->loadResult();
-        }
-        
-        // Prepare option value data
-        $optionValue = (object)[
-            'option_id' => $data['option_id'] ?? 0,
-            'optionvalue_name' => $data['optionvalue_name'] ?? '',
-            'optionvalue_price' => $data['optionvalue_price'] ?? 0,
-            'optionvalue_prefix' => $data['optionvalue_prefix'] ?? '+',
-            'ordering' => $data['ordering'] ?? 0,
-            'enabled' => $data['enabled'] ?? 1,
-        ];
-        
-        if ($existingId && ($options['update_existing'] ?? true)) {
-            $optionValue->j2store_optionvalue_id = $existingId;
-            $db->updateObject('#__j2store_optionvalues', $optionValue, 'j2store_optionvalue_id');
-            return 'updated';
-        } else {
-            $db->insertObject('#__j2store_optionvalues', $optionValue);
-            return 'inserted';
-        }
-    }
+        $userId = Factory::getApplication()->getIdentity()->id;
+        $now = Factory::getDate()->toSql();
 
-    /**
-     * Import product image
-     *
-     * @param   array  $data     Image data
-     * @param   array  $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importImage(array $data, array $options): string
-    {
-        $db = $this->getDatabase();
-        
-        // Prepare image data
-        $image = (object)[
-            'product_id' => $data['product_id'] ?? 0,
-            'image_path' => $data['image_path'] ?? '',
-            'image_type' => $data['image_type'] ?? 'main',
-            'ordering' => $data['ordering'] ?? 0,
-        ];
-        
-        $db->insertObject('#__j2store_productimages', $image);
-        return 'inserted';
-    }
+        foreach ($variants as $variantData) {
+            $sku = $variantData['sku'] ?? null;
+            $existingId = null;
 
-    /**
-     * Import product filter
-     *
-     * @param   array  $data     Filter data
-     * @param   array  $options  Import options
-     * @return  string  'inserted' or 'updated'
-     * @since   1.0.0
-     */
-    protected function importFilter(array $data, array $options): string
-    {
-        $db = $this->getDatabase();
-        
-        // Prepare filter data
-        $filter = (object)[
-            'product_id' => $data['product_id'] ?? 0,
-            'filter_id' => $data['filter_id'] ?? 0,
-            'filter_value' => $data['filter_value'] ?? '',
-        ];
-        
-        $db->insertObject('#__j2store_product_filters', $filter);
-        return 'inserted';
-    }
+            if ($sku) {
+                $query = $db->getQuery(true)
+                    ->select('j2store_variant_id')
+                    ->from($db->quoteName('#__j2store_variants'))
+                    ->where('sku = :sku')
+                    ->where('product_id = :productid')
+                    ->bind(':sku', $sku)
+                    ->bind(':productid', $productId, \Joomla\Database\ParameterType::INTEGER);
+                $db->setQuery($query);
+                $existingId = $db->loadResult();
+            }
 
-    /**
-     * Preview CSV file
-     */
-    protected function previewCSV(string $filePath, int $limit): array
-    {
-        $config = Factory::getConfig();
-        $delimiter = $config->get('csv_delimiter', ',');
-        $enclosure = $config->get('csv_enclosure', '"');
+            $variant = (object) [
+                'product_id' => $productId,
+                'is_master' => $variantData['is_master'] ?? 1,
+                'sku' => $sku,
+                'upc' => $variantData['upc'] ?? '',
+                'price' => $variantData['price'] ?? 0,
+                'pricing_calculator' => $variantData['pricing_calculator'] ?? 'standard',
+                'shipping' => $variantData['shipping'] ?? 1,
+                'weight' => $variantData['weight'] ?? 0,
+                'weight_class_id' => $variantData['weight_class_id'] ?? 1,
+                'length' => $variantData['length'] ?? 0,
+                'width' => $variantData['width'] ?? 0,
+                'height' => $variantData['height'] ?? 0,
+                'length_class_id' => $variantData['length_class_id'] ?? 1,
+                'manage_stock' => $variantData['manage_stock'] ?? 0,
+                'quantity_restriction' => $variantData['quantity_restriction'] ?? 0,
+                'min_sale_qty' => $variantData['min_sale_qty'] ?? 0,
+                'max_sale_qty' => $variantData['max_sale_qty'] ?? 0,
+                'notify_qty' => $variantData['notify_qty'] ?? 0,
+                'availability' => $variantData['availability'] ?? 1,
+                'allow_backorder' => $variantData['allow_backorder'] ?? 0,
+                'params' => $variantData['params'] ?? '{}',
+                'modified_on' => $now,
+                'modified_by' => $userId,
+            ];
 
-        if (!file_exists($filePath)) {
-            throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_FILE_NOT_FOUND'));
-        }
+            if ($existingId && ($options['update_existing'] ?? true)) {
+                $variant->j2store_variant_id = $existingId;
+                $db->updateObject('#__j2store_variants', $variant, 'j2store_variant_id');
+                $variantId = $existingId;
+            } else {
+                $variant->created_on = $now;
+                $variant->created_by = $userId;
+                $db->insertObject('#__j2store_variants', $variant);
+                $variantId = $db->insertid();
+            }
 
-        $handle = fopen($filePath, 'r');
-        if (!$handle) {
-            throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_FILE_OPEN'));
-        }
+            // Import quantity
+            $this->importVariantQuantity($variantId, $variantData);
 
-        $headers = fgetcsv($handle, 0, $delimiter, $enclosure);
-        
-        $rows = [];
-        $count = 0;
-        
-        while (($row = fgetcsv($handle, 0, $delimiter, $enclosure)) !== false && $count < $limit) {
-            if (count($row) === count($headers)) {
-                $rows[] = array_combine($headers, $row);
-                $count++;
+            // Import tier prices
+            if (!empty($variantData['tier_prices'])) {
+                $this->importTierPrices($variantId, $variantData['tier_prices']);
             }
         }
-        
-        fclose($handle);
-        
-        return [
-            'headers' => $headers,
-            'rows' => $rows,
-            'total' => $count
-        ];
     }
 
-    /**
-     * Preview JSON file
-     */
-    protected function previewJSON(string $filePath, int $limit): array
+    protected function importVariantQuantity(int $variantId, array $data): void
     {
-        if (!file_exists($filePath)) {
-            throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_FILE_NOT_FOUND'));
+        $db = $this->getDatabase();
+
+        $query = $db->getQuery(true)
+            ->select('j2store_productquantity_id')
+            ->from($db->quoteName('#__j2store_productquantities'))
+            ->where('variant_id = :variantid')
+            ->bind(':variantid', $variantId, \Joomla\Database\ParameterType::INTEGER);
+        $db->setQuery($query);
+        $existingId = $db->loadResult();
+
+        $qty = (object) [
+            'variant_id' => $variantId,
+            'quantity' => $data['quantity'] ?? 0,
+            'on_hold' => $data['on_hold'] ?? 0,
+            'sold' => $data['qty_sold'] ?? 0,
+        ];
+
+        if ($existingId) {
+            $qty->j2store_productquantity_id = $existingId;
+            $db->updateObject('#__j2store_productquantities', $qty, 'j2store_productquantity_id');
+        } else {
+            $db->insertObject('#__j2store_productquantities', $qty);
+        }
+    }
+
+    protected function importTierPrices(int $variantId, array $prices): void
+    {
+        $db = $this->getDatabase();
+
+        // Delete existing tier prices
+        $query = $db->getQuery(true)
+            ->delete($db->quoteName('#__j2store_product_prices'))
+            ->where('variant_id = :variantid')
+            ->bind(':variantid', $variantId, \Joomla\Database\ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
+
+        foreach ($prices as $priceData) {
+            $price = (object) [
+                'variant_id' => $variantId,
+                'quantity_from' => $priceData['quantity_from'] ?? 0,
+                'quantity_to' => $priceData['quantity_to'] ?? 0,
+                'date_from' => $priceData['date_from'] ?? null,
+                'date_to' => $priceData['date_to'] ?? null,
+                'customer_group_id' => $priceData['customer_group_id'] ?? 0,
+                'price' => $priceData['price'] ?? 0,
+            ];
+            $db->insertObject('#__j2store_product_prices', $price);
+        }
+    }
+
+    protected function importProductImages(array $images, int $productId): void
+    {
+        if (empty($images)) return;
+
+        $db = $this->getDatabase();
+
+        $query = $db->getQuery(true)
+            ->delete($db->quoteName('#__j2store_productimages'))
+            ->where('product_id = :productid')
+            ->bind(':productid', $productId, \Joomla\Database\ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
+
+        $img = (object) [
+            'product_id' => $productId,
+            'main_image' => $images['main_image'] ?? '',
+            'main_image_alt' => $images['main_image_alt'] ?? '',
+            'thumb_image' => $images['thumb_image'] ?? '',
+            'thumb_image_alt' => $images['thumb_image_alt'] ?? '',
+            'additional_images' => $images['additional_images'] ?? '[]',
+            'additional_images_alt' => $images['additional_images_alt'] ?? '[]',
+        ];
+        $db->insertObject('#__j2store_productimages', $img);
+    }
+
+    protected function importProductOptions(array $options, int $productId): void
+    {
+        // Implementation for options import
+    }
+
+    protected function importProductFilters(array $filters, int $productId): void
+    {
+        if (empty($filters)) return;
+
+        $db = $this->getDatabase();
+
+        $query = $db->getQuery(true)
+            ->delete($db->quoteName('#__j2store_product_filters'))
+            ->where('product_id = :productid')
+            ->bind(':productid', $productId, \Joomla\Database\ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
+
+        foreach ($filters as $filter) {
+            $filterId = $this->ensureFilter($filter);
+            $pf = (object) ['product_id' => $productId, 'filter_id' => $filterId];
+            $db->insertObject('#__j2store_product_filters', $pf);
+        }
+    }
+
+    protected function ensureFilter(array $filter): int
+    {
+        $db = $this->getDatabase();
+
+        if (!empty($filter['filter_id'])) {
+            return (int) $filter['filter_id'];
         }
 
+        // Find or create filter group
+        $groupId = $this->ensureFilterGroup($filter['filter_group_name'] ?? 'Default');
+
+        // Find or create filter
+        $query = $db->getQuery(true)
+            ->select('j2store_filter_id')
+            ->from($db->quoteName('#__j2store_filters'))
+            ->where('filter_name = :name')
+            ->where('group_id = :groupid')
+            ->bind(':name', $filter['filter_name'])
+            ->bind(':groupid', $groupId, \Joomla\Database\ParameterType::INTEGER);
+        $db->setQuery($query);
+        $filterId = $db->loadResult();
+
+        if (!$filterId) {
+            $f = (object) [
+                'group_id' => $groupId,
+                'filter_name' => $filter['filter_name'],
+                'ordering' => 0,
+            ];
+            $db->insertObject('#__j2store_filters', $f);
+            $filterId = $db->insertid();
+        }
+
+        return $filterId;
+    }
+
+    protected function ensureFilterGroup(string $name): int
+    {
+        $db = $this->getDatabase();
+
+        $query = $db->getQuery(true)
+            ->select('j2store_filtergroup_id')
+            ->from($db->quoteName('#__j2store_filtergroups'))
+            ->where('group_name = :name')
+            ->bind(':name', $name);
+        $db->setQuery($query);
+        $groupId = $db->loadResult();
+
+        if (!$groupId) {
+            $g = (object) ['group_name' => $name, 'ordering' => 0, 'enabled' => 1];
+            $db->insertObject('#__j2store_filtergroups', $g);
+            $groupId = $db->insertid();
+        }
+
+        return $groupId;
+    }
+
+    protected function importProductFiles(array $files, int $productId): void
+    {
+        if (empty($files)) return;
+
+        $db = $this->getDatabase();
+
+        foreach ($files as $file) {
+            $f = (object) [
+                'product_id' => $productId,
+                'product_file_display_name' => $file['product_file_display_name'] ?? '',
+                'product_file_save_name' => $file['product_file_save_name'] ?? '',
+            ];
+            $db->insertObject('#__j2store_productfiles', $f);
+        }
+    }
+
+    protected function importArticleTags(array $tags, int $articleId): void
+    {
+        if (empty($tags)) return;
+
+        $db = $this->getDatabase();
+
+        // Delete existing tag mappings
+        $query = $db->getQuery(true)
+            ->delete($db->quoteName('#__contentitem_tag_map'))
+            ->where('content_item_id = :articleid')
+            ->where('type_alias = ' . $db->quote('com_content.article'))
+            ->bind(':articleid', $articleId, \Joomla\Database\ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
+
+        foreach ($tags as $tag) {
+            $tagId = $this->ensureTag($tag);
+            $map = (object) [
+                'type_alias' => 'com_content.article',
+                'core_content_id' => 0,
+                'content_item_id' => $articleId,
+                'tag_id' => $tagId,
+                'tag_date' => Factory::getDate()->toSql(),
+                'type_id' => 1,
+            ];
+            $db->insertObject('#__contentitem_tag_map', $map);
+        }
+    }
+
+    protected function ensureTag(array $tag): int
+    {
+        $db = $this->getDatabase();
+
+        if (!empty($tag['id'])) {
+            return (int) $tag['id'];
+        }
+
+        $query = $db->getQuery(true)
+            ->select('id')
+            ->from($db->quoteName('#__tags'))
+            ->where('title = :title')
+            ->bind(':title', $tag['title']);
+        $db->setQuery($query);
+        $tagId = $db->loadResult();
+
+        if (!$tagId) {
+            $alias = $tag['alias'] ?? ApplicationHelper::stringURLSafe($tag['title']);
+            $t = (object) [
+                'parent_id' => 1,
+                'level' => 1,
+                'path' => $alias,
+                'title' => $tag['title'],
+                'alias' => $alias,
+                'published' => 1,
+                'access' => 1,
+                'language' => '*',
+            ];
+            $db->insertObject('#__tags', $t);
+            $tagId = $db->insertid();
+        }
+
+        return $tagId;
+    }
+
+    protected function importCustomFields(array $fields, int $articleId): void
+    {
+        if (empty($fields)) return;
+
+        $db = $this->getDatabase();
+
+        foreach ($fields as $field) {
+            $fieldId = $this->getFieldIdByName($field['name']);
+            if (!$fieldId) continue;
+
+            $query = $db->getQuery(true)
+                ->delete($db->quoteName('#__fields_values'))
+                ->where('field_id = :fieldid')
+                ->where('item_id = :itemid')
+                ->bind(':fieldid', $fieldId, \Joomla\Database\ParameterType::INTEGER)
+                ->bind(':itemid', $articleId, \Joomla\Database\ParameterType::INTEGER);
+            $db->setQuery($query);
+            $db->execute();
+
+            $fv = (object) [
+                'field_id' => $fieldId,
+                'item_id' => $articleId,
+                'value' => $field['value'],
+            ];
+            $db->insertObject('#__fields_values', $fv);
+        }
+    }
+
+    protected function getFieldIdByName(string $name): ?int
+    {
+        $db = $this->getDatabase();
+        $query = $db->getQuery(true)
+            ->select('id')
+            ->from($db->quoteName('#__fields'))
+            ->where('name = :name')
+            ->where('context = ' . $db->quote('com_content.article'))
+            ->bind(':name', $name);
+        $db->setQuery($query);
+        return $db->loadResult();
+    }
+
+    protected function importMenuItem(array $menuData, int $articleId, array $options): void
+    {
+        $db = $this->getDatabase();
+
+        $menutype = $menuData['menutype'] ?? $options['default_menutype'] ?? 'mainmenu';
+        $alias = $menuData['alias'] ?? ApplicationHelper::stringURLSafe($menuData['title']);
+
+        $menu = (object) [
+            'menutype' => $menutype,
+            'title' => $menuData['title'],
+            'alias' => $alias,
+            'path' => $alias,
+            'link' => 'index.php?option=com_content&view=article&id=' . $articleId,
+            'type' => 'component',
+            'published' => $menuData['published'] ?? ($options['menu_published'] ?? 1),
+            'parent_id' => $menuData['parent_id'] ?? 1,
+            'level' => 1,
+            'component_id' => $this->getComponentId('com_content'),
+            'access' => $menuData['access'] ?? ($options['menu_access'] ?? 1),
+            'language' => $menuData['language'] ?? '*',
+            'params' => $menuData['params'] ?? '{}',
+            'client_id' => 0,
+        ];
+
+        $db->insertObject('#__menu', $menu);
+        Table::getInstance('Menu')->rebuild();
+    }
+
+    protected function getComponentId(string $element): int
+    {
+        $db = $this->getDatabase();
+        $query = $db->getQuery(true)
+            ->select('extension_id')
+            ->from($db->quoteName('#__extensions'))
+            ->where('element = :element')
+            ->where('type = ' . $db->quote('component'))
+            ->bind(':element', $element);
+        $db->setQuery($query);
+        return (int) $db->loadResult();
+    }
+
+    // Legacy methods for backward compatibility
+    public function previewFile(string $filePath, int $limit = 10): array
+    {
+        $ext = pathinfo($filePath, PATHINFO_EXTENSION);
+        $content = file_get_contents($filePath);
+
+        if ($ext === 'json') {
+            $data = json_decode($content, true);
+            return [
+                'headers' => !empty($data[0]) ? array_keys($data[0]) : [],
+                'rows' => array_slice($data, 0, $limit),
+                'total' => count($data),
+            ];
+        }
+
+        return ['headers' => [], 'rows' => [], 'total' => 0];
+    }
+
+    public function importData(string $filePath, string $type, array $mapping, array $options = []): array
+    {
         $content = file_get_contents($filePath);
         $data = json_decode($content, true);
-        
-        if (!is_array($data)) {
-            throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_INVALID_JSON'));
-        }
-        
-        $preview = array_slice($data, 0, $limit);
-        $headers = !empty($preview) ? array_keys($preview[0]) : [];
-        
-        return [
-            'headers' => $headers,
-            'rows' => $preview,
-            'total' => count($data)
-        ];
-    }
 
-    /**
-     * Preview XML file
-     */
-    protected function previewXML(string $filePath, int $limit): array
-    {
-        if (!file_exists($filePath)) {
-            throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_FILE_NOT_FOUND'));
-        }
+        $results = ['total' => count($data), 'imported' => 0, 'updated' => 0, 'failed' => 0, 'errors' => []];
 
-        $xml = simplexml_load_file($filePath);
-        if (!$xml) {
-            throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_INVALID_XML'));
-        }
-
-        $data = json_decode(json_encode($xml), true);
-        
-        if (!isset($data['item'])) {
-            throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_INVALID_XML_STRUCTURE'));
-        }
-        
-        $items = $data['item'];
-        if (!isset($items[0])) {
-            $items = [$items];
-        }
-        
-        $preview = array_slice($items, 0, $limit);
-        $headers = !empty($preview) ? array_keys($preview[0]) : [];
-        
-        return [
-            'headers' => $headers,
-            'rows' => $preview,
-            'total' => count($items)
-        ];
-    }
-
-    /**
-     * Parse file based on extension
-     */
-    protected function parseFile(string $filePath, string $extension): array
-    {
-        switch (strtolower($extension)) {
-            case 'csv':
-                return $this->parseCSV($filePath);
-            case 'json':
-                return $this->parseJSON($filePath);
-            case 'xml':
-                return $this->parseXML($filePath);
-            default:
-                throw new \Exception(Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_UNSUPPORTED_FORMAT'));
-        }
-    }
-
-    /**
-     * Parse CSV file
-     */
-    protected function parseCSV(string $filePath): array
-    {
-        $config = Factory::getConfig();
-        $delimiter = $config->get('csv_delimiter', ',');
-        $enclosure = $config->get('csv_enclosure', '"');
-
-        $handle = fopen($filePath, 'r');
-        $headers = fgetcsv($handle, 0, $delimiter, $enclosure);
-        
-        $data = [];
-        while (($row = fgetcsv($handle, 0, $delimiter, $enclosure)) !== false) {
-            if (count($row) === count($headers)) {
-                $data[] = array_combine($headers, $row);
+        foreach ($data as $item) {
+            try {
+                if ($type === 'products_full') {
+                    $this->importProductFull($item, $options);
+                    $results['imported']++;
+                }
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['errors'][] = $e->getMessage();
             }
         }
-        
-        fclose($handle);
-        return $data;
-    }
 
-    /**
-     * Parse JSON file
-     */
-    protected function parseJSON(string $filePath): array
-    {
-        $content = file_get_contents($filePath);
-        return json_decode($content, true) ?: [];
-    }
-
-    /**
-     * Parse XML file
-     */
-    protected function parseXML(string $filePath): array
-    {
-        $xml = simplexml_load_file($filePath);
-        $data = json_decode(json_encode($xml), true);
-        
-        $items = $data['item'] ?? [];
-        if (!isset($items[0])) {
-            $items = [$items];
-        }
-        
-        return $items;
-    }
-
-    /**
-     * Map fields from source to target
-     */
-    protected function mapFields(array $row, array $mapping): array
-    {
-        $mapped = [];
-        foreach ($mapping as $source => $target) {
-            if (isset($row[$source])) {
-                $mapped[$target] = $row[$source];
-            }
-        }
-        return $mapped;
+        return $results;
     }
 }
