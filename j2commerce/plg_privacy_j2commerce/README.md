@@ -1,10 +1,14 @@
-# Privacy - J2Commerce Plugin
+# System - J2Commerce Privacy Plugin
 **Author:** Advans IT Solutions GmbH  
 **License:** Proprietary  
 **Joomla:** 4.x, 5.x, 6.x  
 **PHP:** 8.0+
 
-GDPR/DSGVO compliance solution for J2Commerce. Provides automated data retention management, configurable legal compliance frameworks, and handling of perpetual software licenses.
+GDPR/DSGVO compliance solution for J2Commerce. Features:
+- **Checkout Consent Checkbox** - Privacy consent during checkout
+- **Privacy Policy Link** - Configurable link to privacy policy article
+- **Address Management** - Frontend delete buttons for saved addresses
+- **Automated Data Cleanup** - Scheduled anonymization after retention period
 
 ---
 
@@ -68,10 +72,10 @@ Organizations with subscription-based business models should contact Advans IT S
 
 ### Install Steps
 
-1. Download `plg_privacy_j2commerce.zip`
+1. Download `plg_system_j2commerce_privacy.zip`
 2. **System → Extensions → Install**
 3. Upload and install
-4. **Enable via System → Plugins**
+4. **Enable via System → Plugins → System - J2Commerce Privacy**
 
 ### Post-Installation Configuration
 

@@ -1,32 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Privacy Plugin for J2Commerce -->
-<extension type="plugin" group="privacy" method="upgrade">
+<extension type="plugin" group="system" method="upgrade">
     <autoloadLanguage>true</autoloadLanguage>
     <scriptfile>script.php</scriptfile>
     <name>PLG_PRIVACY_J2COMMERCE</name>
     <element>j2commerce</element>
     <author>Advans IT Solutions GmbH</author>
-    <creationDate>December 2025</creationDate>
-    <copyright>Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.</copyright>
+    <creationDate>January 2026</creationDate>
+    <copyright>Copyright (C) 2025-2026 Advans IT Solutions GmbH. All rights reserved.</copyright>
     <license>Proprietary</license>
     <authorEmail></authorEmail>
     <authorUrl>https://advans.ch</authorUrl>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <description>PLG_PRIVACY_J2COMMERCE_XML_DESCRIPTION</description>
     
     <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
 
-    <namespace path="src">Advans\Plugin\Privacy\J2Commerce</namespace>
+    <namespace path="src">Advans\Plugin\System\J2Commerce</namespace>
 
     <files>
         <folder>services</folder>
         <folder>src</folder>
+        <folder>tmpl</folder>
         <folder>language</folder>
     </files>
 
     <config>
         <fields name="params">
-            <fieldset name="basic">
+            <!-- Privacy Settings -->
+            <fieldset name="privacy" label="PLG_PRIVACY_J2COMMERCE_FIELDSET_PRIVACY">
                 <field
                     name="include_joomla_data"
                     type="radio"
@@ -64,7 +65,8 @@
                 </field>
             </fieldset>
 
-            <fieldset name="retention" label="PLG_PRIVACY_J2COMMERCE_RETENTION_FIELDSET_LABEL">
+            <!-- Retention Settings -->
+            <fieldset name="retention" label="PLG_PRIVACY_J2COMMERCE_FIELDSET_RETENTION">
                 <field
                     name="retention_years"
                     type="number"
@@ -74,7 +76,6 @@
                     min="1"
                     max="30"
                     step="1"
-                    hint="10"
                 />
 
                 <field
@@ -83,7 +84,6 @@
                     label="PLG_PRIVACY_J2COMMERCE_LEGAL_BASIS_LABEL"
                     description="PLG_PRIVACY_J2COMMERCE_LEGAL_BASIS_DESC"
                     rows="3"
-                    cols="50"
                     default="• Switzerland: OR Art. 958f (10 years)&#10;• Germany: AO §147 (10 years)&#10;• EU: National tax laws (6-10 years)"
                 />
 
@@ -92,9 +92,94 @@
                     type="email"
                     label="PLG_PRIVACY_J2COMMERCE_SUPPORT_EMAIL_LABEL"
                     description="PLG_PRIVACY_J2COMMERCE_SUPPORT_EMAIL_DESC"
-                    default="support@example.com"
-                    required="true"
+                    default=""
                 />
+            </fieldset>
+
+            <!-- Checkout Consent Settings -->
+            <fieldset name="checkout" label="PLG_PRIVACY_J2COMMERCE_FIELDSET_CHECKOUT">
+                <field
+                    name="show_consent_checkbox"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_SHOW_CONSENT_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_SHOW_CONSENT_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="consent_required"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_CONSENT_REQUIRED_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_CONSENT_REQUIRED_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="privacy_article"
+                    type="modal_article"
+                    label="PLG_PRIVACY_J2COMMERCE_ARTICLE_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_ARTICLE_DESC"
+                    select="true"
+                    new="true"
+                    edit="true"
+                    clear="true"
+                />
+
+                <field
+                    name="consent_text"
+                    type="textarea"
+                    label="PLG_PRIVACY_J2COMMERCE_CONSENT_TEXT_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_CONSENT_TEXT_DESC"
+                    rows="2"
+                    default="I have read and agree to the {privacy_policy}."
+                />
+            </fieldset>
+
+            <!-- Frontend Self-Service -->
+            <fieldset name="frontend" label="PLG_PRIVACY_J2COMMERCE_FIELDSET_FRONTEND">
+                <field
+                    name="show_delete_address"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_SHOW_DELETE_ADDRESS_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_SHOW_DELETE_ADDRESS_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="show_delete_all"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_SHOW_DELETE_ALL_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_SHOW_DELETE_ALL_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="show_export_data"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_SHOW_EXPORT_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_SHOW_EXPORT_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
             </fieldset>
         </fields>
     </config>

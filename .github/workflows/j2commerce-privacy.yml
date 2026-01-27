@@ -13,18 +13,32 @@ jobs:
     name: Build Package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Build
         run: |
           cd j2commerce/plg_privacy_j2commerce
           chmod +x build.sh
           ./build.sh
+          mkdir -p tests
           cp *.zip tests/extension.zip
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v4
         with:
           name: extension-package
           path: j2commerce/plg_privacy_j2commerce/tests/extension.zip
           retention-days: 1
+
+  syntax-check:
+    name: PHP Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Check PHP syntax
+        run: |
+          find j2commerce/plg_privacy_j2commerce/src -name "*.php" -exec php -l {} \;
 
   test:
     name: ${{ matrix.name }}
@@ -47,11 +61,13 @@ jobs:
             script: 'anonymization'
           - name: '06 - GDPR Compliance'
             script: 'gdpr'
-          - name: '07 - Uninstall'
+          - name: '07 - Checkout Consent'
+            script: 'checkout'
+          - name: '08 - Uninstall'
             script: 'uninstall'
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           name: extension-package
           path: j2commerce/plg_privacy_j2commerce/tests/
@@ -65,7 +81,7 @@ jobs:
           cd j2commerce/plg_privacy_j2commerce/tests
           chmod +x run-tests.sh
           ./run-tests.sh ${{ matrix.script }}
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ${{ matrix.script }}-logs
@@ -82,7 +98,7 @@ jobs:
     needs: test
     if: always()
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v4
         with:
           path: test-artifacts/
       - name: Collect and display logs
@@ -96,7 +112,7 @@ jobs:
             fi
           done
       - name: Upload combined logs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: all-test-logs
           path: test-artifacts/

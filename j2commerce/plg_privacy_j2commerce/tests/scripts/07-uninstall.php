@@ -39,7 +39,7 @@ class UninstallTest
             ->select('extension_id')
             ->from($this->db->quoteName('#__extensions'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('privacy'));
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'));
         
         $this->db->setQuery($query);
         $extensionId = $this->db->loadResult();
@@ -52,12 +52,12 @@ class UninstallTest
         }
         
         // Test 2: Verify plugin files exist
-        $pluginPath = JPATH_BASE . '/plugins/privacy/j2commerce';
+        $pluginPath = JPATH_BASE . '/plugins/system/j2commerce';
         $this->test('Plugin directory exists', is_dir($pluginPath));
         
         // Test 3: Verify plugin structure
         $this->test('Plugin manifest exists', 
-            file_exists($pluginPath . '/plg_privacy_j2commerce.xml'));
+            file_exists($pluginPath . '/plg_system_j2commerce.xml'));
         $this->test('Plugin class exists', 
             file_exists($pluginPath . '/src/Extension/J2Commerce.php'));
         $this->test('Plugin services exists', 

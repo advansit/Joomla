@@ -38,7 +38,7 @@ class InstallationTest
             ->select('extension_id, enabled')
             ->from('#__extensions')
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('privacy'));
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'));
         
         $this->db->setQuery($query);
         $plugin = $this->db->loadObject();
@@ -51,20 +51,20 @@ class InstallationTest
         
         // Test 2: Plugin files exist
         $this->test('Main plugin file exists', 
-            file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/services/provider.php'));
+            file_exists(JPATH_BASE . '/plugins/system/j2commerce/services/provider.php'));
         
         $this->test('Extension class exists', 
-            file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/src/Extension/J2Commerce.php'));
+            file_exists(JPATH_BASE . '/plugins/system/j2commerce/src/Extension/J2Commerce.php'));
         
         $this->test('Task class exists', 
-            file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/src/Task/AutoCleanupTask.php'));
+            file_exists(JPATH_BASE . '/plugins/system/j2commerce/src/Task/AutoCleanupTask.php'));
         
         // Test 3: Language files exist
         $this->test('German language file exists', 
-            file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/language/de-CH/plg_privacy_j2commerce.ini'));
+            file_exists(JPATH_BASE . '/plugins/system/j2commerce/language/de-CH/plg_system_j2commerce.ini'));
         
         $this->test('English language file exists', 
-            file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/language/en-GB/plg_privacy_j2commerce.ini'));
+            file_exists(JPATH_BASE . '/plugins/system/j2commerce/language/en-GB/plg_system_j2commerce.ini'));
         
         echo "\n=== Installation Test Summary ===\n";
         echo "Passed: {$this->passed}\n";

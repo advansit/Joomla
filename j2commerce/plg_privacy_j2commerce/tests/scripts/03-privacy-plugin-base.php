@@ -38,14 +38,14 @@ class PrivacyPluginBaseTest
             ->select('extension_id, params')
             ->from($this->db->quoteName('#__extensions'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('privacy'));
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'));
         
         $this->db->setQuery($query);
         $plugin = $this->db->loadObject();
         $this->test('Plugin is in database', $plugin !== null, 'Plugin not found');
         
         // Test 2: Plugin class file exists and can be loaded
-        $classFile = JPATH_BASE . '/plugins/privacy/j2commerce/src/Extension/J2Commerce.php';
+        $classFile = JPATH_BASE . '/plugins/system/j2commerce/src/Extension/J2Commerce.php';
         $this->test('Plugin class file exists', file_exists($classFile));
         
         // Load Joomla Privacy Plugin base class
