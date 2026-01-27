@@ -75,7 +75,7 @@ jobs:
         run: |
           cd j2commerce/plg_privacy_j2commerce/tests
           docker compose up -d
-          sleep 60
+          sleep 90
       - name: Run tests
         run: |
           cd j2commerce/plg_privacy_j2commerce/tests
