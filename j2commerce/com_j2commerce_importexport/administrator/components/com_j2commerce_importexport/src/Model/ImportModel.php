@@ -377,118 +377,6 @@ class ImportModel extends BaseDatabaseModel
         }
     }
 
-    /**
-     * Download image from URL and save to local path
-     *
-     * @param   string  $url       Remote image URL
-     * @param   string  $filename  Optional filename (auto-generated if empty)
-     *
-     * @return  string|null  Local path relative to Joomla root, or null on failure
-     */
-    protected function downloadImage(string $url, string $filename = ''): ?string
-    {
-        if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
-            return null;
-        }
-
-        // Determine filename
-        if (empty($filename)) {
-            $urlPath = parse_url($url, PHP_URL_PATH);
-            $filename = basename($urlPath);
-            
-            // Ensure unique filename
-            $filename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $filename);
-        }
-
-        // Ensure valid image extension
-        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-            $filename .= '.jpg';
-        }
-
-        // Target directory
-        $targetDir = JPATH_ROOT . '/images/products/imported';
-        if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
-        }
-
-        $targetPath = $targetDir . '/' . $filename;
-        $relativePath = 'images/products/imported/' . $filename;
-
-        // Download image
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 30,
-                'user_agent' => 'J2Commerce Import/1.0',
-            ],
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-            ],
-        ]);
-
-        $imageData = @file_get_contents($url, false, $context);
-        if ($imageData === false) {
-            // Try with cURL as fallback
-            if (function_exists('curl_init')) {
-                $ch = curl_init($url);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_TIMEOUT => 30,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_USERAGENT => 'J2Commerce Import/1.0',
-                ]);
-                $imageData = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                
-                if ($httpCode !== 200 || $imageData === false) {
-                    return null;
-                }
-            } else {
-                return null;
-            }
-        }
-
-        // Verify it's actually an image
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo->buffer($imageData);
-        if (strpos($mimeType, 'image/') !== 0) {
-            return null;
-        }
-
-        // Save image
-        if (file_put_contents($targetPath, $imageData) === false) {
-            return null;
-        }
-
-        return $relativePath;
-    }
-
-    /**
-     * Process image path - download if URL, return path if local
-     *
-     * @param   string  $imagePathOrUrl  Local path or remote URL
-     *
-     * @return  string  Local path
-     */
-    protected function processImagePath(string $imagePathOrUrl): string
-    {
-        if (empty($imagePathOrUrl)) {
-            return '';
-        }
-
-        // Check if it's a URL
-        if (filter_var($imagePathOrUrl, FILTER_VALIDATE_URL)) {
-            $localPath = $this->downloadImage($imagePathOrUrl);
-            return $localPath ?? '';
-        }
-
-        // It's already a local path
-        return $imagePathOrUrl;
-    }
-
     protected function importProductImages(array $images, int $productId): void
     {
         if (empty($images)) return;
@@ -502,30 +390,19 @@ class ImportModel extends BaseDatabaseModel
         $db->setQuery($query);
         $db->execute();
 
-        // Process main image (download if URL)
-        $mainImage = $this->processImagePath($images['main_image'] ?? $images['image_url'] ?? '');
-        $thumbImage = $this->processImagePath($images['thumb_image'] ?? '');
-        
-        // Process additional images
+        // Process additional images (ensure it's an array)
         $additionalImages = $images['additional_images'] ?? [];
         if (is_string($additionalImages)) {
             $additionalImages = json_decode($additionalImages, true) ?? [];
         }
-        $processedAdditional = [];
-        foreach ($additionalImages as $addImg) {
-            $processed = $this->processImagePath($addImg);
-            if ($processed) {
-                $processedAdditional[] = $processed;
-            }
-        }
 
         $img = (object) [
             'product_id' => $productId,
-            'main_image' => $mainImage,
+            'main_image' => $images['main_image'] ?? '',
             'main_image_alt' => $images['main_image_alt'] ?? '',
-            'thumb_image' => $thumbImage,
+            'thumb_image' => $images['thumb_image'] ?? '',
             'thumb_image_alt' => $images['thumb_image_alt'] ?? '',
-            'additional_images' => json_encode($processedAdditional),
+            'additional_images' => is_array($additionalImages) ? json_encode($additionalImages) : $additionalImages,
             'additional_images_alt' => $images['additional_images_alt'] ?? '[]',
         ];
         $db->insertObject('#__j2store_productimages', $img);
@@ -777,11 +654,17 @@ class ImportModel extends BaseDatabaseModel
     // Legacy methods for backward compatibility
     public function previewFile(string $filePath, int $limit = 10): array
     {
-        $ext = pathinfo($filePath, PATHINFO_EXTENSION);
-        $content = file_get_contents($filePath);
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if ($ext === 'json') {
+            $content = file_get_contents($filePath);
             $data = json_decode($content, true);
+            
+            // Handle JSON with _documentation wrapper
+            if (isset($data['products'])) {
+                $data = $data['products'];
+            }
+            
             return [
                 'headers' => !empty($data[0]) ? array_keys($data[0]) : [],
                 'rows' => array_slice($data, 0, $limit),
@@ -789,17 +672,125 @@ class ImportModel extends BaseDatabaseModel
             ];
         }
 
+        if ($ext === 'csv') {
+            return $this->previewCSV($filePath, $limit);
+        }
+
         return ['headers' => [], 'rows' => [], 'total' => 0];
+    }
+
+    /**
+     * Preview CSV file, skipping comment lines
+     */
+    protected function previewCSV(string $filePath, int $limit = 10): array
+    {
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            return ['headers' => [], 'rows' => [], 'total' => 0];
+        }
+
+        $headers = [];
+        $rows = [];
+        $total = 0;
+
+        while (($line = fgetcsv($handle)) !== false) {
+            // Skip empty lines
+            if (empty($line) || (count($line) === 1 && empty($line[0]))) {
+                continue;
+            }
+            
+            // Skip comment lines (starting with #)
+            if (isset($line[0]) && strpos(trim($line[0]), '#') === 0) {
+                continue;
+            }
+
+            // First non-comment line is headers
+            if (empty($headers)) {
+                $headers = $line;
+                continue;
+            }
+
+            $total++;
+            if (count($rows) < $limit) {
+                $rows[] = array_combine($headers, $line);
+            }
+        }
+
+        fclose($handle);
+
+        return [
+            'headers' => $headers,
+            'rows' => $rows,
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Parse CSV file into array, skipping comment lines
+     */
+    protected function parseCSV(string $filePath): array
+    {
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            return [];
+        }
+
+        $headers = [];
+        $data = [];
+
+        while (($line = fgetcsv($handle)) !== false) {
+            // Skip empty lines
+            if (empty($line) || (count($line) === 1 && empty($line[0]))) {
+                continue;
+            }
+            
+            // Skip comment lines (starting with #)
+            if (isset($line[0]) && strpos(trim($line[0]), '#') === 0) {
+                continue;
+            }
+
+            // First non-comment line is headers
+            if (empty($headers)) {
+                $headers = $line;
+                continue;
+            }
+
+            // Combine headers with values
+            if (count($line) === count($headers)) {
+                $data[] = array_combine($headers, $line);
+            }
+        }
+
+        fclose($handle);
+
+        return $data;
     }
 
     public function importData(string $filePath, string $type, array $mapping, array $options = []): array
     {
-        $content = file_get_contents($filePath);
-        $data = json_decode($content, true);
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        
+        if ($ext === 'json') {
+            $content = file_get_contents($filePath);
+            $data = json_decode($content, true);
+            
+            // Handle JSON with _documentation wrapper
+            if (isset($data['products'])) {
+                $data = $data['products'];
+            }
+        } elseif ($ext === 'csv') {
+            $data = $this->parseCSV($filePath);
+        } else {
+            throw new \RuntimeException('Unsupported file format: ' . $ext);
+        }
+
+        if (empty($data)) {
+            return ['total' => 0, 'imported' => 0, 'updated' => 0, 'failed' => 0, 'errors' => ['No data found in file']];
+        }
 
         $results = ['total' => count($data), 'imported' => 0, 'updated' => 0, 'failed' => 0, 'errors' => []];
 
-        foreach ($data as $item) {
+        foreach ($data as $index => $item) {
             try {
                 if ($type === 'products_full') {
                     $this->importProductFull($item, $options);
@@ -807,7 +798,7 @@ class ImportModel extends BaseDatabaseModel
                 }
             } catch (\Exception $e) {
                 $results['failed']++;
-                $results['errors'][] = $e->getMessage();
+                $results['errors'][] = 'Row ' . ($index + 1) . ': ' . $e->getMessage();
             }
         }
 

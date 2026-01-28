@@ -64,10 +64,9 @@ class ExportController extends BaseController
             'height' => 'Height in configured unit (decimal)',
             
             // Image fields
-            'main_image' => "Image path relative to Joomla root, e.g., 'images/products/phone.jpg'. Full URL: {$baseUrl}images/products/phone.jpg",
-            'thumb_image' => 'Thumbnail image path (optional, auto-generated if empty)',
-            'additional_images' => 'JSON array of additional image paths: ["images/products/img1.jpg","images/products/img2.jpg"]',
-            'image_url' => "For import: Full URL to download image from, e.g., 'https://example.com/image.jpg' (will be downloaded to images/products/)",
+            'main_image' => "Image path relative to Joomla root. Example: 'images/products/phone.jpg'. Upload images via FTP/Media Manager first, then reference the path here.",
+            'thumb_image' => 'Thumbnail image path (optional). Example: images/products/phone_thumb.jpg',
+            'additional_images' => 'JSON array of additional image paths. Example: ["images/products/img1.jpg","images/products/img2.jpg"]',
             
             // Options
             'options' => 'JSON array of product options with values and price adjustments',
@@ -200,10 +199,11 @@ class ExportController extends BaseController
             $output['_documentation'] = [
                 'description' => 'J2Commerce Product Export - Field Documentation',
                 'import_notes' => [
-                    'Images' => 'Image paths are relative to Joomla root. For import, you can also use image_url to download from external URL.',
+                    'Images' => 'Upload images to your server first (via FTP or Media Manager), then reference the path relative to Joomla root (e.g., images/products/phone.jpg).',
                     'Duplicates' => 'Existing products are detected by: 1) article_id, 2) alias, 3) SKU. Matching products will be updated.',
                     'Categories' => 'Categories are created automatically if category_path is provided and category does not exist.',
                     'Stock' => 'Set manage_stock=0 to disable inventory tracking (unlimited stock).',
+                    'CSV_Comments' => 'Lines starting with # are comments and will be ignored during import.',
                 ],
                 'fields' => $this->getFieldDescriptions(),
             ];
