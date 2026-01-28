@@ -19,16 +19,23 @@ Export and import complete products including:
 - **Menu Items** - Optional, with configurable access levels
 - **Metafields** - J2Store metafield data
 
+### Duplicate Detection
+Products are matched and updated (instead of duplicated) using three methods:
+1. **Article ID** - Exact match if provided in import
+2. **Alias** - URL-safe article alias
+3. **SKU** - Product variant SKU
+
 ### Import Options
 - Update existing products or create new only
 - Create menu items automatically
 - Configure menu type and access level
 - Set default category for new products
+- Import without stock management (unlimited inventory)
 
 ### Supported Formats
-- JSON (recommended for full export)
-- CSV
-- XML
+- **JSON** - Recommended for full export, includes field documentation
+- **CSV** - Excel-compatible with UTF-8 BOM, comment lines supported
+- **XML** - With field documentation section
 
 ## Requirements
 
@@ -54,14 +61,27 @@ The export includes all product data in a single JSON file that can be re-import
 
 ### Full Product Import
 1. Select **Products (Complete)** as import type
-2. Upload the JSON file
+2. Upload the JSON or CSV file
 3. Configure options:
-   - **Update existing products** - Update if SKU matches
+   - **Update existing products** - Update if article_id, alias, or SKU matches
    - **Create menu items** - Auto-create menu entries
    - **Menu type** - Target menu for new items
    - **Access level** - Visibility of menu items
 4. Click **Preview** to verify data
 5. Click **Start Import**
+
+### Image Import Workflow
+Images must be uploaded to the server before import:
+
+1. **Prepare images** - Resize, compress, and format images according to your design requirements
+2. **Upload images** - Use FTP or Joomla Media Manager to upload to `images/products/`
+3. **Reference in import** - Use relative paths like `images/products/my-product.jpg`
+
+Example:
+```
+Server path: /var/www/html/images/products/phone.jpg
+Import value: images/products/phone.jpg
+```
 
 ### Simple Export/Import
 For bulk updates of specific data:
@@ -70,50 +90,89 @@ For bulk updates of specific data:
 - **Prices** - Tier pricing only
 - **Categories** - Category structure
 
-## JSON Export Structure
+## Export Formats
+
+### JSON Export Structure
+
+JSON exports include a `_documentation` section with field descriptions:
 
 ```json
-[
-  {
-    "title": "Product Name",
-    "alias": "product-name",
-    "introtext": "<p>Short description</p>",
-    "fulltext": "<p>Full description</p>",
-    "article_state": 1,
-    "catid": 8,
-    "category_title": "Products",
-    "category_path": "products",
-    "access": 1,
-    "language": "*",
-    "metadesc": "SEO description",
-    "product_type": "simple",
-    "enabled": 1,
-    "taxprofile_id": 1,
-    "variants": [
-      {
-        "sku": "PROD-001",
-        "price": 99.00,
-        "quantity": 50,
-        "weight": 1.5,
-        "tier_prices": []
-      }
-    ],
-    "j2store_images": {
-      "main_image": "images/products/product.jpg",
-      "main_image_alt": "Product Name"
+{
+  "_documentation": {
+    "description": "J2Commerce Product Export - Field Documentation",
+    "import_notes": {
+      "Images": "Upload images to server first, then reference the path.",
+      "Duplicates": "Products matched by: 1) article_id, 2) alias, 3) SKU",
+      "Stock": "Set manage_stock=0 to disable inventory tracking"
     },
-    "tags": [
-      {"title": "New", "alias": "new"}
-    ],
-    "menu_item": {
-      "title": "Product Name",
-      "menutype": "mainmenu",
-      "published": 1,
-      "access": 1
+    "fields": {
+      "title": "Product/Article title (required)",
+      "main_image": "Image path relative to Joomla root"
     }
-  }
-]
+  },
+  "products": [
+    {
+      "title": "Product Name",
+      "alias": "product-name",
+      "introtext": "<p>Short description</p>",
+      "fulltext": "<p>Full description</p>",
+      "article_state": 1,
+      "catid": 8,
+      "category_title": "Products",
+      "category_path": "products",
+      "access": 1,
+      "language": "*",
+      "metadesc": "SEO description",
+      "product_type": "simple",
+      "enabled": 1,
+      "taxprofile_id": 1,
+      "variants": [
+        {
+          "sku": "PROD-001",
+          "price": 99.00,
+          "quantity": 50,
+          "manage_stock": 1,
+          "weight": 1.5,
+          "tier_prices": []
+        }
+      ],
+      "j2store_images": {
+        "main_image": "images/products/product.jpg",
+        "main_image_alt": "Product Name"
+      },
+      "tags": [
+        {"title": "New", "alias": "new"}
+      ]
+    }
+  ]
+}
 ```
+
+### CSV Export Structure
+
+CSV exports include a comment line (starting with `#`) above the headers with field descriptions:
+
+```csv
+# Product title (required),URL-safe alias,Image path relative to Joomla root
+title,alias,main_image
+"My Product","my-product","images/products/product1.jpg"
+"Other Product","other-product","images/products/product2.jpg"
+```
+
+**Note:** Comment lines (starting with `#`) are ignored during import.
+
+### Key Fields Reference
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `title` | Yes | Product/Article title |
+| `alias` | No | URL alias (auto-generated from title if empty) |
+| `sku` | No | Stock Keeping Unit (used for duplicate detection) |
+| `price` | No | Product price (decimal) |
+| `quantity` | No | Stock quantity |
+| `manage_stock` | No | 1=track inventory, 0=unlimited stock |
+| `main_image` | No | Path relative to Joomla root, e.g., `images/products/img.jpg` |
+| `category_path` | No | Category path like `shop/electronics` (auto-creates if missing) |
 
 ## Configuration
 
