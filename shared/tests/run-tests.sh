@@ -77,7 +77,7 @@ main() {
     fi
     
     print_header "Waiting for Joomla to be ready"
-    timeout 60 bash -c "until docker exec $CONTAINER_NAME curl -sf http://localhost > /dev/null 2>&1; do sleep 2; done" || {
+    timeout 120 bash -c "until docker exec $CONTAINER_NAME curl -sf http://localhost > /dev/null 2>&1; do sleep 2; done" || {
         print_error "Joomla did not become ready in time"
         exit 1
     }
