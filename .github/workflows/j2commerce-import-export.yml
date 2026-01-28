@@ -4,25 +4,41 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['j2commerce/com_j2commerce_importexport/**']
+    paths: 
+      - 'j2commerce/com_j2commerce_importexport/**'
+      - 'shared/**'
 
 jobs:
   build:
     name: Build Package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Build
         run: |
           cd j2commerce/com_j2commerce_importexport
           chmod +x build.sh
           ./build.sh
+          mkdir -p tests
           cp *.zip tests/extension.zip
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v4
         with:
           name: extension-package
           path: j2commerce/com_j2commerce_importexport/tests/extension.zip
           retention-days: 1
+
+  syntax-check:
+    name: PHP Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Check PHP syntax
+        run: |
+          find j2commerce/com_j2commerce_importexport -name "*.php" -exec php -l {} \;
 
   test:
     name: ${{ matrix.name }}
@@ -35,27 +51,21 @@ jobs:
         include:
           - name: '01 - Installation'
             script: 'installation'
-          - name: '02 - Frontend'
-            script: 'frontend'
-          - name: '03 - Backend'
-            script: 'backend'
-          - name: '04 - API'
-            script: 'api'
-          - name: '05 - Database'
-            script: 'database'
-          - name: '06 - J2Commerce'
-            script: 'j2commerce'
+          - name: '02 - Export JSON'
+            script: 'export_json'
+          - name: '03 - Export CSV'
+            script: 'export_csv'
+          - name: '04 - Import JSON'
+            script: 'import_json'
+          - name: '05 - Import CSV'
+            script: 'import_csv'
+          - name: '06 - Duplicate Detection'
+            script: 'duplicates'
           - name: '07 - Uninstall'
             script: 'uninstall'
-          - name: '08 - Multilingual'
-            script: 'multilingual'
-          - name: '09 - Security'
-            script: 'security'
-          - name: '10 - Performance'
-            script: 'performance'
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           name: extension-package
           path: j2commerce/com_j2commerce_importexport/tests/
@@ -63,13 +73,13 @@ jobs:
         run: |
           cd j2commerce/com_j2commerce_importexport/tests
           docker compose up -d
-          sleep 60
+          sleep 90
       - name: Run tests
         run: |
           cd j2commerce/com_j2commerce_importexport/tests
           chmod +x run-tests.sh
           ./run-tests.sh ${{ matrix.script }}
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ${{ matrix.script }}-logs
@@ -85,23 +95,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: always()
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v4
         with:
           path: test-artifacts/
-      - name: Collect logs
+      - name: Collect and display logs
         run: |
-          mkdir -p tests/logs/com_j2commerce_importexport
-          find test-artifacts/ -name "*.txt" -exec cp {} tests/logs/com_j2commerce_importexport/ \; 2>/dev/null || true
-      - name: Commit logs
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add -f tests/logs/com_j2commerce_importexport/*.txt
-          git diff --staged --quiet || git commit -m "Add test logs [skip ci]"
-          git push || true
+          echo "=== Test Results Summary ==="
+          for dir in test-artifacts/*/; do
+            if [ -d "$dir" ]; then
+              echo ""
+              echo "--- $(basename "$dir") ---"
+              find "$dir" -name "*.txt" -exec cat {} \;
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: all-test-logs
+          path: test-artifacts/
+          retention-days: 30
