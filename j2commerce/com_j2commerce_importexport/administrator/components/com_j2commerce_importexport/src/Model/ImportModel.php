@@ -132,8 +132,10 @@ class ImportModel extends BaseDatabaseModel
         $userId = Factory::getApplication()->getIdentity()->id;
         $now = Factory::getDate()->toSql();
 
-        // Check if article exists
+        // Check if article exists - try multiple methods
         $existingId = null;
+        
+        // 1. Check by article_id if provided
         if (!empty($data['article_id'])) {
             $query = $db->getQuery(true)
                 ->select('id')
@@ -143,8 +145,32 @@ class ImportModel extends BaseDatabaseModel
             $db->setQuery($query);
             $existingId = $db->loadResult();
         }
-
+        
+        // 2. Check by alias if not found by ID
         $alias = $data['alias'] ?? ApplicationHelper::stringURLSafe($data['title']);
+        if (!$existingId && !empty($alias)) {
+            $query = $db->getQuery(true)
+                ->select('id')
+                ->from($db->quoteName('#__content'))
+                ->where('alias = :alias')
+                ->bind(':alias', $alias);
+            $db->setQuery($query);
+            $existingId = $db->loadResult();
+        }
+        
+        // 3. Check by SKU via J2Store product -> article link
+        if (!$existingId && !empty($data['variants'][0]['sku'])) {
+            $sku = $data['variants'][0]['sku'];
+            $query = $db->getQuery(true)
+                ->select('p.product_source_id')
+                ->from($db->quoteName('#__j2store_products', 'p'))
+                ->join('INNER', $db->quoteName('#__j2store_variants', 'v') . ' ON p.j2store_product_id = v.product_id')
+                ->where('v.sku = :sku')
+                ->where('p.product_source = ' . $db->quote('com_content'))
+                ->bind(':sku', $sku);
+            $db->setQuery($query);
+            $existingId = $db->loadResult();
+        }
 
         $article = (object) [
             'title' => $data['title'],
@@ -351,6 +377,118 @@ class ImportModel extends BaseDatabaseModel
         }
     }
 
+    /**
+     * Download image from URL and save to local path
+     *
+     * @param   string  $url       Remote image URL
+     * @param   string  $filename  Optional filename (auto-generated if empty)
+     *
+     * @return  string|null  Local path relative to Joomla root, or null on failure
+     */
+    protected function downloadImage(string $url, string $filename = ''): ?string
+    {
+        if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        // Determine filename
+        if (empty($filename)) {
+            $urlPath = parse_url($url, PHP_URL_PATH);
+            $filename = basename($urlPath);
+            
+            // Ensure unique filename
+            $filename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $filename);
+        }
+
+        // Ensure valid image extension
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+            $filename .= '.jpg';
+        }
+
+        // Target directory
+        $targetDir = JPATH_ROOT . '/images/products/imported';
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
+        $targetPath = $targetDir . '/' . $filename;
+        $relativePath = 'images/products/imported/' . $filename;
+
+        // Download image
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 30,
+                'user_agent' => 'J2Commerce Import/1.0',
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+
+        $imageData = @file_get_contents($url, false, $context);
+        if ($imageData === false) {
+            // Try with cURL as fallback
+            if (function_exists('curl_init')) {
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_USERAGENT => 'J2Commerce Import/1.0',
+                ]);
+                $imageData = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                if ($httpCode !== 200 || $imageData === false) {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+        }
+
+        // Verify it's actually an image
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->buffer($imageData);
+        if (strpos($mimeType, 'image/') !== 0) {
+            return null;
+        }
+
+        // Save image
+        if (file_put_contents($targetPath, $imageData) === false) {
+            return null;
+        }
+
+        return $relativePath;
+    }
+
+    /**
+     * Process image path - download if URL, return path if local
+     *
+     * @param   string  $imagePathOrUrl  Local path or remote URL
+     *
+     * @return  string  Local path
+     */
+    protected function processImagePath(string $imagePathOrUrl): string
+    {
+        if (empty($imagePathOrUrl)) {
+            return '';
+        }
+
+        // Check if it's a URL
+        if (filter_var($imagePathOrUrl, FILTER_VALIDATE_URL)) {
+            $localPath = $this->downloadImage($imagePathOrUrl);
+            return $localPath ?? '';
+        }
+
+        // It's already a local path
+        return $imagePathOrUrl;
+    }
+
     protected function importProductImages(array $images, int $productId): void
     {
         if (empty($images)) return;
@@ -364,13 +502,30 @@ class ImportModel extends BaseDatabaseModel
         $db->setQuery($query);
         $db->execute();
 
+        // Process main image (download if URL)
+        $mainImage = $this->processImagePath($images['main_image'] ?? $images['image_url'] ?? '');
+        $thumbImage = $this->processImagePath($images['thumb_image'] ?? '');
+        
+        // Process additional images
+        $additionalImages = $images['additional_images'] ?? [];
+        if (is_string($additionalImages)) {
+            $additionalImages = json_decode($additionalImages, true) ?? [];
+        }
+        $processedAdditional = [];
+        foreach ($additionalImages as $addImg) {
+            $processed = $this->processImagePath($addImg);
+            if ($processed) {
+                $processedAdditional[] = $processed;
+            }
+        }
+
         $img = (object) [
             'product_id' => $productId,
-            'main_image' => $images['main_image'] ?? '',
+            'main_image' => $mainImage,
             'main_image_alt' => $images['main_image_alt'] ?? '',
-            'thumb_image' => $images['thumb_image'] ?? '',
+            'thumb_image' => $thumbImage,
             'thumb_image_alt' => $images['thumb_image_alt'] ?? '',
-            'additional_images' => $images['additional_images'] ?? '[]',
+            'additional_images' => json_encode($processedAdditional),
             'additional_images_alt' => $images['additional_images_alt'] ?? '[]',
         ];
         $db->insertObject('#__j2store_productimages', $img);
