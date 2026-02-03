@@ -1038,3 +1038,4 @@ Proprietary software. Copyright (C) 2025 Advans IT Solutions GmbH. All rights re
 ---
 
 **End of Documentation**
+# Trigger workflow
