@@ -76,6 +76,12 @@ jobs:
           cd j2commerce/plg_privacy_j2commerce/tests
           docker compose up -d
           sleep 90
+      - name: Show container logs
+        if: always()
+        run: |
+          cd j2commerce/plg_privacy_j2commerce/tests
+          echo "=== Joomla Container Logs ==="
+          docker compose logs joomla 2>&1 | tail -100 || true
       - name: Run tests
         run: |
           cd j2commerce/plg_privacy_j2commerce/tests
