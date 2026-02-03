@@ -135,7 +135,12 @@ TABLE_PREFIX=$(grep "public \$dbprefix" /var/www/html/configuration.php | grep -
 TABLE_PREFIX=${TABLE_PREFIX:-j_}
 
 # Determine extension type and paths from manifest
-MANIFEST=$(find extracted -name "*.xml" -type f ! -name "phpunit.xml" | head -1)
+# Look for main manifest in root first (not in subdirectories like updates/)
+MANIFEST=$(find extracted -maxdepth 1 -name "*.xml" -type f ! -name "phpunit.xml" | head -1)
+# Fallback to any XML if not found in root
+if [ -z "$MANIFEST" ]; then
+    MANIFEST=$(find extracted -name "*.xml" -type f ! -name "phpunit.xml" ! -path "*/updates/*" | head -1)
+fi
 if [ -f "$MANIFEST" ]; then
     TYPE=$(grep -oP 'type="\K[^"]+' "$MANIFEST" | head -1)
     ELEMENT=$(grep -oP '<element>\K[^<]+' "$MANIFEST" | head -1)
