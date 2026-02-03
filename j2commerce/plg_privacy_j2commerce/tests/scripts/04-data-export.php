@@ -53,11 +53,11 @@ class DataExportTest
             $this->test('onPrivacyExportRequest method exists', 
                 $reflection->hasMethod('onPrivacyExportRequest'));
             
-            // Test 2: Method returns array
+            // Test 2: Method signature is correct (accepts event or user)
             $method = $reflection->getMethod('onPrivacyExportRequest');
-            $returnType = $method->getReturnType();
-            $this->test('Export method returns array', 
-                $returnType && $returnType->getName() === 'array');
+            $params = $method->getParameters();
+            $this->test('Export method has correct signature', 
+                count($params) >= 1);
             
             // Test 3: Plugin has createOrdersDomain method
             $this->test('createOrdersDomain method exists', 

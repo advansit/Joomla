@@ -47,8 +47,8 @@ class GDPRComplianceTest
         
         if (class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce')) {
             $reflection = new \ReflectionClass('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce');
-            $this->test('checkOrderRetention method exists', 
-                $reflection->hasMethod('checkOrderRetention'));
+            $this->test('checkRetentionPeriod method exists', 
+                $reflection->hasMethod('checkRetentionPeriod'));
             $this->test('isLifetimeLicense method exists', 
                 $reflection->hasMethod('isLifetimeLicense'));
             $this->test('formatRetentionMessage method exists', 
