@@ -61,9 +61,7 @@ jobs:
             script: 'anonymization'
           - name: '06 - GDPR Compliance'
             script: 'gdpr'
-          - name: '07 - Checkout Consent'
-            script: 'checkout'
-          - name: '08 - Uninstall'
+          - name: '07 - Uninstall'
             script: 'uninstall'
     steps:
       - uses: actions/checkout@v4
