@@ -64,11 +64,11 @@ class PrivacyPluginBaseTest
         }
         
         $this->test('Plugin class exists', 
-            class_exists('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce'));
+            class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce'));
         
         // Test 3: Plugin implements required methods
-        if (class_exists('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce')) {
-            $reflection = new \ReflectionClass('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce');
+        if (class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce')) {
+            $reflection = new \ReflectionClass('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce');
             $this->test('onPrivacyExportRequest method exists', 
                 $reflection->hasMethod('onPrivacyExportRequest'));
             $this->test('onPrivacyCanRemoveData method exists', 

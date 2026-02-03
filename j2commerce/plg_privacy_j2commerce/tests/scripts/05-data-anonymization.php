@@ -45,8 +45,8 @@ class DataAnonymizationTest
             require_once $classFile;
         }
         
-        if (class_exists('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce')) {
-            $reflection = new \ReflectionClass('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce');
+        if (class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce')) {
+            $reflection = new \ReflectionClass('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce');
             $this->test('anonymizeOrders method exists', 
                 $reflection->hasMethod('anonymizeOrders'));
             $this->test('onPrivacyRemoveData method exists', 
