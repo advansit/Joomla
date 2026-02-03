@@ -162,13 +162,13 @@ if [ -f "$MANIFEST" ]; then
         cp -r extracted/* "$INSTALL_PATH/"
         chown -R www-data:www-data "$INSTALL_PATH"
         
-        # Register plugin in database
+        # Register plugin in database (Joomla 5 requires custom_data field)
         mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
             INSERT INTO ${TABLE_PREFIX}extensions 
-            (name, type, element, folder, client_id, enabled, access, manifest_cache, params) 
-            VALUES ('$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 1, 1, '', '{}')
+            (name, type, element, folder, client_id, enabled, access, manifest_cache, params, custom_data) 
+            VALUES ('$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 1, 1, '', '{}', '')
             ON DUPLICATE KEY UPDATE enabled=1;
-        " 2>/dev/null && echo "✅ Plugin registered" || echo "⚠️ Plugin registration skipped"
+        " 2>&1 && echo "✅ Plugin registered" || echo "⚠️ Plugin registration failed"
         
     elif [ "$TYPE" = "component" ]; then
         INSTALL_PATH="/var/www/html/administrator/components/com_$ELEMENT"
@@ -178,11 +178,11 @@ if [ -f "$MANIFEST" ]; then
         cp -r extracted/administrator/components/com_$ELEMENT/* "$INSTALL_PATH/" 2>/dev/null || cp -r extracted/* "$INSTALL_PATH/"
         chown -R www-data:www-data "$INSTALL_PATH"
         
-        # Register component in database
+        # Register component in database (Joomla 5 requires custom_data field)
         mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
             INSERT INTO ${TABLE_PREFIX}extensions 
-            (name, type, element, folder, client_id, enabled, access, manifest_cache, params) 
-            VALUES ('$NAME', 'component', 'com_$ELEMENT', '', 1, 1, 1, '', '{}')
+            (name, type, element, folder, client_id, enabled, access, manifest_cache, params, custom_data) 
+            VALUES ('$NAME', 'component', 'com_$ELEMENT', '', 1, 1, 1, '', '{}', '')
             ON DUPLICATE KEY UPDATE enabled=1;
         " 2>/dev/null && echo "✅ Component registered" || echo "⚠️ Component registration skipped"
     fi

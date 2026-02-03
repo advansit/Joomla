@@ -165,18 +165,16 @@ if [ -f "$MANIFEST" ]; then
         # Debug: Show what we're installing
         echo "DEBUG: NAME=$NAME, ELEMENT=$ELEMENT, FOLDER=$FOLDER, TABLE_PREFIX=$TABLE_PREFIX"
         
-        # Register plugin in database
+        # Register plugin in database (Joomla 5 requires custom_data field)
         if mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
             INSERT INTO ${TABLE_PREFIX}extensions 
-            (name, type, element, folder, client_id, enabled, access, manifest_cache, params) 
-            VALUES ('$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 1, 1, '', '{}')
+            (name, type, element, folder, client_id, enabled, access, manifest_cache, params, custom_data) 
+            VALUES ('$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 1, 1, '', '{}', '')
             ON DUPLICATE KEY UPDATE enabled=1;
         " 2>&1; then
             echo "✅ Plugin registered in database"
         else
-            echo "⚠️ Plugin registration failed, trying alternative method..."
-            # Try with explicit database selection
-            mysql -h mysql -u joomla -pjoomla_pass -e "USE joomla_db; INSERT INTO ${TABLE_PREFIX}extensions (name, type, element, folder, client_id, enabled, access, manifest_cache, params) VALUES ('$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 1, 1, '', '{}') ON DUPLICATE KEY UPDATE enabled=1;" 2>&1 || echo "❌ Plugin registration failed"
+            echo "⚠️ Plugin registration failed"
         fi
         
     elif [ "$TYPE" = "component" ]; then
