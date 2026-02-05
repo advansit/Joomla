@@ -81,12 +81,13 @@ class ScanningTest
     {
         $query = $this->db->getQuery(true)
             ->insert('#__extensions')
-            ->columns(['name', 'type', 'element', 'folder', 'enabled', 'manifest_cache'])
+            ->columns(['name', 'type', 'element', 'folder', 'client_id', 'enabled', 'manifest_cache'])
             ->values(
                 $this->db->quote($name) . ',' .
                 $this->db->quote('plugin') . ',' .
                 $this->db->quote($element) . ',' .
                 $this->db->quote('j2store') . ',' .
+                '0,' .
                 '0,' .
                 $this->db->quote(json_encode($manifest))
             );
