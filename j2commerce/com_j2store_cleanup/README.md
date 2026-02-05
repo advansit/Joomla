@@ -28,27 +28,51 @@ Until now, there was no automated way to remove old J2Store extensions that are 
 4. Access via **Components → J2Store Cleanup**
 ## Usage
 
-### Scanning
-1. **Components → J2Store Cleanup**
-2. Automatic scan on load
-3. Review found extensions
-4. Check compatibility status
+### Access
+Navigate to: **Components → J2Store Cleanup**
 
-### Removing
-1. Select extensions to remove
-2. Click **Remove**
-3. Confirm removal
-4. Extensions uninstalled
+URL: `administrator/index.php?option=com_j2store_cleanup`
 
-⚠️ **Always backup before removing extensions**
+### Interface Overview
+The component displays:
+
+1. **Detection Criteria Box** - Explains how incompatible extensions are identified
+2. **Incompatible Extensions Table** - Red-highlighted extensions that need removal/upgrade
+3. **Compatible Extensions Table** - Green-highlighted extensions that are safe
+
+### Workflow
+
+1. **Review Detection Criteria** - Understand why extensions are flagged
+2. **Check Incompatible Extensions** - Review the "Reason" column for each
+3. **Select Extensions** - Use checkboxes to select extensions for removal
+4. **Remove** - Click "Remove Selected Extensions"
+5. **Confirm** - Read the warning and confirm removal
+
+### Table Columns
+
+| Column | Description |
+|--------|-------------|
+| Checkbox | Select for removal |
+| Name | Extension display name |
+| Type | plugin, component, module, etc. |
+| Element | Technical identifier (e.g., `app_gdpr`) |
+| Version | Installed version (red badge if < 4.0.0) |
+| Status | Enabled/Disabled badge |
+| Reason | Why it's marked incompatible |
+
+⚠️ **Always create a full backup (Akeeba Backup) before removing extensions!**
 
 ## What Gets Removed
 
-- J2Store plugins
-- J2Store modules
-- J2Store components
-- J2Store libraries
-- Associated database tables (optional)
+When you remove an extension, the component uses **Joomla's Installer API** for proper uninstallation:
+
+1. **Uninstall scripts** - Runs the extension's `uninstall()` method
+2. **Extension files** - Deletes all files from the extension folder
+3. **Database entry** - Removes the record from `#__extensions`
+4. **Media files** - Removes files from `/media/` folder
+5. **Language files** - Removes language strings
+
+**Note:** Extension-specific database tables (e.g., `#__j2store_*`) are only removed if the extension's uninstall script handles them.
 
 ## What Stays
 
@@ -64,14 +88,19 @@ This component has automated tests that run on every push via GitHub Actions.
 ### Test Suites
 
 1. **Installation** - Component registration, file verification
-2. **Scanning** - J2Store extension detection, mock extension creation
-3. **Cleanup** - Extension removal, J2Commerce preservation
-4. **Uninstall** - Component removal, verification
+2. **Scanning** - Version detection, authorUrl/authorEmail checks, protected extensions
+3. **Cleanup** - Extension removal, batch removal, isolation tests
+4. **UI Elements** - Interface rendering
+5. **Security** - CSRF protection, SQL injection prevention
+6. **Display Functionality** - Table rendering, badges
+7. **Safety Checks** - Protected extensions list, edge cases
+8. **Language Support** - Multi-language strings
+9. **Uninstall** - Component removal, verification
 
 ### Running Tests Locally
 
 ```bash
-cd tests
+cd j2commerce/com_j2store_cleanup/tests
 docker compose up -d
 sleep 120  # Wait for Joomla initialization
 ./run-tests.sh all
@@ -86,13 +115,25 @@ Test results are saved in `tests/test-results/` and committed to `tests/logs/`.
 ```
 com_j2store_cleanup/
 ├── README.md
-├── VERSION
+├── VERSION                           # Current version (1.1.0)
 ├── LICENSE.txt
-├── j2store_cleanup.xml
+├── com_j2store_cleanup.xml           # Joomla manifest
+├── script.php                        # Install/update script
 ├── administrator/
-│   ├── j2store_cleanup.php
-│   └── language/ (en-CH, de-CH, fr-FR)
+│   └── components/
+│       └── com_j2store_cleanup/
+│           └── j2store_cleanup.php   # Main component file
+│   └── language/
+│       ├── en-GB/
+│       ├── de-CH/
+│       └── fr-FR/
+├── updates/
+│   └── update.xml                    # Joomla update server
 └── tests/
+    ├── scripts/                      # Test scripts (01-09)
+    ├── docker-compose.yml
+    ├── run-tests.sh
+    └── test.env
 ```
 
 ## Troubleshooting
@@ -166,18 +207,62 @@ The component will **never** remove:
 
 ## Extension Detection
 
-### Detected Patterns
-The component identifies J2Store extensions by:
-- Extension name prefix: `j2store_*`, `plg_j2store_*`, `mod_j2store_*`
-- Component element: `com_j2store`
-- Plugin group: `j2store`
-- Module prefix: `mod_j2store`
+### Finding J2Store Extensions
+The component finds extensions by searching the `#__extensions` table for:
+- Element contains `j2store` or `j2commerce`
+- Plugin folder equals `j2store`
+
+### Incompatibility Detection
+Extensions are marked as **incompatible** based on three criteria (checked in order):
+
+| Criterion | Description | Reliability |
+|-----------|-------------|-------------|
+| **Version < 4.0.0** | Old J2Store plugins use versions like 1.x, 2.x, 3.x. J2Commerce 4.x plugins start at version 4.0.0 | High |
+| **authorUrl contains "j2store.org"** | Legacy J2Store extensions link to the old j2store.org website | High |
+| **authorEmail contains "@j2store.org"** | Extensions from the original J2Store team use @j2store.org emails | High |
+
+### Why Not Just Check "Enabled" Status?
+A disabled plugin is not necessarily incompatible - users may have intentionally disabled it. The version and author checks provide reliable detection regardless of enabled status.
+
+### Protected Extensions
+The following extensions are **never** marked as incompatible:
+- `com_j2store` - Core J2Commerce component
+- `com_j2store_cleanup` - This cleanup tool
+- `com_j2commerce_importexport` - Advans Import/Export component
+- `plg_privacy_j2commerce` - Advans Privacy plugin
+- `plg_j2commerce_productcompare` - Advans Product Compare plugin
+- Any extension with `authorUrl` containing `j2commerce.com`
+
+### Detection Examples
+
+**Incompatible (will be flagged):**
+```json
+{
+  "name": "GDPR",
+  "version": "1.0.16",
+  "author": "Alagesan",
+  "authorUrl": "http://www.j2store.org",
+  "authorEmail": "supports@j2store.org"
+}
+```
+Reason: Version 1.0.16 < 4.0.0
+
+**Compatible (will NOT be flagged):**
+```json
+{
+  "name": "GDPR",
+  "version": "4.0.4",
+  "author": "J2Commerce",
+  "authorUrl": "https://www.j2commerce.com",
+  "authorEmail": "support@j2commerce.com"
+}
+```
 
 ### False Positives
 If legitimate extensions are detected:
 1. Do not remove them
 2. Report to support with extension details
-3. Manually exclude from removal list
+3. Check if a J2Commerce 4.x version is available
 
 ## Multi-Language Support
 
