@@ -1,0 +1,36 @@
+=== Scanning Tests (v1.1.0 Detection Logic) ===
+
+--- Version Detection ---
+Test: Version 1.0.16 detected as incompatible... PASS
+Test: Reason contains version info... PASS
+Test: Version 4.0.4 detected as compatible... PASS
+Test: Version 3.9.9 detected as incompatible... PASS
+
+--- authorUrl Detection ---
+Test: authorUrl j2store.org detected as incompatible... PASS
+Test: Reason mentions j2store.org... PASS
+Test: authorUrl j2commerce.com detected as compatible... PASS
+
+--- authorEmail Detection ---
+Test: authorEmail @j2store.org detected as incompatible... PASS
+Test: Reason mentions @j2store.org... PASS
+Test: authorEmail @j2commerce.com detected as compatible... PASS
+
+--- Null/Invalid Manifest Handling ---
+Test: Null manifest detected as incompatible... PASS
+Test: Reason mentions invalid manifest... PASS
+Test: Empty manifest with unknown version is compatible... PASS
+
+--- Protected Extensions ---
+Test: com_j2store is protected (not incompatible)... PASS
+Test: com_j2store_cleanup is protected... PASS
+Test: plg_privacy_j2commerce is protected... PASS
+
+--- Real-World Examples ---
+Test: Old GDPR v1.0.16 detected as incompatible... PASS
+Test: New GDPR v4.0.4 detected as compatible... PASS
+
+=== Scanning Test Summary ===
+Passed: 18
+Failed: 0
+Total:  18

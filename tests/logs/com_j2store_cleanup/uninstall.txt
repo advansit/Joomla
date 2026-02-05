@@ -1,0 +1,6 @@
+=== Uninstall Tests ===
+
+Test: Basic check... PASS
+
+=== Uninstall Test Summary ===
+All tests completed.
