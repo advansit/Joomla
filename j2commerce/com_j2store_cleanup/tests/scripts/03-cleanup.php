@@ -32,15 +32,15 @@ class CleanupTest
     {
         $query = $this->db->getQuery(true)
             ->insert('#__extensions')
-            ->columns(['name', 'type', 'element', 'folder', 'enabled', 'manifest_cache', 'client_id'])
+            ->columns(['name', 'type', 'element', 'folder', 'client_id', 'enabled', 'manifest_cache'])
             ->values(
                 $this->db->quote($name) . ',' .
                 $this->db->quote($type) . ',' .
                 $this->db->quote($element) . ',' .
                 $this->db->quote($folder) . ',' .
                 '0,' .
-                $this->db->quote(json_encode($manifest)) . ',' .
-                '0'
+                '0,' .
+                $this->db->quote(json_encode($manifest))
             );
         $this->db->setQuery($query);
         $this->db->execute();
