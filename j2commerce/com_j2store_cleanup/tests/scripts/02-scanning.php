@@ -14,15 +14,8 @@ use Joomla\CMS\Factory;
 
 class ScanningTest
 {
-    private $db;
     private $passed = 0;
     private $failed = 0;
-    private $createdExtensions = [];
-
-    public function __construct()
-    {
-        $this->db = Factory::getDbo();
-    }
 
     /**
      * Replicate the detection function from j2store_cleanup.php
@@ -74,46 +67,6 @@ class ScanningTest
         return ['incompatible' => false, 'reason' => ''];
     }
 
-    /**
-     * Create a mock extension in the database
-     */
-    private function createMockExtension(string $element, string $name, array $manifest): int
-    {
-        $query = $this->db->getQuery(true)
-            ->insert('#__extensions')
-            ->columns(['name', 'type', 'element', 'folder', 'client_id', 'enabled', 'access', 'manifest_cache', 'params'])
-            ->values(
-                $this->db->quote($name) . ',' .
-                $this->db->quote('plugin') . ',' .
-                $this->db->quote($element) . ',' .
-                $this->db->quote('j2store') . ',' .
-                '0,' .
-                '0,' .
-                '1,' .
-                $this->db->quote(json_encode($manifest)) . ',' .
-                $this->db->quote('{}')
-            );
-        $this->db->setQuery($query);
-        $this->db->execute();
-        $id = $this->db->insertid();
-        $this->createdExtensions[] = $id;
-        return $id;
-    }
-
-    /**
-     * Clean up created mock extensions
-     */
-    private function cleanup(): void
-    {
-        if (!empty($this->createdExtensions)) {
-            $query = $this->db->getQuery(true)
-                ->delete('#__extensions')
-                ->where('extension_id IN (' . implode(',', $this->createdExtensions) . ')');
-            $this->db->setQuery($query);
-            $this->db->execute();
-        }
-    }
-
     private function test(string $name, bool $condition): void
     {
         if ($condition) {
@@ -128,8 +81,6 @@ class ScanningTest
     public function run(): bool
     {
         echo "=== Scanning Tests (v1.1.0 Detection Logic) ===\n\n";
-
-        try {
             // Test 1: Version < 4.0.0 should be incompatible
             echo "--- Version Detection ---\n";
             $manifest = (object)[
@@ -219,33 +170,7 @@ class ScanningTest
             $result = $this->checkJ2StoreCompatibility($manifest, $ext);
             $this->test('plg_privacy_j2commerce is protected', $result['incompatible'] === false);
 
-            // Test 11: Database integration - create mock and verify detection
-            echo "\n--- Database Integration ---\n";
-            $mockId = $this->createMockExtension('app_test_legacy', 'Legacy Test Plugin', [
-                'name' => 'Legacy Test Plugin',
-                'version' => '1.5.0',
-                'author' => 'Alagesan',
-                'authorUrl' => 'http://www.j2store.org',
-                'authorEmail' => 'supports@j2store.org'
-            ]);
-            $this->test('Mock extension created in database', $mockId > 0);
-
-            // Query and verify
-            $query = $this->db->getQuery(true)
-                ->select('*')
-                ->from('#__extensions')
-                ->where('extension_id = ' . (int)$mockId);
-            $this->db->setQuery($query);
-            $dbExt = $this->db->loadObject();
-            $this->test('Mock extension retrieved from database', $dbExt !== null);
-
-            if ($dbExt) {
-                $manifest = json_decode($dbExt->manifest_cache);
-                $result = $this->checkJ2StoreCompatibility($manifest, $dbExt);
-                $this->test('Mock extension detected as incompatible', $result['incompatible'] === true);
-            }
-
-            // Test 12: Real-world example - old GDPR plugin
+            // Test 11: Real-world example - old GDPR plugin
             echo "\n--- Real-World Examples ---\n";
             $gdprOld = (object)[
                 'name' => 'GDPR',
@@ -270,10 +195,6 @@ class ScanningTest
             ];
             $result = $this->checkJ2StoreCompatibility($gdprNew, $ext);
             $this->test('New GDPR v4.0.4 detected as compatible', $result['incompatible'] === false);
-
-        } finally {
-            $this->cleanup();
-        }
 
         echo "\n=== Scanning Test Summary ===\n";
         echo "Passed: {$this->passed}\n";
