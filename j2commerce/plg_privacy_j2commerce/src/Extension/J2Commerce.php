@@ -15,6 +15,8 @@ use Joomla\CMS\Event\Privacy\ExportRequestEvent;
 use Joomla\CMS\Event\Privacy\RemoveDataEvent;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
+use Joomla\CMS\Log\Log;
+use Joomla\CMS\Mail\MailerFactoryInterface;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Uri\Uri;
@@ -362,24 +364,68 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     /**
      * Process data removal for user
      */
+    /**
+     * Process data removal request.
+     * 
+     * Per Swiss law (OR Art. 958f, MWSTG Art. 70):
+     * - Orders within retention period (10 years) are KEPT with full address data
+     * - Orders outside retention period are anonymized
+     * - Address book entries are always deleted
+     * - Cart data is always deleted
+     *
+     * @param User|null $user User object
+     */
     protected function processDataRemoval(?User $user): void
     {
         if (!$user) {
             return;
         }
 
-        $retentionCheck = $this->checkRetentionPeriod($user->id);
-        if (!$retentionCheck['can_delete']) {
-            return;
-        }
+        // Log the deletion request
+        $this->logActivity('data_deletion_requested', $user->id);
+        $this->sendAdminNotification('data_deletion', $user);
 
-        if ($this->params->get('anonymize_orders', 1)) {
-            $this->anonymizeOrders($user->id);
-        }
-
+        // Always delete address book entries (not order-related)
         if ($this->params->get('delete_addresses', 1)) {
             $this->deleteAddresses($user->id);
+            $this->logActivity('all_addresses_deleted', $user->id);
         }
+
+        // Always delete cart data
+        $this->deleteCartData($user->id);
+
+        // Anonymize only orders OUTSIDE retention period
+        // Orders within retention period are kept intact for legal compliance
+        if ($this->params->get('anonymize_orders', 1)) {
+            $this->anonymizeOrders($user->id);
+            $this->logActivity('orders_anonymized', $user->id, 'Orders outside retention period anonymized');
+        }
+    }
+
+    /**
+     * Delete cart data for user
+     *
+     * @param int $userId User ID
+     */
+    protected function deleteCartData(int $userId): void
+    {
+        $db = $this->getDatabase();
+
+        // Delete cart items
+        $query = $this->createDbQuery()
+            ->delete($db->quoteName('#__j2store_cartitems'))
+            ->where($db->quoteName('user_id') . ' = :userid')
+            ->bind(':userid', $userId, ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
+
+        // Delete cart
+        $query = $this->createDbQuery()
+            ->delete($db->quoteName('#__j2store_carts'))
+            ->where($db->quoteName('user_id') . ' = :userid')
+            ->bind(':userid', $userId, ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
     }
 
     protected function checkRetentionPeriod(int $userId): array
@@ -509,9 +555,20 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         return $message;
     }
 
+    /**
+     * Anonymize orders that are OUTSIDE the retention period.
+     * Orders within retention period (default 10 years) are kept intact
+     * due to Swiss legal requirements (OR Art. 958f, MWSTG Art. 70).
+     *
+     * @param int $userId User ID
+     */
     protected function anonymizeOrders(int $userId): void
     {
         $db = $this->getDatabase();
+        $retentionYears = (int) $this->params->get('retention_years', 10);
+        
+        // Calculate cutoff date - only anonymize orders OLDER than retention period
+        $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$retentionYears} years"));
 
         $query = $this->createDbQuery()
             ->update($db->quoteName('#__j2store_orders'))
@@ -533,7 +590,9 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 $db->quoteName('shipping_zip') . ' = ' . $db->quote(''),
             ])
             ->where($db->quoteName('user_id') . ' = :userid')
-            ->bind(':userid', $userId, ParameterType::INTEGER);
+            ->where($db->quoteName('created_on') . ' < :cutoff')
+            ->bind(':userid', $userId, ParameterType::INTEGER)
+            ->bind(':cutoff', $cutoffDate, ParameterType::STRING);
 
         $db->setQuery($query);
         $db->execute();
@@ -550,6 +609,111 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
 
         $db->setQuery($query);
         $db->execute();
+    }
+
+    // =========================================================================
+    // ADMIN NOTIFICATIONS
+    // =========================================================================
+
+    /**
+     * Send admin notification email about privacy-related user action
+     *
+     * @param string $action Action type (address_deleted, data_export, etc.)
+     * @param User   $user   User who performed the action
+     * @param string $details Additional details
+     */
+    protected function sendAdminNotification(string $action, User $user, string $details = ''): void
+    {
+        if (!$this->params->get('admin_notifications', 0)) {
+            return;
+        }
+
+        $adminEmail = $this->params->get('admin_email', '');
+        if (empty($adminEmail)) {
+            // Fall back to site admin email
+            $adminEmail = Factory::getApplication()->get('mailfrom');
+        }
+
+        if (empty($adminEmail)) {
+            return;
+        }
+
+        $subject = Text::_('PLG_PRIVACY_J2COMMERCE_ADMIN_NOTIFICATION_SUBJECT');
+        
+        $langKey = 'PLG_PRIVACY_J2COMMERCE_ADMIN_NOTIFICATION_' . strtoupper($action);
+        $body = Text::sprintf($langKey, $user->username, $user->id);
+        
+        if (!empty($details)) {
+            $body .= "\n\n" . $details;
+        }
+
+        try {
+            $mailer = Factory::getContainer()->get(MailerFactoryInterface::class)->createMailer();
+            $mailer->addRecipient($adminEmail);
+            $mailer->setSubject($subject);
+            $mailer->setBody($body);
+            $mailer->send();
+        } catch (\Exception $e) {
+            // Log error but don't fail the operation
+            Log::add('Privacy admin notification failed: ' . $e->getMessage(), Log::WARNING, 'plg_privacy_j2commerce');
+        }
+    }
+
+    // =========================================================================
+    // ACTIVITY LOGGING
+    // =========================================================================
+
+    /**
+     * Log privacy-related activity
+     *
+     * @param string $action  Action type
+     * @param int    $userId  User ID
+     * @param string $details Additional details
+     */
+    protected function logActivity(string $action, int $userId, string $details = ''): void
+    {
+        if (!$this->params->get('activity_logging', 0)) {
+            return;
+        }
+
+        // Add to Joomla action log
+        Log::add(
+            sprintf('Privacy action: %s for user %d. %s', $action, $userId, $details),
+            Log::INFO,
+            'plg_privacy_j2commerce'
+        );
+
+        // Also store in database for audit trail
+        $db = $this->getDatabase();
+        
+        // Check if action_logs table exists (Joomla's built-in)
+        try {
+            $query = $this->createDbQuery()
+                ->insert($db->quoteName('#__action_logs'))
+                ->columns([
+                    $db->quoteName('message_language_key'),
+                    $db->quoteName('message'),
+                    $db->quoteName('log_date'),
+                    $db->quoteName('extension'),
+                    $db->quoteName('user_id'),
+                    $db->quoteName('item_id'),
+                    $db->quoteName('ip_address')
+                ])
+                ->values(
+                    $db->quote('PLG_PRIVACY_J2COMMERCE_LOG_' . strtoupper($action)) . ',' .
+                    $db->quote(json_encode(['action' => $action, 'details' => $details])) . ',' .
+                    $db->quote(Factory::getDate()->toSql()) . ',' .
+                    $db->quote('plg_privacy_j2commerce') . ',' .
+                    (int) $userId . ',' .
+                    (int) $userId . ',' .
+                    $db->quote(Factory::getApplication()->input->server->get('REMOTE_ADDR', '', 'string'))
+                );
+            $db->setQuery($query);
+            $db->execute();
+        } catch (\Exception $e) {
+            // Table might not exist or have different structure, just log to file
+            Log::add('Could not write to action_logs: ' . $e->getMessage(), Log::DEBUG, 'plg_privacy_j2commerce');
+        }
     }
 
     // =========================================================================
@@ -579,9 +743,16 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             $modified = true;
         }
 
-        if ($this->params->get('show_delete_address', 1) && $view === 'myprofile') {
-            $body = $this->injectDeleteAddressButtons($body);
-            $modified = true;
+        if ($view === 'myprofile') {
+            if ($this->params->get('show_delete_address', 1)) {
+                $body = $this->injectDeleteAddressButtons($body);
+                $modified = true;
+            }
+            
+            if ($this->params->get('show_privacy_section', 1)) {
+                $body = $this->injectPrivacySection($body);
+                $modified = true;
+            }
         }
 
         if ($modified) {
@@ -734,6 +905,117 @@ SCRIPT;
         return str_replace('</body>', $script . '</body>', $body);
     }
 
+    /**
+     * Inject privacy section into MyProfile page
+     */
+    protected function injectPrivacySection(string $body): string
+    {
+        // Find a good insertion point - after the main profile content
+        $insertionPatterns = [
+            '/<div[^>]*class="[^"]*j2store-myprofile-orders[^"]*"[^>]*>/i',
+            '/<div[^>]*class="[^"]*j2store-myprofile[^"]*"[^>]*>/i',
+            '/<div[^>]*id="j2store-myprofile[^"]*"[^>]*>/i',
+        ];
+
+        $privacyHtml = $this->getPrivacySectionHtml();
+        
+        foreach ($insertionPatterns as $pattern) {
+            if (preg_match($pattern, $body)) {
+                // Insert before the matched element
+                $body = preg_replace($pattern, $privacyHtml . '$0', $body, 1);
+                return $body;
+            }
+        }
+
+        // Fallback: insert before </main> or </body>
+        if (strpos($body, '</main>') !== false) {
+            $body = str_replace('</main>', $privacyHtml . '</main>', $body);
+        }
+
+        return $body;
+    }
+
+    /**
+     * Generate the privacy section HTML
+     */
+    protected function getPrivacySectionHtml(): string
+    {
+        $privacyRequestUrl = Route::_('index.php?option=com_privacy&view=request');
+        
+        $tabTitle = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_TAB');
+        $title = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_TITLE');
+        $intro = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_INTRO');
+        $dataTitle = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_DATA_WE_STORE');
+        $dataList = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_DATA_LIST');
+        $exportTitle = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_EXPORT_TITLE');
+        $exportDesc = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_EXPORT_DESC');
+        $exportBtn = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_EXPORT_BTN');
+        $deleteTitle = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_DELETE_TITLE');
+        $deleteDesc = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_DELETE_DESC');
+        $deleteBtn = Text::_('PLG_PRIVACY_J2COMMERCE_MYPROFILE_DELETE_BTN');
+        $retentionTitle = Text::_('PLG_PRIVACY_J2COMMERCE_RETENTION_NOTICE_TITLE');
+        $retentionNotice = Text::_('PLG_PRIVACY_J2COMMERCE_RETENTION_NOTICE');
+        $paymentTitle = Text::_('PLG_PRIVACY_J2COMMERCE_PAYMENT_PROVIDER_TITLE');
+        $paymentNotice = Text::_('PLG_PRIVACY_J2COMMERCE_PAYMENT_PROVIDER_NOTICE');
+
+        return <<<HTML
+<div class="j2store-privacy-section card mb-4">
+    <div class="card-header">
+        <h3 class="card-title mb-0">
+            <span class="icon-shield" aria-hidden="true"></span>
+            {$tabTitle}
+        </h3>
+    </div>
+    <div class="card-body">
+        <h4>{$title}</h4>
+        <p>{$intro}</p>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5><span class="icon-download" aria-hidden="true"></span> {$exportTitle}</h5>
+                        <p class="text-muted">{$exportDesc}</p>
+                        <a href="{$privacyRequestUrl}" class="btn btn-primary">
+                            <span class="icon-download" aria-hidden="true"></span>
+                            {$exportBtn}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5><span class="icon-trash" aria-hidden="true"></span> {$deleteTitle}</h5>
+                        <p class="text-muted">{$deleteDesc}</p>
+                        <a href="{$privacyRequestUrl}" class="btn btn-danger">
+                            <span class="icon-trash" aria-hidden="true"></span>
+                            {$deleteBtn}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            <h5><span class="icon-info-circle" aria-hidden="true"></span> {$dataTitle}</h5>
+            <p class="mb-0">{$dataList}</p>
+        </div>
+
+        <div class="alert alert-warning mt-3">
+            <h5><span class="icon-clock" aria-hidden="true"></span> {$retentionTitle}</h5>
+            <p class="mb-0">{$retentionNotice}</p>
+        </div>
+
+        <div class="alert alert-secondary mt-3">
+            <h5><span class="icon-credit-card" aria-hidden="true"></span> {$paymentTitle}</h5>
+            <p class="mb-0">{$paymentNotice}</p>
+        </div>
+    </div>
+</div>
+HTML;
+    }
+
     public function onAjaxJ2commercePrivacy(): array
     {
         $app = $this->getApplication();
@@ -783,6 +1065,12 @@ SCRIPT;
 
         try {
             $db->execute();
+            
+            // Log activity and notify admin
+            $user = Factory::getApplication()->getIdentity();
+            $this->logActivity('address_deleted', $userId, 'Address ID: ' . $addressId);
+            $this->sendAdminNotification('address_deleted', $user, 'Address ID: ' . $addressId);
+            
             return ['success' => true];
         } catch (\Exception $e) {
             return ['success' => false, 'message' => Text::_('PLG_PRIVACY_J2COMMERCE_DELETE_ADDRESS_ERROR')];

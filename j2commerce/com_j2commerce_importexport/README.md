@@ -31,6 +31,9 @@ Products are matched and updated (instead of duplicated) using three methods:
 - Configure menu type and access level
 - Set default category for new products
 - Import without stock management (unlimited inventory)
+- **Quantity Update Mode** - Choose how stock quantities are updated:
+  - **Replace**: Overwrite existing stock with imported value (default)
+  - **Add**: Add imported quantity to existing stock (useful for restocking)
 
 ### Supported Formats
 - **JSON** - Recommended for full export, includes field documentation
@@ -67,8 +70,19 @@ The export includes all product data in a single JSON file that can be re-import
    - **Create menu items** - Auto-create menu entries
    - **Menu type** - Target menu for new items
    - **Access level** - Visibility of menu items
+   - **Quantity Update Mode** - Replace or add to existing stock
 4. Click **Preview** to verify data
 5. Click **Start Import**
+
+### Quantity Update Mode
+When importing products with stock quantities, you can choose how the quantity is updated:
+
+- **Replace (default)**: The imported quantity overwrites the existing stock
+  - Example: Existing stock = 50, Import quantity = 30 → Final stock = 30
+  
+- **Add**: The imported quantity is added to the existing stock
+  - Example: Existing stock = 50, Import quantity = 30 → Final stock = 80
+  - Useful for restocking scenarios where you want to add received inventory
 
 ### Image Import Workflow
 Images must be uploaded to the server before import:

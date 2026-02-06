@@ -180,6 +180,54 @@
                     <option value="1">JYES</option>
                     <option value="0">JNO</option>
                 </field>
+
+                <field
+                    name="show_privacy_section"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_SHOW_PRIVACY_SECTION_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_SHOW_PRIVACY_SECTION_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+            </fieldset>
+
+            <!-- Admin Notifications & Logging -->
+            <fieldset name="notifications" label="PLG_PRIVACY_J2COMMERCE_FIELDSET_NOTIFICATIONS">
+                <field
+                    name="admin_notifications"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_ADMIN_NOTIFICATIONS_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_ADMIN_NOTIFICATIONS_DESC"
+                    default="0"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+
+                <field
+                    name="admin_email"
+                    type="email"
+                    label="PLG_PRIVACY_J2COMMERCE_ADMIN_EMAIL_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_ADMIN_EMAIL_DESC"
+                    default=""
+                    showon="admin_notifications:1"
+                />
+
+                <field
+                    name="activity_logging"
+                    type="radio"
+                    label="PLG_PRIVACY_J2COMMERCE_ACTIVITY_LOGGING_LABEL"
+                    description="PLG_PRIVACY_J2COMMERCE_ACTIVITY_LOGGING_DESC"
+                    default="0"
+                    class="btn-group btn-group-yesno"
+                >
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
             </fieldset>
         </fields>
     </config>
