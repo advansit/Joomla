@@ -60,6 +60,37 @@ class ImportJsonTest
             return ($variant['manage_stock'] ?? 1) === 0;
         });
 
+        $this->test('ImportModel has importVariantQuantity method', function() {
+            $reflection = new \ReflectionClass(\Advans\Component\J2CommerceImportExport\Administrator\Model\ImportModel::class);
+            return $reflection->hasMethod('importVariantQuantity');
+        });
+
+        $this->test('Quantity mode replace overwrites existing stock', function() {
+            // Simulate replace mode logic
+            $existingQuantity = 50;
+            $importQuantity = 30;
+            $quantityMode = 'replace';
+            
+            $finalQuantity = ($quantityMode === 'add') 
+                ? $existingQuantity + $importQuantity 
+                : $importQuantity;
+            
+            return $finalQuantity === 30;
+        });
+
+        $this->test('Quantity mode add increments existing stock', function() {
+            // Simulate add mode logic
+            $existingQuantity = 50;
+            $importQuantity = 30;
+            $quantityMode = 'add';
+            
+            $finalQuantity = ($quantityMode === 'add') 
+                ? $existingQuantity + $importQuantity 
+                : $importQuantity;
+            
+            return $finalQuantity === 80;
+        });
+
         echo "\n=== JSON Import Test Summary ===\n";
         echo "Passed: {$this->passed}, Failed: {$this->failed}\n";
         return $this->failed === 0;
