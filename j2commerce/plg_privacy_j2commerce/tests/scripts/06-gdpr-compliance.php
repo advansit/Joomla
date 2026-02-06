@@ -47,6 +47,8 @@ class GDPRComplianceTest
         
         if (class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce')) {
             $reflection = new \ReflectionClass('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce');
+            
+            // Core GDPR methods
             $this->test('checkRetentionPeriod method exists', 
                 $reflection->hasMethod('checkRetentionPeriod'));
             $this->test('isLifetimeLicense method exists', 
@@ -59,6 +61,20 @@ class GDPRComplianceTest
                 $reflection->hasMethod('onPrivacyCanRemoveData'));
             $this->test('onPrivacyRemoveData method exists', 
                 $reflection->hasMethod('onPrivacyRemoveData'));
+            
+            // Data removal methods
+            $this->test('anonymizeOrders method exists', 
+                $reflection->hasMethod('anonymizeOrders'));
+            $this->test('deleteAddresses method exists', 
+                $reflection->hasMethod('deleteAddresses'));
+            $this->test('deleteCartData method exists', 
+                $reflection->hasMethod('deleteCartData'));
+            
+            // Audit trail methods
+            $this->test('sendAdminNotification method exists', 
+                $reflection->hasMethod('sendAdminNotification'));
+            $this->test('logActivity method exists', 
+                $reflection->hasMethod('logActivity'));
         }
         
         echo "\n=== GDPR Compliance Test Summary ===\n";

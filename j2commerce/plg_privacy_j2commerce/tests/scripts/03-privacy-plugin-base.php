@@ -69,12 +69,36 @@ class PrivacyPluginBaseTest
         // Test 3: Plugin implements required methods
         if (class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce')) {
             $reflection = new \ReflectionClass('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce');
+            
+            // Core privacy methods
             $this->test('onPrivacyExportRequest method exists', 
                 $reflection->hasMethod('onPrivacyExportRequest'));
             $this->test('onPrivacyCanRemoveData method exists', 
                 $reflection->hasMethod('onPrivacyCanRemoveData'));
             $this->test('onPrivacyRemoveData method exists', 
                 $reflection->hasMethod('onPrivacyRemoveData'));
+            
+            // Admin notification and logging methods
+            $this->test('sendAdminNotification method exists', 
+                $reflection->hasMethod('sendAdminNotification'));
+            $this->test('logActivity method exists', 
+                $reflection->hasMethod('logActivity'));
+            
+            // Cart data deletion
+            $this->test('deleteCartData method exists', 
+                $reflection->hasMethod('deleteCartData'));
+            
+            // MyProfile privacy section
+            $this->test('injectPrivacySection method exists', 
+                $reflection->hasMethod('injectPrivacySection'));
+            $this->test('getPrivacySectionHtml method exists', 
+                $reflection->hasMethod('getPrivacySectionHtml'));
+            
+            // Frontend features
+            $this->test('onAfterRender method exists', 
+                $reflection->hasMethod('onAfterRender'));
+            $this->test('onAjaxJ2commercePrivacy method exists', 
+                $reflection->hasMethod('onAjaxJ2commercePrivacy'));
         }
         
         // Test 4: Plugin parameters are accessible
