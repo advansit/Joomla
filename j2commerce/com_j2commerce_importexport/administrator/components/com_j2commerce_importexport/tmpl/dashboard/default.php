@@ -157,6 +157,15 @@ HTMLHelper::_('bootstrap.collapse');
                                             </select>
                                         </div>
 
+                                        <div class="mb-2">
+                                            <label for="opt-quantity-mode" class="form-label"><?php echo Text::_('COM_J2COMMERCE_IMPORTEXPORT_QUANTITY_MODE_LABEL'); ?></label>
+                                            <select name="options[quantity_mode]" id="opt-quantity-mode" class="form-select form-select-sm">
+                                                <option value="replace"><?php echo Text::_('COM_J2COMMERCE_IMPORTEXPORT_QUANTITY_MODE_REPLACE'); ?></option>
+                                                <option value="add"><?php echo Text::_('COM_J2COMMERCE_IMPORTEXPORT_QUANTITY_MODE_ADD'); ?></option>
+                                            </select>
+                                            <small class="form-text text-muted"><?php echo Text::_('COM_J2COMMERCE_IMPORTEXPORT_QUANTITY_MODE_DESC'); ?></small>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>

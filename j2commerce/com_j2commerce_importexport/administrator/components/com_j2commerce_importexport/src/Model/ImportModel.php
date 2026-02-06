@@ -315,7 +315,7 @@ class ImportModel extends BaseDatabaseModel
             }
 
             // Import quantity
-            $this->importVariantQuantity($variantId, $variantData);
+            $this->importVariantQuantity($variantId, $variantData, $options);
 
             // Import tier prices
             if (!empty($variantData['tier_prices'])) {
@@ -324,27 +324,46 @@ class ImportModel extends BaseDatabaseModel
         }
     }
 
-    protected function importVariantQuantity(int $variantId, array $data): void
+    /**
+     * Import variant quantity with support for different update modes
+     *
+     * @param int   $variantId Variant ID
+     * @param array $data      Variant data including quantity
+     * @param array $options   Import options including quantity_mode (replace|add)
+     */
+    protected function importVariantQuantity(int $variantId, array $data, array $options = []): void
     {
         $db = $this->getDatabase();
+        $quantityMode = $options['quantity_mode'] ?? 'replace';
 
         $query = $db->getQuery(true)
-            ->select('j2store_productquantity_id')
+            ->select(['j2store_productquantity_id', 'quantity'])
             ->from($db->quoteName('#__j2store_productquantities'))
             ->where('variant_id = :variantid')
             ->bind(':variantid', $variantId, \Joomla\Database\ParameterType::INTEGER);
         $db->setQuery($query);
-        $existingId = $db->loadResult();
+        $existing = $db->loadObject();
+
+        $importQuantity = (int) ($data['quantity'] ?? 0);
+
+        // Calculate final quantity based on mode
+        if ($existing && $quantityMode === 'add') {
+            // Add mode: add imported quantity to existing stock
+            $finalQuantity = (int) $existing->quantity + $importQuantity;
+        } else {
+            // Replace mode (default): overwrite with imported quantity
+            $finalQuantity = $importQuantity;
+        }
 
         $qty = (object) [
             'variant_id' => $variantId,
-            'quantity' => $data['quantity'] ?? 0,
+            'quantity' => $finalQuantity,
             'on_hold' => $data['on_hold'] ?? 0,
             'sold' => $data['qty_sold'] ?? 0,
         ];
 
-        if ($existingId) {
-            $qty->j2store_productquantity_id = $existingId;
+        if ($existing) {
+            $qty->j2store_productquantity_id = $existing->j2store_productquantity_id;
             $db->updateObject('#__j2store_productquantities', $qty, 'j2store_productquantity_id');
         } else {
             $db->insertObject('#__j2store_productquantities', $qty);

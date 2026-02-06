@@ -9,6 +9,10 @@ GDPR/DSGVO compliance solution for J2Commerce. Features:
 - **Privacy Policy Link** - Configurable link to privacy policy article
 - **Address Management** - Frontend delete buttons for saved addresses
 - **Automated Data Cleanup** - Scheduled anonymization after retention period
+- **MyProfile Privacy Tab** - User-facing privacy management in J2Commerce profile
+- **Admin Notifications** - Email alerts on privacy-related user actions
+- **Activity Logging** - Audit trail for all privacy operations
+- **Legal Compliance** - Swiss OR Art. 958f / MWSTG Art. 70 compliant retention
 
 ---
 
@@ -240,13 +244,20 @@ Successful display of the retention notification confirms correct implementation
 - User profile data (optional)
 - Activity logs (optional)
 
-**What gets anonymized:**
+**Payment Data Notice:**
+Payment data (credit card details, bank information) is stored by payment service providers (Stripe, PayPal, etc.), not by this system. For payment data inquiries, users must contact the respective payment provider directly.
+
+**What gets anonymized (only for orders OUTSIDE retention period):**
 - Email address → `anonymized@example.com`
 - Name → `Anonymized User`
-- Phone → `000-000-0000`
-- Addresses → (deleted)
+- Phone → (cleared)
+- Addresses → (cleared)
 
-**What stays (anonymized):**
+**What stays intact (for orders WITHIN retention period):**
+- Complete order data including addresses
+- Required by Swiss law: OR Art. 958f, MWSTG Art. 70 (10 years)
+
+**What stays (anonymized orders):**
 - Order numbers
 - Order dates
 - Order amounts
@@ -617,6 +628,35 @@ Status: Complete
 - Immediate deletion
 - All data anonymized
 - No retention applies
+
+---
+
+## Legal Compliance
+
+### Swiss Data Retention Requirements
+
+This plugin complies with Swiss legal requirements:
+
+| Law | Requirement |
+|-----|-------------|
+| **OR Art. 958f** | Business documents must be retained for 10 years |
+| **MWSTG Art. 70** | VAT-relevant documents must be retained for 10 years |
+| **nDSG Art. 17** | Right to deletion, with exception for legal obligations |
+
+**Implementation:**
+- Orders within 10-year retention period: **Kept intact** (not anonymized)
+- Orders outside retention period: **Anonymized** on deletion request
+- Address book entries: **Deleted** immediately on request
+- Cart data: **Deleted** immediately on request
+
+### Payment Provider Data
+
+Payment data is processed by third-party payment providers:
+- **Stripe** - https://stripe.com/privacy
+- **PayPal** - https://www.paypal.com/privacy
+- **Other providers** - Contact directly
+
+This plugin does not store or have access to complete payment details. Users must contact payment providers directly for payment data inquiries.
 
 ---
 
