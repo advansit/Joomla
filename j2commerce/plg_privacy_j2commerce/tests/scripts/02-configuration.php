@@ -60,21 +60,22 @@ class ConfigurationTest
             $this->test('Support email parameter exists or uses default', $hasEmail);
         }
         
-        // Test 5: Check J2Store tables exist (optional - for production use)
+        // Test 5: Check J2Commerce tables exist (uses j2store_ prefix for compatibility)
         $tables = $this->db->getTableList();
         $prefix = $this->db->getPrefix();
         
         $hasOrders = in_array($prefix . 'j2store_orders', $tables);
         $hasItems = in_array($prefix . 'j2store_orderitems', $tables);
+        $hasAddresses = in_array($prefix . 'j2store_addresses', $tables);
+        $hasCarts = in_array($prefix . 'j2store_carts', $tables);
         $hasCustomFields = in_array($prefix . 'j2store_product_customfields', $tables);
         
-        if (!$hasOrders || !$hasItems || !$hasCustomFields) {
-            echo "⚠ J2Store tables not found (expected in test environment)\n";
-        } else {
-            $this->test('J2Store orders table exists', $hasOrders);
-            $this->test('J2Store order items table exists', $hasItems);
-            $this->test('J2Store custom fields table exists', $hasCustomFields);
-        }
+        // These tables should exist from mock-tables.sql
+        $this->test('J2Commerce orders table exists', $hasOrders);
+        $this->test('J2Commerce order items table exists', $hasItems);
+        $this->test('J2Commerce addresses table exists', $hasAddresses);
+        $this->test('J2Commerce carts table exists', $hasCarts);
+        $this->test('J2Commerce custom fields table exists', $hasCustomFields);
         
         echo "\n=== Configuration Test Summary ===\n";
         echo "Passed: {$this->passed}\n";
