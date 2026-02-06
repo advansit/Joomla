@@ -199,6 +199,18 @@ else
     echo "❌ No manifest found"
 fi
 
+# Install J2Commerce mock tables for testing
+if [ -f "/tmp/j2store-mock-tables.sql" ]; then
+    echo "Installing J2Commerce mock tables..."
+    # Replace #__ with actual table prefix
+    sed "s/#__/${TABLE_PREFIX}/g" /tmp/j2store-mock-tables.sql | \
+        mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null && \
+        echo "✅ J2Commerce mock tables installed" || \
+        echo "⚠️ Mock tables installation skipped (may already exist)"
+else
+    echo "⚠️ J2Commerce mock tables SQL not found at /tmp/j2store-mock-tables.sql"
+fi
+
 # Create a simple health check file
 echo "OK" > /var/www/html/health.txt
 chown www-data:www-data /var/www/html/health.txt

@@ -119,23 +119,24 @@ class PrivacyPluginBaseTest
             }
         }
         
-        // Test 5: Required database tables exist (optional in test environment)
+        // Test 5: Required J2Commerce database tables exist
         $tables = $this->db->getTableList();
         $prefix = $this->db->getPrefix();
         
         $hasOrders = in_array($prefix . 'j2store_orders', $tables);
         $hasAddresses = in_array($prefix . 'j2store_addresses', $tables);
-        $hasItems = in_array($prefix . 'j2store_order_items', $tables);
+        $hasItems = in_array($prefix . 'j2store_orderitems', $tables);
+        $hasCarts = in_array($prefix . 'j2store_carts', $tables);
+        $hasCartItems = in_array($prefix . 'j2store_cartitems', $tables);
         $hasCustomFields = in_array($prefix . 'j2store_product_customfields', $tables);
         
-        if (!$hasOrders || !$hasAddresses || !$hasItems || !$hasCustomFields) {
-            echo "⚠ J2Store tables not found (expected in test environment)\n";
-        } else {
-            $this->test('j2store_orders table exists', $hasOrders);
-            $this->test('j2store_addresses table exists', $hasAddresses);
-            $this->test('j2store_order_items table exists', $hasItems);
-            $this->test('j2store_product_customfields table exists', $hasCustomFields);
-        }
+        // These tables should exist from mock-tables.sql
+        $this->test('J2Commerce orders table exists', $hasOrders);
+        $this->test('J2Commerce addresses table exists', $hasAddresses);
+        $this->test('J2Commerce order items table exists', $hasItems);
+        $this->test('J2Commerce carts table exists', $hasCarts);
+        $this->test('J2Commerce cart items table exists', $hasCartItems);
+        $this->test('J2Commerce custom fields table exists', $hasCustomFields);
         
         echo "\n=== Privacy Plugin Base Test Summary ===\n";
         echo "Passed: {$this->passed}\n";
