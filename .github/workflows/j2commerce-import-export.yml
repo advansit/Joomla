@@ -13,7 +13,7 @@ jobs:
     name: Build Package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build
         run: |
           cd j2commerce/com_j2commerce_importexport
@@ -21,7 +21,7 @@ jobs:
           ./build.sh
           mkdir -p tests
           cp *.zip tests/extension.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: extension-package
           path: j2commerce/com_j2commerce_importexport/tests/extension.zip
@@ -31,7 +31,7 @@ jobs:
     name: PHP Syntax Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -64,8 +64,8 @@ jobs:
           - name: '07 - Uninstall'
             script: 'uninstall'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           name: extension-package
           path: j2commerce/com_j2commerce_importexport/tests/
@@ -79,7 +79,7 @@ jobs:
           cd j2commerce/com_j2commerce_importexport/tests
           chmod +x run-tests.sh
           ./run-tests.sh ${{ matrix.script }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: ${{ matrix.script }}-logs
@@ -96,7 +96,7 @@ jobs:
     needs: test
     if: always()
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: test-artifacts/
       - name: Collect and display logs
@@ -109,7 +109,7 @@ jobs:
               find "$dir" -name "*.txt" -exec cat {} \;
             fi
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: all-test-logs
           path: test-artifacts/
