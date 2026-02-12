@@ -12,7 +12,6 @@ namespace Advans\Plugin\Ajax\JoomlaAjaxForms\Extension;
 
 defined('_JEXEC') or die;
 
-use Joomla\CMS\Application\CMSApplicationInterface;
 use Joomla\CMS\Authentication\Authentication;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
@@ -37,13 +36,6 @@ use Joomla\Event\SubscriberInterface;
 class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 {
     use DatabaseAwareTrait;
-
-    /**
-     * Application instance
-     *
-     * @var CMSApplicationInterface
-     */
-    protected $app;
 
     /**
      * Load plugin language files automatically
@@ -100,7 +92,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             return $this->jsonError(Text::_('JINVALID_TOKEN'));
         }
 
-        $task = $this->app->input->get('task', '', 'cmd');
+        $task = $this->getApplication()->input->get('task', '', 'cmd');
 
         switch ($task) {
             case 'login':
@@ -151,9 +143,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function handleLogin(): string
     {
-        $username = $this->app->input->post->get('username', '', 'username');
-        $password = $this->app->input->post->get('password', '', 'raw');
-        $remember = $this->app->input->post->get('remember', false, 'bool');
+        $username = $this->getApplication()->input->post->get('username', '', 'username');
+        $password = $this->getApplication()->input->post->get('password', '', 'raw');
+        $remember = $this->getApplication()->input->post->get('remember', false, 'bool');
 
         // Validate input
         if (empty($username)) {
@@ -165,7 +157,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         }
 
         // Check if user is already logged in
-        $user = $this->app->getIdentity();
+        $user = $this->getApplication()->getIdentity();
         if ($user && !$user->guest) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_ALREADY_LOGGED_IN'));
         }
@@ -193,10 +185,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         
         if (!empty($mfaRecords)) {
             // MFA is required - store credentials in session for second step
-            $session = $this->app->getSession();
+            $session = $this->getApplication()->getSession();
             $session->set('ajax_mfa_user_id', $userId);
             $session->set('ajax_mfa_remember', $remember);
-            $session->set('ajax_mfa_return', $this->app->input->post->get('return', '', 'base64'));
+            $session->set('ajax_mfa_return', $this->getApplication()->input->post->get('return', '', 'base64'));
             $session->set('ajax_mfa_timestamp', time());
 
             // Get available MFA methods
@@ -230,10 +222,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             'silent'   => true,
         ];
 
-        $result = $this->app->login($credentials, $options);
+        $result = $this->getApplication()->login($credentials, $options);
 
         if ($result === true) {
-            $user = $this->app->getIdentity();
+            $user = $this->getApplication()->getIdentity();
             
             return $this->jsonSuccess(
                 Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
@@ -258,7 +250,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function handleMfaValidate(): string
     {
-        $session = $this->app->getSession();
+        $session = $this->getApplication()->getSession();
         
         // Get stored MFA session data
         $userId = $session->get('ajax_mfa_user_id', 0);
@@ -271,8 +263,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_SESSION_EXPIRED'));
         }
 
-        $code = $this->app->input->post->get('code', '', 'string');
-        $recordId = $this->app->input->post->get('record_id', 0, 'int');
+        $code = $this->getApplication()->input->post->get('code', '', 'string');
+        $recordId = $this->getApplication()->input->post->get('record_id', 0, 'int');
 
         if (empty($code)) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_REQUIRED'));
@@ -304,11 +296,11 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
         // Set the user as logged in
         $session->set('user', $user);
-        $this->app->loadIdentity($user);
+        $this->getApplication()->loadIdentity($user);
 
         // Trigger login event
         PluginHelper::importPlugin('user');
-        $this->app->triggerEvent('onUserLogin', [(array) $user, $options]);
+        $this->getApplication()->triggerEvent('onUserLogin', [(array) $user, $options]);
 
         return $this->jsonSuccess(
             Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
@@ -395,10 +387,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         PluginHelper::importPlugin('multifactorauth');
 
         // Get the MFA plugin for this method
-        $event = new \Joomla\CMS\Event\MultiFactor\Validate($record, $this->app->getIdentity() ?: User::getInstance($record->user_id), $code);
+        $event = new \Joomla\CMS\Event\MultiFactor\Validate($record, $this->getApplication()->getIdentity() ?: User::getInstance($record->user_id), $code);
         
         try {
-            $this->app->getDispatcher()->dispatch('onUserMultifactorValidate', $event);
+            $this->getApplication()->getDispatcher()->dispatch('onUserMultifactorValidate', $event);
             return $event->isValid();
         } catch (\Exception $e) {
             // Fallback: Manual TOTP validation for the most common case
@@ -512,7 +504,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function clearMfaSession(): void
     {
-        $session = $this->app->getSession();
+        $session = $this->getApplication()->getSession();
         $session->clear('ajax_mfa_user_id');
         $session->clear('ajax_mfa_remember');
         $session->clear('ajax_mfa_return');
@@ -526,13 +518,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function handleLogout(): string
     {
-        $user = $this->app->getIdentity();
+        $user = $this->getApplication()->getIdentity();
         
         if (!$user || $user->guest) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NOT_LOGGED_IN'));
         }
 
-        $result = $this->app->logout();
+        $result = $this->getApplication()->logout();
 
         if ($result === true) {
             return $this->jsonSuccess(
@@ -558,12 +550,12 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         }
 
         // Get form data
-        $name      = $this->app->input->post->get('name', '', 'string');
-        $username  = $this->app->input->post->get('username', '', 'username');
-        $email     = $this->app->input->post->get('email', '', 'string');
-        $email2    = $this->app->input->post->get('email2', '', 'string');
-        $password  = $this->app->input->post->get('password', '', 'raw');
-        $password2 = $this->app->input->post->get('password2', '', 'raw');
+        $name      = $this->getApplication()->input->post->get('name', '', 'string');
+        $username  = $this->getApplication()->input->post->get('username', '', 'username');
+        $email     = $this->getApplication()->input->post->get('email', '', 'string');
+        $email2    = $this->getApplication()->input->post->get('email2', '', 'string');
+        $password  = $this->getApplication()->input->post->get('password', '', 'raw');
+        $password2 = $this->getApplication()->input->post->get('password2', '', 'raw');
 
         // Validate required fields
         if (empty($name)) {
@@ -679,7 +671,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function getLoginRedirect(): string
     {
-        $return = $this->app->input->post->get('return', '', 'base64');
+        $return = $this->getApplication()->input->post->get('return', '', 'base64');
         
         if ($return) {
             $return = base64_decode($return);
@@ -698,7 +690,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function getLogoutRedirect(): string
     {
-        $return = $this->app->input->post->get('return', '', 'base64');
+        $return = $this->getApplication()->input->post->get('return', '', 'base64');
         
         if ($return) {
             $return = base64_decode($return);
@@ -807,7 +799,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function handleReset(): string
     {
-        $email = $this->app->input->post->get('email', '', 'string');
+        $email = $this->getApplication()->input->post->get('email', '', 'string');
         $email = trim($email);
 
         // Validate email
@@ -871,7 +863,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     protected function handleRemind(): string
     {
-        $email = $this->app->input->post->get('email', '', 'string');
+        $email = $this->getApplication()->input->post->get('email', '', 'string');
         $email = trim($email);
 
         // Validate email

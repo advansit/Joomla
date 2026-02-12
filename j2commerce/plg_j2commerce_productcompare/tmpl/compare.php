@@ -18,7 +18,7 @@ if (empty($productIds)) {
 }
 
 // Load products
-$db = Factory::getDbo();
+$db = Factory::getContainer()->get('DatabaseDriver');
 $query = $db->getQuery(true)
     ->select('*')
     ->from($db->quoteName('#__j2store_products'))

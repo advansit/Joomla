@@ -23,7 +23,7 @@ class ProductCompare extends CMSPlugin
 
     public function onAfterDispatch()
     {
-        $app = Factory::getApplication();
+        $app = $this->getApplication();
         
         if ($app->isClient('administrator')) {
             return;
@@ -71,7 +71,7 @@ class ProductCompare extends CMSPlugin
 
     protected function addCompareBar()
     {
-        $app = Factory::getApplication();
+        $app = $this->getApplication();
         $maxProducts = $this->params->get('max_products', 4);
         $ajaxUrl = Uri::base() . 'index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json';
 
@@ -121,7 +121,7 @@ class ProductCompare extends CMSPlugin
     public function onAjaxProductcompare()
     {
         try {
-            $app = Factory::getApplication();
+            $app = $this->getApplication();
             $input = $app->input;
             
             // Get product IDs from request
