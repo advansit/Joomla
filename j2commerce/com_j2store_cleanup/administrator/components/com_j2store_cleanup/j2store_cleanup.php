@@ -28,7 +28,7 @@ $task = $app->input->get('task', 'display');
  * by their manifest metadata (authorUrl, authorEmail, version).
  * 
  * Compatible if ANY of these is true:
- * - Core component (com_j2store) or this tool (com_j2store_cleanup)
+ * - Core component (com_j2store) — must never be removed
  * - authorUrl contains 'advans.ch' (Advans-developed)
  * - authorEmail contains '@advans.ch' (Advans-developed)
  * - authorUrl contains 'j2commerce.com' (J2Commerce 4.x)
@@ -39,8 +39,8 @@ $task = $app->input->get('task', 'display');
  * @return array ['incompatible' => bool, 'reason' => string]
  */
 function checkJ2StoreCompatibility($manifest, $ext) {
-    // Core component and this tool — always keep
-    if ($ext->element === 'com_j2store' || $ext->element === 'com_j2store_cleanup') {
+    // Core component — must never be removed
+    if ($ext->element === 'com_j2store') {
         return ['incompatible' => false, 'reason' => ''];
     }
 
@@ -358,7 +358,7 @@ $extensions = $db->loadObjectList();
         <ul>
             <li><span class="criterion">authorUrl/Email contains "advans.ch"</span> — Advans-developed extension</li>
             <li><span class="criterion">authorUrl/Email contains "j2commerce.com"</span> — Official J2Commerce 4.x extension</li>
-            <li><span class="criterion">com_j2store / com_j2store_cleanup</span> — Core component and this tool</li>
+            <li><span class="criterion">com_j2store</span> — Core component (never removed)</li>
         </ul>
         <p style="margin-top: 10px;">Everything else is treated as <strong>legacy/incompatible</strong>. No whitelist needed — new Advans or J2Commerce extensions are automatically recognized by their manifest metadata.</p>
     </div>
