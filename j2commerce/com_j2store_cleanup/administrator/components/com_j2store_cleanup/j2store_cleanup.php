@@ -20,66 +20,55 @@ $db = Factory::getContainer()->get('DatabaseDriver');
 $task = $app->input->get('task', 'display');
 
 /**
- * Check if a J2Store extension is incompatible with J2Commerce 4.x
+ * Classify a J2Store/J2Commerce extension's migration status.
  * 
- * Inverted logic: an extension is compatible ONLY if it matches a known-good
- * pattern. Everything else is treated as legacy/incompatible.
- * No whitelist needed — Advans and J2Commerce extensions are recognized
- * by their manifest metadata (authorUrl, authorEmail, version).
+ * Returns a status for display purposes. The user decides what to remove.
  * 
- * Compatible if ANY of these is true:
- * - Core component (com_j2store) — must never be removed
- * - authorUrl contains 'advans.ch' (Advans-developed)
- * - authorEmail contains '@advans.ch' (Advans-developed)
- * - authorUrl contains 'j2commerce.com' (J2Commerce 4.x)
- * - authorEmail contains '@j2commerce.com' (J2Commerce 4.x)
+ * Statuses:
+ * - 'core'    — J2Store/J2Commerce core component, cannot be removed here
+ * - 'updated' — Updated for J2Commerce 4.x (authorUrl/Email j2commerce.com)
+ * - 'legacy'  — Old J2Store extension (j2store.org + version < 4.0)
+ * - 'review'  — Unknown compatibility, user should verify
  * 
  * @param object $manifest  Decoded manifest_cache from #__extensions
  * @param object $ext       Extension record from database
- * @return array ['incompatible' => bool, 'reason' => string]
+ * @return array ['status' => string, 'reason' => string]
  */
-function checkJ2StoreCompatibility($manifest, $ext) {
-    // Core component — must never be removed
+function classifyExtension($manifest, $ext) {
+    // Core component — never remove via this tool
     if ($ext->element === 'com_j2store') {
-        return ['incompatible' => false, 'reason' => ''];
+        $version = is_object($manifest) ? ($manifest->version ?? '?') : '?';
+        return ['status' => 'core', 'reason' => 'Core component (v' . $version . ')'];
     }
 
-    // Invalid manifest — cannot verify, treat as incompatible
     if (!is_object($manifest)) {
-        return ['incompatible' => true, 'reason' => 'Invalid manifest data'];
+        return ['status' => 'review', 'reason' => 'Invalid manifest — verify manually'];
     }
 
-    $authorUrl = $manifest->authorUrl ?? '';
+    $authorUrl   = $manifest->authorUrl ?? '';
     $authorEmail = $manifest->authorEmail ?? '';
+    $version     = $manifest->version ?? 'Unknown';
 
-    // Advans-developed extensions
-    if (stripos($authorUrl, 'advans.ch') !== false || stripos($authorEmail, '@advans.ch') !== false) {
-        return ['incompatible' => false, 'reason' => ''];
-    }
-
-    // J2Commerce 4.x extensions
+    // J2Commerce 4.x official extensions
     if (stripos($authorUrl, 'j2commerce.com') !== false || stripos($authorEmail, '@j2commerce.com') !== false) {
-        return ['incompatible' => false, 'reason' => ''];
+        return ['status' => 'updated', 'reason' => 'J2Commerce 4.x (v' . $version . ')'];
     }
 
-    // Everything else is legacy/incompatible — build reason string
-    $version = $manifest->version ?? 'Unknown';
-    $reasons = [];
+    // Legacy J2Store: j2store.org author AND version < 4.0
+    $isJ2StoreOrg = stripos($authorUrl, 'j2store.org') !== false || stripos($authorEmail, '@j2store.org') !== false;
 
-    if ($version !== 'Unknown' && version_compare($version, '4.0.0', '<')) {
-        $reasons[] = 'Version ' . $version . ' < 4.0.0';
-    }
-    if (stripos($authorUrl, 'j2store.org') !== false) {
-        $reasons[] = 'Legacy (j2store.org)';
-    }
-    if (stripos($authorEmail, '@j2store.org') !== false) {
-        $reasons[] = 'Legacy (@j2store.org)';
-    }
-    if (empty($reasons)) {
-        $reasons[] = 'Unknown author — not from Advans or J2Commerce';
+    if ($isJ2StoreOrg && $version !== 'Unknown' && version_compare($version, '4.0.0', '<')) {
+        return ['status' => 'legacy', 'reason' => 'J2Store legacy (v' . $version . ')'];
     }
 
-    return ['incompatible' => true, 'reason' => implode(', ', $reasons)];
+    // j2store.org but version >= 4.0 — might have been updated
+    if ($isJ2StoreOrg) {
+        return ['status' => 'review', 'reason' => 'j2store.org author but v' . $version . ' — verify compatibility'];
+    }
+
+    // Third-party or custom extension
+    $author = $manifest->author ?? 'Unknown';
+    return ['status' => 'review', 'reason' => 'Third-party (' . $author . ', v' . $version . ') — verify compatibility'];
 }
 
 // Handle cleanup action
@@ -323,6 +312,10 @@ $extensions = $db->loadObjectList();
             background: #ffc107;
             color: #000;
         }
+        .j2cleanup .badge-info {
+            background: #17a2b8;
+            color: #fff;
+        }
         .j2cleanup-footer {
             margin-top: 40px;
             padding: 20px;
@@ -353,14 +346,13 @@ $extensions = $db->loadObjectList();
     <p style="color: #888; margin-bottom: 20px;">Migration tool for transitioning from J2Store to J2Commerce 4.x</p>
     
     <div class="detection-info">
-        <h3>Detection Logic</h3>
-        <p style="margin-bottom: 10px;">An extension is <strong>compatible</strong> only if it matches a known-good author:</p>
+        <h3>How extensions are classified</h3>
         <ul>
-            <li><span class="criterion">authorUrl/Email contains "advans.ch"</span> — Advans-developed extension</li>
-            <li><span class="criterion">authorUrl/Email contains "j2commerce.com"</span> — Official J2Commerce 4.x extension</li>
-            <li><span class="criterion">com_j2store</span> — Core component (never removed)</li>
+            <li><span class="badge badge-success">Updated</span> — authorUrl or authorEmail points to <strong>j2commerce.com</strong></li>
+            <li><span class="badge badge-danger">Legacy</span> — Author is <strong>j2store.org</strong> and version &lt; 4.0.0</li>
+            <li><span class="badge badge-warning">Review</span> — Cannot determine automatically. Check with the extension vendor.</li>
+            <li><span class="badge badge-info">Core</span> — J2Store/J2Commerce core component</li>
         </ul>
-        <p style="margin-top: 10px;">Everything else is treated as <strong>legacy/incompatible</strong>. No whitelist needed — new Advans or J2Commerce extensions are automatically recognized by their manifest metadata.</p>
     </div>
     
     <?php if (empty($extensions)): ?>
@@ -376,28 +368,21 @@ $extensions = $db->loadObjectList();
         
         <form action="index.php?option=com_j2store_cleanup" method="post">
             <?php
-            // Separate extensions into compatible and incompatible
-            $incompatible = [];
-            $compatible = [];
+            $groups = ['legacy' => [], 'review' => [], 'updated' => [], 'core' => []];
             
             foreach ($extensions as $ext) {
                 $manifest = json_decode($ext->manifest_cache);
-                $result = checkJ2StoreCompatibility($manifest, $ext);
-                $ext->_incompatible = $result['incompatible'];
+                $result = classifyExtension($manifest, $ext);
+                $ext->_status = $result['status'];
                 $ext->_reason = $result['reason'];
                 $ext->_manifest = $manifest;
-                
-                if ($result['incompatible']) {
-                    $incompatible[] = $ext;
-                } else {
-                    $compatible[] = $ext;
-                }
+                $groups[$result['status']][] = $ext;
             }
             ?>
             
-            <?php if (!empty($incompatible)): ?>
-            <h2>Incompatible Extensions (<?php echo count($incompatible); ?>)</h2>
-            <p>These extensions need to be removed or upgraded to J2Commerce 4.x versions.</p>
+            <?php if (!empty($groups['legacy'])): ?>
+            <h2>Legacy Extensions (<?php echo count($groups['legacy']); ?>)</h2>
+            <p>Old J2Store extensions — likely incompatible with J2Commerce 4.x. Select and remove what you no longer need.</p>
             
             <table>
                 <thead>
@@ -407,12 +392,12 @@ $extensions = $db->loadObjectList();
                         <th>Type</th>
                         <th>Element</th>
                         <th>Version</th>
-                        <th>Status</th>
-                        <th>Reason</th>
+                        <th>Enabled</th>
+                        <th>Details</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($incompatible as $ext): 
+                    <?php foreach ($groups['legacy'] as $ext): 
                         $version = $ext->_manifest->version ?? 'Unknown';
                         $enabled = $ext->enabled ? '<span class="badge badge-success">Enabled</span>' : '<span class="badge badge-warning">Disabled</span>';
                     ?>
@@ -423,12 +408,49 @@ $extensions = $db->loadObjectList();
                         <td><code><?php echo htmlspecialchars($ext->element); ?></code></td>
                         <td><span class="badge badge-danger"><?php echo htmlspecialchars($version); ?></span></td>
                         <td><?php echo $enabled; ?></td>
-                        <td><strong><?php echo htmlspecialchars($ext->_reason); ?></strong></td>
+                        <td><?php echo htmlspecialchars($ext->_reason); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            <?php endif; ?>
             
+            <?php if (!empty($groups['review'])): ?>
+            <h2>Needs Review (<?php echo count($groups['review']); ?>)</h2>
+            <p>Compatibility could not be determined automatically. Check with the vendor before removing.</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th width="30"><input type="checkbox" onclick="this.closest('table').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = this.checked)"></th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Element</th>
+                        <th>Version</th>
+                        <th>Enabled</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($groups['review'] as $ext): 
+                        $version = $ext->_manifest->version ?? 'Unknown';
+                        $enabled = $ext->enabled ? '<span class="badge badge-success">Enabled</span>' : '<span class="badge badge-warning">Disabled</span>';
+                    ?>
+                    <tr style="background: #3d3a1a !important; border-left: 3px solid #ffc107;">
+                        <td><input type="checkbox" name="cid[]" value="<?php echo $ext->extension_id; ?>"></td>
+                        <td><?php echo htmlspecialchars($ext->name); ?></td>
+                        <td><?php echo htmlspecialchars($ext->type); ?></td>
+                        <td><code><?php echo htmlspecialchars($ext->element); ?></code></td>
+                        <td><span class="badge badge-warning"><?php echo htmlspecialchars($version); ?></span></td>
+                        <td><?php echo $enabled; ?></td>
+                        <td><?php echo htmlspecialchars($ext->_reason); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+            
+            <?php if (!empty($groups['legacy']) || !empty($groups['review'])): ?>
             <input type="hidden" name="task" value="cleanup">
             <?php echo HTMLHelper::_('form.token'); ?>
             <button type="submit" class="btn" onclick="return confirm('Remove selected extensions?\n\nThis will:\n- Run uninstall scripts\n- Delete extension files\n- Remove database entries\n\nThis cannot be undone!')">
@@ -436,9 +458,8 @@ $extensions = $db->loadObjectList();
             </button>
             <?php endif; ?>
             
-            <?php if (!empty($compatible)): ?>
-            <h2>Compatible Extensions (<?php echo count($compatible); ?>)</h2>
-            <p>These extensions are compatible with J2Commerce 4.x or are protected system extensions.</p>
+            <?php if (!empty($groups['updated']) || !empty($groups['core'])): ?>
+            <h2>Compatible Extensions (<?php echo count($groups['updated']) + count($groups['core']); ?>)</h2>
             
             <table>
                 <thead>
@@ -447,33 +468,34 @@ $extensions = $db->loadObjectList();
                         <th>Type</th>
                         <th>Element</th>
                         <th>Version</th>
-                        <th>Status</th>
-                        <th>Author</th>
+                        <th>Enabled</th>
+                        <th>Details</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($compatible as $ext): 
+                    <?php foreach (array_merge($groups['core'], $groups['updated']) as $ext): 
                         $version = $ext->_manifest->version ?? 'Unknown';
                         $author = $ext->_manifest->author ?? 'Unknown';
                         $enabled = $ext->enabled ? '<span class="badge badge-success">Enabled</span>' : '<span class="badge badge-warning">Disabled</span>';
+                        $badge = $ext->_status === 'core' ? 'badge-info' : 'badge-success';
                     ?>
                     <tr class="compatible">
                         <td><?php echo htmlspecialchars($ext->name); ?></td>
                         <td><?php echo htmlspecialchars($ext->type); ?></td>
                         <td><code><?php echo htmlspecialchars($ext->element); ?></code></td>
-                        <td><span class="badge badge-success"><?php echo htmlspecialchars($version); ?></span></td>
+                        <td><span class="badge <?php echo $badge; ?>"><?php echo htmlspecialchars($version); ?></span></td>
                         <td><?php echo $enabled; ?></td>
-                        <td><?php echo htmlspecialchars($author); ?></td>
+                        <td><?php echo htmlspecialchars($ext->_reason); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
             <?php endif; ?>
             
-            <?php if (empty($incompatible)): ?>
+            <?php if (empty($groups['legacy']) && empty($groups['review'])): ?>
             <div class="alert alert-success">
-                <strong>All extensions are compatible!</strong>
-                <p style="margin: 10px 0 0 0;">No incompatible J2Store extensions found. Your installation is ready for J2Commerce 4.x.</p>
+                <strong>No legacy extensions found!</strong>
+                <p style="margin: 10px 0 0 0;">All J2Store extensions appear to be compatible with J2Commerce 4.x.</p>
             </div>
             <?php endif; ?>
         </form>
