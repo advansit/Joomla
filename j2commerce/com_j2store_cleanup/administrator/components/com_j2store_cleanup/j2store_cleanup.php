@@ -42,8 +42,8 @@ function checkJ2StoreCompatibility($manifest, $ext) {
         'com_j2store',
         'com_j2store_cleanup', 
         'com_j2commerce_importexport',
-        'plg_privacy_j2commerce',
-        'plg_j2commerce_productcompare'
+        'j2commerce',           // plg_privacy_j2commerce (element in #__extensions)
+        'productcompare',       // plg_j2commerce_productcompare (element in #__extensions)
     ];
     
     if (in_array($ext->element, $protectedElements)) {
@@ -153,7 +153,7 @@ if ($task === 'cleanup' && Session::checkToken()) {
 $query = $db->getQuery(true)
     ->select('extension_id, name, type, element, folder, enabled, client_id, manifest_cache')
     ->from('#__extensions')
-    ->where("(element LIKE '%j2store%' OR element LIKE '%j2commerce%' OR folder = 'j2store')")
+    ->where("(element LIKE '%j2store%' OR element LIKE '%j2commerce%' OR element LIKE 'j2%' OR element LIKE 'mod\_j2%' OR element LIKE 'com\_j2%' OR folder = 'j2store')")
     ->order('type, name');
 
 $db->setQuery($query);
