@@ -16,7 +16,7 @@ use Joomla\CMS\Session\Session;
 use Joomla\CMS\Language\Text;
 
 $app = Factory::getApplication();
-$db = Factory::getDbo();
+$db = Factory::getContainer()->get('DatabaseDriver');
 $task = $app->input->get('task', 'display');
 
 /**
