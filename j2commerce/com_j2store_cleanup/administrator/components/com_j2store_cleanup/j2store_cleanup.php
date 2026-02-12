@@ -22,70 +22,64 @@ $task = $app->input->get('task', 'display');
 /**
  * Check if a J2Store extension is incompatible with J2Commerce 4.x
  * 
- * Detection criteria (in order of reliability):
- * 1. Version < 4.0.0 - Most reliable indicator
- * 2. authorUrl contains 'j2store.org' - Legacy J2Store extensions
- * 3. authorEmail contains '@j2store.org' - Legacy J2Store extensions
+ * Inverted logic: an extension is compatible ONLY if it matches a known-good
+ * pattern. Everything else is treated as legacy/incompatible.
+ * No whitelist needed — Advans and J2Commerce extensions are recognized
+ * by their manifest metadata (authorUrl, authorEmail, version).
  * 
- * Protected extensions (never marked as incompatible):
- * - com_j2store (core component)
- * - com_j2store_cleanup (this tool)
- * - com_j2commerce_importexport (Advans extension)
+ * Compatible if ANY of these is true:
+ * - Core component (com_j2store) or this tool (com_j2store_cleanup)
+ * - authorUrl contains 'advans.ch' (Advans-developed)
+ * - authorEmail contains '@advans.ch' (Advans-developed)
+ * - authorUrl contains 'j2commerce.com' (J2Commerce 4.x)
+ * - authorEmail contains '@j2commerce.com' (J2Commerce 4.x)
  * 
  * @param object $manifest  Decoded manifest_cache from #__extensions
  * @param object $ext       Extension record from database
  * @return array ['incompatible' => bool, 'reason' => string]
  */
 function checkJ2StoreCompatibility($manifest, $ext) {
-    // Protected extensions - never mark as incompatible
-    $protectedElements = [
-        'com_j2store',
-        'com_j2store_cleanup', 
-        'com_j2commerce_importexport',
-        'j2commerce',           // plg_privacy_j2commerce (element in #__extensions)
-        'productcompare',       // plg_j2commerce_productcompare (element in #__extensions)
-    ];
-    
-    if (in_array($ext->element, $protectedElements)) {
+    // Core component and this tool — always keep
+    if ($ext->element === 'com_j2store' || $ext->element === 'com_j2store_cleanup') {
         return ['incompatible' => false, 'reason' => ''];
     }
-    
-    // Handle null or invalid manifest
+
+    // Invalid manifest — cannot verify, treat as incompatible
     if (!is_object($manifest)) {
         return ['incompatible' => true, 'reason' => 'Invalid manifest data'];
     }
-    
-    // Also protect by checking if it's a J2Commerce extension (authorUrl)
-    if (isset($manifest->authorUrl) && strpos($manifest->authorUrl, 'j2commerce.com') !== false) {
+
+    $authorUrl = $manifest->authorUrl ?? '';
+    $authorEmail = $manifest->authorEmail ?? '';
+
+    // Advans-developed extensions
+    if (stripos($authorUrl, 'advans.ch') !== false || stripos($authorEmail, '@advans.ch') !== false) {
         return ['incompatible' => false, 'reason' => ''];
     }
-    
-    // Check 1: Version < 4.0.0 (most reliable)
+
+    // J2Commerce 4.x extensions
+    if (stripos($authorUrl, 'j2commerce.com') !== false || stripos($authorEmail, '@j2commerce.com') !== false) {
+        return ['incompatible' => false, 'reason' => ''];
+    }
+
+    // Everything else is legacy/incompatible — build reason string
     $version = $manifest->version ?? 'Unknown';
+    $reasons = [];
+
     if ($version !== 'Unknown' && version_compare($version, '4.0.0', '<')) {
-        return [
-            'incompatible' => true, 
-            'reason' => 'Version ' . $version . ' < 4.0.0'
-        ];
+        $reasons[] = 'Version ' . $version . ' < 4.0.0';
     }
-    
-    // Check 2: Legacy authorUrl (j2store.org)
-    if (isset($manifest->authorUrl) && strpos($manifest->authorUrl, 'j2store.org') !== false) {
-        return [
-            'incompatible' => true, 
-            'reason' => 'Legacy J2Store (j2store.org)'
-        ];
+    if (stripos($authorUrl, 'j2store.org') !== false) {
+        $reasons[] = 'Legacy (j2store.org)';
     }
-    
-    // Check 3: Legacy authorEmail (@j2store.org)
-    if (isset($manifest->authorEmail) && strpos($manifest->authorEmail, '@j2store.org') !== false) {
-        return [
-            'incompatible' => true, 
-            'reason' => 'Legacy J2Store (@j2store.org)'
-        ];
+    if (stripos($authorEmail, '@j2store.org') !== false) {
+        $reasons[] = 'Legacy (@j2store.org)';
     }
-    
-    return ['incompatible' => false, 'reason' => ''];
+    if (empty($reasons)) {
+        $reasons[] = 'Unknown author — not from Advans or J2Commerce';
+    }
+
+    return ['incompatible' => true, 'reason' => implode(', ', $reasons)];
 }
 
 // Handle cleanup action
@@ -359,16 +353,14 @@ $extensions = $db->loadObjectList();
     <p style="color: #888; margin-bottom: 20px;">Migration tool for transitioning from J2Store to J2Commerce 4.x</p>
     
     <div class="detection-info">
-        <h3>Incompatibility Detection Criteria</h3>
-        <p style="margin-bottom: 10px;">Extensions are marked as incompatible based on the following checks:</p>
+        <h3>Detection Logic</h3>
+        <p style="margin-bottom: 10px;">An extension is <strong>compatible</strong> only if it matches a known-good author:</p>
         <ul>
-            <li><span class="criterion">Version &lt; 4.0.0</span> — Old J2Store plugins are not compatible with J2Commerce 4.x</li>
-            <li><span class="criterion">authorUrl contains "j2store.org"</span> — Legacy J2Store extensions from the old website</li>
-            <li><span class="criterion">authorEmail contains "@j2store.org"</span> — Extensions from the original J2Store team</li>
+            <li><span class="criterion">authorUrl/Email contains "advans.ch"</span> — Advans-developed extension</li>
+            <li><span class="criterion">authorUrl/Email contains "j2commerce.com"</span> — Official J2Commerce 4.x extension</li>
+            <li><span class="criterion">com_j2store / com_j2store_cleanup</span> — Core component and this tool</li>
         </ul>
-        <p style="margin-top: 10px; color: #888; font-size: 13px;">
-            <strong>Protected:</strong> Core J2Store/J2Commerce components and Advans extensions are never marked as incompatible.
-        </p>
+        <p style="margin-top: 10px;">Everything else is treated as <strong>legacy/incompatible</strong>. No whitelist needed — new Advans or J2Commerce extensions are automatically recognized by their manifest metadata.</p>
     </div>
     
     <?php if (empty($extensions)): ?>
