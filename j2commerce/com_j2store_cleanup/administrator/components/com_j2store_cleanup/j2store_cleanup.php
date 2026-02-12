@@ -46,12 +46,71 @@ function getExtensionPath($ext) {
 }
 
 /**
+ * Get deprecated API patterns grouped by the Joomla version that removes them.
+ *
+ * Each entry: pattern => label. Only patterns relevant to the running
+ * Joomla version (and above) are returned.
+ *
+ * @return array ['joomla' => [...], 'j2store' => [...]]
+ */
+function getIssuePatterns() {
+    $joomlaMajor = (int) JVERSION;
+
+    // Patterns grouped by the Joomla version that REMOVES them.
+    // On Joomla 4 these are available; on 5 deprecated; on 6 removed.
+    $joomlaByVersion = [
+        // Removed in Joomla 4 (J3 legacy classes without namespace)
+        4 => [
+            '/\bJPlugin\b/'              => 'JPlugin (removed in Joomla 4)',
+            '/\bJModel(Legacy)?\b/'      => 'JModel (removed in Joomla 4)',
+            '/\bJTable\b/'               => 'JTable (removed in Joomla 4)',
+            '/\bJView(Legacy)?\b/'       => 'JView (removed in Joomla 4)',
+            '/\bJController(Legacy)?\b/' => 'JController (removed in Joomla 4)',
+            '/\bJForm\b/'               => 'JForm (removed in Joomla 4)',
+        ],
+        // Removed in Joomla 6 (deprecated since 4/5, B/C plugin removed in 6)
+        6 => [
+            '/\bJFactory\b/'             => 'JFactory (removed in Joomla 6)',
+            '/\bJText\b/'               => 'JText (removed in Joomla 6)',
+            '/\bJHtml\b/'               => 'JHtml (removed in Joomla 6)',
+            '/\bJRoute\b/'              => 'JRoute (removed in Joomla 6)',
+            '/\bJUri\b/'                => 'JUri (removed in Joomla 6)',
+            '/\bJSession\b/'            => 'JSession (removed in Joomla 6)',
+            '/Factory::getUser\s*\(/'   => 'Factory::getUser() (removed in Joomla 6)',
+            '/Factory::getDbo\s*\(/'    => 'Factory::getDbo() (removed in Joomla 6)',
+            '/Factory::getSession\s*\(/' => 'Factory::getSession() (removed in Joomla 6)',
+            '/Factory::getDocument\s*\(/' => 'Factory::getDocument() (removed in Joomla 6)',
+            '/\$this->app\b(?!lication)/' => '$this->app property (removed in Joomla 6)',
+        ],
+    ];
+
+    // Only include patterns for APIs removed in the current or earlier version.
+    // On Joomla 5: only J4 removals apply (J6 removals are deprecated but work).
+    // On Joomla 6: both J4 and J6 removals apply.
+    $joomlaPatterns = [];
+    foreach ($joomlaByVersion as $removedIn => $patterns) {
+        if ($joomlaMajor >= $removedIn) {
+            $joomlaPatterns = array_merge($joomlaPatterns, $patterns);
+        }
+    }
+
+    // J2Store/J2Commerce patterns — these are NOT version-dependent.
+    // J2Commerce 4.x still ships F0F and the old plugin base classes,
+    // so these are NOT incompatible with J2Commerce 4.x.
+    // Only flag patterns that indicate a plugin predates J2Store 3.x entirely.
+    $j2Patterns = [];
+
+    return ['joomla' => $joomlaPatterns, 'j2store' => $j2Patterns];
+}
+
+/**
  * Scan PHP files in a directory for deprecated/incompatible patterns.
  *
- * @param string $path  Directory to scan
+ * @param string $path      Directory to scan
+ * @param array  $patterns  From getIssuePatterns()
  * @return array  List of issues found, each with 'type' and 'detail'
  */
-function scanForIssues($path) {
+function scanForIssues($path, $patterns) {
     if (!is_dir($path)) {
         return [];
     }
@@ -60,36 +119,6 @@ function scanForIssues($path) {
     $files = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)
     );
-
-    // Joomla compatibility patterns
-    $joomlaPatterns = [
-        '/\bJFactory\b/'                        => 'JFactory (removed in Joomla 5)',
-        '/\bJPlugin\b/'                         => 'JPlugin (removed in Joomla 4)',
-        '/\bJModel(Legacy)?\b/'                 => 'JModel/JModelLegacy (removed in Joomla 4)',
-        '/\bJTable\b/'                          => 'JTable (removed in Joomla 4)',
-        '/\bJView(Legacy)?\b/'                  => 'JView/JViewLegacy (removed in Joomla 4)',
-        '/\bJController(Legacy)?\b/'            => 'JController/JControllerLegacy (removed in Joomla 4)',
-        '/\bJForm\b/'                           => 'JForm (removed in Joomla 4)',
-        '/\bJText\b/'                           => 'JText (removed in Joomla 5)',
-        '/\bJHtml\b/'                           => 'JHtml (removed in Joomla 5)',
-        '/\bJRoute\b/'                          => 'JRoute (removed in Joomla 5)',
-        '/\bJUri\b/'                            => 'JUri (removed in Joomla 5)',
-        '/\bJSession\b/'                        => 'JSession (removed in Joomla 5)',
-        '/Factory::getUser\s*\(/'               => 'Factory::getUser() (deprecated in Joomla 5)',
-        '/Factory::getDbo\s*\(/'                => 'Factory::getDbo() (deprecated in Joomla 5)',
-        '/Factory::getSession\s*\(/'            => 'Factory::getSession() (deprecated in Joomla 5)',
-        '/Factory::getDocument\s*\(/'           => 'Factory::getDocument() (deprecated in Joomla 5)',
-    ];
-
-    // J2Commerce compatibility patterns
-    $j2Patterns = [
-        '/com_j2store\/library\//'              => 'Old J2Store library path (removed in J2Commerce 4)',
-        '/\bF0FModel\b/'                        => 'F0FModel (removed in J2Commerce 4)',
-        '/\bF0FTable\b/'                        => 'F0FTable (removed in J2Commerce 4)',
-        '/\bF0FController\b/'                   => 'F0FController (removed in J2Commerce 4)',
-        '/\bF0F\\\\\b/'                         => 'F0F namespace (removed in J2Commerce 4)',
-        '/require_once.*com_j2store.*plugins/'  => 'Old J2Store plugin loader (removed in J2Commerce 4)',
-    ];
 
     foreach ($files as $file) {
         if ($file->getExtension() !== 'php') {
@@ -102,17 +131,17 @@ function scanForIssues($path) {
         }
 
         // Strip comments to reduce false positives
-        $contentNoComments = preg_replace('#/\*.*?\*/#s', '', $content);
-        $contentNoComments = preg_replace('#//.*$#m', '', $contentNoComments);
+        $stripped = preg_replace('#/\*.*?\*/#s', '', $content);
+        $stripped = preg_replace('#//.*$#m', '', $stripped);
 
-        foreach ($joomlaPatterns as $pattern => $label) {
-            if (preg_match($pattern, $contentNoComments)) {
+        foreach ($patterns['joomla'] as $pattern => $label) {
+            if (preg_match($pattern, $stripped)) {
                 $issues[] = ['type' => 'joomla', 'detail' => $label];
             }
         }
 
-        foreach ($j2Patterns as $pattern => $label) {
-            if (preg_match($pattern, $contentNoComments)) {
+        foreach ($patterns['j2store'] as $pattern => $label) {
+            if (preg_match($pattern, $stripped)) {
                 $issues[] = ['type' => 'j2store', 'detail' => $label];
             }
         }
@@ -133,23 +162,21 @@ function scanForIssues($path) {
 }
 
 /**
- * Classify a J2Store/J2Commerce extension's migration status.
+ * Classify a J2Store/J2Commerce extension's compatibility.
  *
- * Scans the actual extension files for deprecated Joomla and J2Store APIs.
- * No whitelist — compatibility is determined by what the code actually uses.
+ * Scans extension files for APIs that are removed in the running Joomla version.
+ * On Joomla 4/5: most old J2Store plugins will show as compatible (old APIs still work).
+ * On Joomla 6+: plugins using JFactory, JText etc. will show as incompatible.
  *
- * Statuses:
- * - 'core'         — J2Store/J2Commerce core component
- * - 'compatible'   — No issues found in code scan
- * - 'incompatible' — Deprecated APIs found (with details)
- * - 'no-files'     — Extension path not found or no PHP files
+ * J2Commerce 4.x itself ships F0F and the old plugin base classes, so
+ * F0FModel/F0FTable usage is NOT flagged as incompatible.
  *
  * @param object $manifest  Decoded manifest_cache from #__extensions
  * @param object $ext       Extension record from database
+ * @param array  $patterns  From getIssuePatterns()
  * @return array ['status' => string, 'reason' => string, 'issues' => array]
  */
-function classifyExtension($manifest, $ext) {
-    // Core component — never remove via this tool
+function classifyExtension($manifest, $ext, $patterns) {
     if ($ext->element === 'com_j2store') {
         $version = is_object($manifest) ? ($manifest->version ?? '?') : '?';
         return ['status' => 'core', 'reason' => 'Core component (v' . $version . ')', 'issues' => []];
@@ -165,14 +192,14 @@ function classifyExtension($manifest, $ext) {
         return ['status' => 'no-files', 'reason' => 'Files not found on disk (' . $info . ')', 'issues' => []];
     }
 
-    $issues = scanForIssues($path);
+    $issues = scanForIssues($path, $patterns);
 
     if (empty($issues)) {
         return ['status' => 'compatible', 'reason' => 'No issues found (' . $info . ')', 'issues' => []];
     }
 
-    $joomlaIssues  = array_filter($issues, fn($i) => $i['type'] === 'joomla');
-    $j2Issues      = array_filter($issues, fn($i) => $i['type'] === 'j2store');
+    $joomlaIssues = array_filter($issues, fn($i) => $i['type'] === 'joomla');
+    $j2Issues     = array_filter($issues, fn($i) => $i['type'] === 'j2store');
 
     $parts = [];
     if (!empty($j2Issues)) {
@@ -471,14 +498,17 @@ $extensions = $db->loadObjectList();
     <p style="color: #888; margin-bottom: 20px;">Migration tool for transitioning from J2Store to J2Commerce 4.x</p>
     
     <div class="detection-info">
-        <h3>How extensions are classified</h3>
-        <p style="margin-bottom: 10px;">Each extension's PHP files are scanned for deprecated Joomla and J2Store APIs:</p>
+        <h3>Compatibility scan for Joomla <?php echo JVERSION; ?></h3>
+        <p style="margin-bottom: 10px;">Each extension's PHP files are scanned for APIs that are <strong>removed in Joomla <?php echo (int) JVERSION; ?></strong>. J2Commerce 4.x ships its own F0F framework and plugin base classes, so those are not flagged.</p>
         <ul>
-            <li><span class="badge badge-success">Compatible</span> — No deprecated APIs found in code</li>
-            <li><span class="badge badge-danger">Incompatible</span> — Uses deprecated Joomla or J2Store APIs (details shown)</li>
-            <li><span class="badge badge-secondary">No files</span> — Extension files not found on disk</li>
+            <li><span class="badge badge-success">Compatible</span> — No removed APIs found in code</li>
+            <li><span class="badge badge-danger">Incompatible</span> — Uses APIs removed in this Joomla version (details shown)</li>
+            <li><span class="badge badge-secondary">No files</span> — Extension registered in database but files missing from disk</li>
             <li><span class="badge badge-info">Core</span> — J2Store/J2Commerce core component</li>
         </ul>
+        <?php if ((int) JVERSION < 6): ?>
+        <p style="margin-top: 10px; color: #ffc107;"><strong>Note:</strong> On Joomla <?php echo (int) JVERSION; ?>, deprecated APIs (JFactory, JText, etc.) still work via the backward compatibility plugin. Extensions using them will show as compatible here but will break on Joomla 6+.</p>
+        <?php endif; ?>
     </div>
     
     <?php if (empty($extensions)): ?>
@@ -495,10 +525,11 @@ $extensions = $db->loadObjectList();
         <form action="index.php?option=com_j2store_cleanup" method="post">
             <?php
             $groups = ['incompatible' => [], 'no-files' => [], 'compatible' => [], 'core' => []];
+            $patterns = getIssuePatterns();
             
             foreach ($extensions as $ext) {
                 $manifest = json_decode($ext->manifest_cache);
-                $result = classifyExtension($manifest, $ext);
+                $result = classifyExtension($manifest, $ext, $patterns);
                 $ext->_status  = $result['status'];
                 $ext->_reason  = $result['reason'];
                 $ext->_issues  = $result['issues'];
