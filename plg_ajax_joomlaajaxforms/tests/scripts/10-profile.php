@@ -81,6 +81,7 @@ class ProfileTest
 
         $lang = Factory::getLanguage();
         $lang->load('plg_ajax_joomlaajaxforms', JPATH_ADMINISTRATOR);
+        $lang->load('plg_ajax_joomlaajaxforms', JPATH_ROOT . '/plugins/ajax/joomlaajaxforms');
 
         $keys = [
             'PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVED',
