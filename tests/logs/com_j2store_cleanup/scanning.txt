@@ -1,36 +1,48 @@
-=== Scanning Tests (v1.1.0 Detection Logic) ===
+=== Scanning Tests (Version-Aware Detection) ===
 
---- Version Detection ---
-Test: Version 1.0.16 detected as incompatible... PASS
-Test: Reason contains version info... PASS
-Test: Version 4.0.4 detected as compatible... PASS
-Test: Version 3.9.9 detected as incompatible... PASS
+--- Joomla 4 ---
+Test: J4: JModelLegacy flagged... PASS
+Test: J4: JFactory NOT flagged... PASS
+Test: J4: Factory::getUser() NOT flagged... PASS
 
---- authorUrl Detection ---
-Test: authorUrl j2store.org detected as incompatible... PASS
-Test: Reason mentions j2store.org... PASS
-Test: authorUrl j2commerce.com detected as compatible... PASS
+--- Joomla 5 ---
+Test: J5: JTable flagged... PASS
+Test: J5: JFactory NOT flagged (B/C plugin)... PASS
+Test: J5: Factory::getDbo() NOT flagged... PASS
 
---- authorEmail Detection ---
-Test: authorEmail @j2store.org detected as incompatible... PASS
-Test: Reason mentions @j2store.org... PASS
-Test: authorEmail @j2commerce.com detected as compatible... PASS
+--- Joomla 6 ---
+Test: J6: JFactory flagged... PASS
+Test: J6: JText flagged... PASS
+Test: J6: JRoute flagged... PASS
+Test: J6: Factory::getUser() flagged... PASS
+Test: J6: Factory::getDbo() flagged... PASS
+Test: J6: Factory::getSession() flagged... PASS
+Test: J6: Factory::getDocument() flagged... PASS
+Test: J6: $this->app flagged... PASS
+Test: J6: JPlugin also flagged (J4 removal still applies)... PASS
 
---- Null/Invalid Manifest Handling ---
-Test: Null manifest detected as incompatible... PASS
-Test: Reason mentions invalid manifest... PASS
-Test: Empty manifest with unknown version is compatible... PASS
+--- Clean modern code ---
+Test: Clean code: no issues on J6... PASS
+Test: Clean code: no issues on J5... PASS
+Test: Clean code: no issues on J4... PASS
 
---- Protected Extensions ---
-Test: com_j2store is protected (not incompatible)... PASS
-Test: com_j2store_cleanup is protected... PASS
-Test: plg_privacy_j2commerce is protected... PASS
+--- J2Commerce F0F ---
+Test: F0FModel NOT flagged on J6... PASS
 
---- Real-World Examples ---
-Test: Old GDPR v1.0.16 detected as incompatible... PASS
-Test: New GDPR v4.0.4 detected as compatible... PASS
+--- Comment stripping ---
+Test: Commented code not flagged... PASS
+
+--- Non-PHP files ---
+Test: Non-PHP files ignored... PASS
+
+--- Edge cases ---
+Test: Empty dir: no issues... PASS
+Test: Nonexistent dir: no issues... PASS
+
+--- Deduplication ---
+Test: JFactory deduplicated across files... PASS
 
 === Scanning Test Summary ===
-Passed: 18
+Passed: 24
 Failed: 0
-Total:  18
+Total:  24
