@@ -71,6 +71,26 @@
                     <option value="1">JYES</option>
                     <option value="0">JNO</option>
                 </field>
+                <field
+                    name="enable_profile"
+                    type="radio"
+                    label="PLG_AJAX_JOOMLAAJAXFORMS_ENABLE_PROFILE"
+                    description="PLG_AJAX_JOOMLAAJAXFORMS_ENABLE_PROFILE_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno">
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
+                <field
+                    name="enable_j2store_cart"
+                    type="radio"
+                    label="PLG_AJAX_JOOMLAAJAXFORMS_ENABLE_J2STORE_CART"
+                    description="PLG_AJAX_JOOMLAAJAXFORMS_ENABLE_J2STORE_CART_DESC"
+                    default="1"
+                    class="btn-group btn-group-yesno">
+                    <option value="1">JYES</option>
+                    <option value="0">JNO</option>
+                </field>
             </fieldset>
         </fields>
     </config>

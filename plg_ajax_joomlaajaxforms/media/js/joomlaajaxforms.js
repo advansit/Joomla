@@ -193,7 +193,7 @@ const JoomlaAjaxForms = {
             })
             .catch(function(error) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
-                JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
+                JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
         });
@@ -224,26 +224,27 @@ const JoomlaAjaxForms = {
 
         // Build MFA form HTML
         const defaultMethod = mfaData.methods[0];
+        const lang = JoomlaAjaxForms.getLang;
         mfaContainer.innerHTML = `
             <div class="alert alert-info mb-3">
-                ${mfaData.methods.length > 1 ? 'Bitte wählen Sie eine Authentifizierungsmethode und geben Sie den Code ein.' : 'Bitte geben Sie Ihren Authentifizierungscode ein.'}
+                ${mfaData.methods.length > 1 ? (lang('MFA_INFO_MULTI') || 'Please select an authentication method and enter the code.') : (lang('MFA_INFO_SINGLE') || 'Please enter your authentication code.')}
             </div>
             ${mfaData.methods.length > 1 ? `
             <div class="control-group mb-3">
-                <label for="mfa-method" class="form-label">Methode</label>
+                <label for="mfa-method" class="form-label">${lang('MFA_METHOD_LABEL') || 'Method'}</label>
                 <select id="mfa-method" name="mfa_method" class="form-select">
                     ${mfaData.methods.map(m => `<option value="${m.id}">${m.title || m.method}</option>`).join('')}
                 </select>
             </div>
             ` : `<input type="hidden" id="mfa-method" name="mfa_method" value="${defaultMethod.id}">`}
             <div class="control-group mb-3">
-                <label for="mfa-code" class="form-label">Authentifizierungscode</label>
+                <label for="mfa-code" class="form-label">${lang('MFA_CODE_LABEL') || 'Authentication code'}</label>
                 <input type="text" id="mfa-code" name="mfa_code" class="form-control" 
                        autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" 
                        maxlength="6" placeholder="000000" required autofocus>
             </div>
             <div class="mfa-actions mb-3">
-                <button type="button" class="btn btn-link" id="mfa-cancel">Abbrechen</button>
+                <button type="button" class="btn btn-link" id="mfa-cancel">${lang('MFA_CANCEL') || 'Cancel'}</button>
             </div>
         `;
 
@@ -254,7 +255,7 @@ const JoomlaAjaxForms = {
         const submitBtn = originalForm.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.dataset.originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Verifizieren';
+            submitBtn.textContent = JoomlaAjaxForms.getLang('MFA_VERIFY') || 'Verify';
         }
 
         // Handle cancel
@@ -335,7 +336,7 @@ const JoomlaAjaxForms = {
         const recordId = methodSelect ? methodSelect.value : form.dataset.mfaRecordId;
 
         if (!code || code.length < 6) {
-            JoomlaAjaxForms.showMessage(messageContainer, 'Bitte geben Sie einen gültigen 6-stelligen Code ein.', 'error');
+            JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('MFA_CODE_INVALID') || 'Please enter a valid 6-digit code.', 'error');
             return;
         }
 
@@ -388,7 +389,7 @@ const JoomlaAjaxForms = {
         })
         .catch(function(error) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
-            JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
+            JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
             console.error('JoomlaAjaxForms Error:', error);
         });
     },
@@ -451,7 +452,7 @@ const JoomlaAjaxForms = {
             })
             .catch(function(error) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
-                JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
+                JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
         });
@@ -516,7 +517,7 @@ const JoomlaAjaxForms = {
             })
             .catch(function(error) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
-                JoomlaAjaxForms.showMessage(messageContainer, 'An error occurred. Please try again.', 'error');
+                JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
 
@@ -621,7 +622,7 @@ const JoomlaAjaxForms = {
         if (data.message) {
             return data.message;
         }
-        return 'An error occurred';
+        return JoomlaAjaxForms.getLang('ERROR_DEFAULT') || 'An error occurred';
     },
 
     /**
@@ -679,8 +680,246 @@ const JoomlaAjaxForms = {
             }
             return data;
         });
+    },
+
+    /**
+     * Remove item from J2Store cart via AJAX
+     *
+     * @param {number} cartItemId - The cart item ID to remove
+     * @param {HTMLElement} element - The element that triggered the removal
+     * @param {function} callback - Optional callback
+     */
+    removeCartItem: function(cartItemId, element, callback) {
+        const tokenName = JoomlaAjaxForms.getTokenFromPage();
+        let url = JoomlaAjaxForms.config.baseUrl + '&task=removeCartItem&cartitem_id=' + cartItemId;
+        if (tokenName) {
+            url += '&' + tokenName + '=1';
+        }
+
+        if (element) {
+            element.classList.add('loading');
+            element.disabled = true;
+        }
+
+        fetch(url, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(rawData) {
+            const data = JoomlaAjaxForms.unwrapResponse(rawData);
+
+            if (data.success) {
+                var cartRow = document.querySelector('[data-cartitem-id="' + cartItemId + '"]');
+                if (!cartRow && element) {
+                    cartRow = element.closest('.j2store-cart-item, .cart-item, tr, .minicart-item');
+                }
+
+                if (cartRow) {
+                    cartRow.style.transition = 'opacity 0.3s, transform 0.3s';
+                    cartRow.style.opacity = '0';
+                    cartRow.style.transform = 'translateX(-20px)';
+
+                    setTimeout(function() {
+                        cartRow.remove();
+                        JoomlaAjaxForms.updateCartBadge(data.data ? data.data.cartCount : 0);
+                        if (data.data && data.data.cartCount === 0) {
+                            JoomlaAjaxForms.showEmptyCartMessage();
+                        }
+                    }, 300);
+                }
+
+                JoomlaAjaxForms.showToast(data.message, 'success');
+                if (callback) callback(null, data);
+            } else {
+                var errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                JoomlaAjaxForms.showToast(errorMsg, 'error');
+                if (element) {
+                    element.classList.remove('loading');
+                    element.disabled = false;
+                }
+                if (callback) callback(errorMsg, null);
+            }
+        })
+        .catch(function(error) {
+            JoomlaAjaxForms.showToast(JoomlaAjaxForms.getLang('ERROR_NETWORK') || 'Network error. Please try again.', 'error');
+            if (element) {
+                element.classList.remove('loading');
+                element.disabled = false;
+            }
+            if (callback) callback(error, null);
+        });
+    },
+
+    /**
+     * Save user profile via AJAX
+     *
+     * @param {HTMLFormElement} form - The profile form element
+     * @param {function} callback - Optional callback
+     */
+    saveProfile: function(form, callback) {
+        const formData = new FormData(form);
+        const tokenName = JoomlaAjaxForms.getTokenName(form) || JoomlaAjaxForms.getTokenFromPage();
+
+        let url = JoomlaAjaxForms.config.baseUrl + '&task=saveProfile';
+        if (tokenName) {
+            url += '&' + tokenName + '=1';
+        }
+
+        const submitBtn = JoomlaAjaxForms.disableSubmit(form);
+
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(rawData) {
+            JoomlaAjaxForms.enableSubmit(submitBtn);
+            const data = JoomlaAjaxForms.unwrapResponse(rawData);
+
+            if (data.success) {
+                JoomlaAjaxForms.showToast(data.message, 'success');
+
+                // Update displayed user name if visible
+                if (data.data && data.data.user && data.data.user.name) {
+                    document.querySelectorAll('.user-name, .username').forEach(function(el) {
+                        el.textContent = data.data.user.name;
+                    });
+                }
+
+                // Clear password fields
+                form.querySelectorAll('input[type="password"]').forEach(function(field) {
+                    field.value = '';
+                });
+
+                if (callback) callback(null, data);
+            } else {
+                var errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                JoomlaAjaxForms.showToast(errorMsg, 'error');
+                if (callback) callback(errorMsg, null);
+            }
+        })
+        .catch(function(error) {
+            JoomlaAjaxForms.enableSubmit(submitBtn);
+            JoomlaAjaxForms.showToast(JoomlaAjaxForms.getLang('ERROR_NETWORK') || 'Network error. Please try again.', 'error');
+            if (callback) callback(error, null);
+        });
+    },
+
+    /**
+     * Update cart badge count elements
+     *
+     * @param {number} count - New cart count
+     */
+    updateCartBadge: function(count) {
+        document.querySelectorAll('.cart-count, .cart-badge, .j2store-cart-count, .minicart-count').forEach(function(badge) {
+            badge.textContent = count;
+            badge.style.display = count === 0 ? 'none' : '';
+        });
+    },
+
+    /**
+     * Show empty cart message
+     */
+    showEmptyCartMessage: function() {
+        var container = document.querySelector('.j2store-minicart-items, .minicart-items, .cart-items');
+        if (container) {
+            container.innerHTML = '<p class="empty-cart-message">' +
+                (JoomlaAjaxForms.getLang('CART_EMPTY') || 'Your cart is empty.') + '</p>';
+        }
+    },
+
+    /**
+     * Get language string from Joomla script options
+     *
+     * @param {string} key - Language key (without prefix)
+     * @returns {string|null}
+     */
+    getLang: function(key) {
+        if (typeof Joomla !== 'undefined' && Joomla.getOptions) {
+            var options = Joomla.getOptions('plg_ajax_joomlaajaxforms');
+            if (options && options[key]) {
+                return options[key];
+            }
+        }
+        return null;
+    },
+
+    /**
+     * Get CSRF token from page (outside of a form context)
+     *
+     * @returns {string}
+     */
+    getTokenFromPage: function() {
+        var tokenInput = document.querySelector('input[type="hidden"][value="1"]');
+        if (tokenInput && tokenInput.name.length === 32) {
+            return tokenInput.name;
+        }
+        if (typeof Joomla !== 'undefined' && Joomla.getOptions) {
+            var options = Joomla.getOptions('csrf.token');
+            if (options) {
+                return Object.keys(options)[0];
+            }
+        }
+        return '';
+    },
+
+    /**
+     * Show a toast notification
+     *
+     * @param {string} message - Message text
+     * @param {string} type - 'success' or 'error'
+     */
+    showToast: function(message, type) {
+        if (!message || message === 'null') {
+            message = type === 'success'
+                ? (JoomlaAjaxForms.getLang('SUCCESS') || 'Success')
+                : (JoomlaAjaxForms.getLang('ERROR_DEFAULT') || 'An error occurred');
+        }
+
+        // Remove existing toasts
+        document.querySelectorAll('.jaf-toast').forEach(function(el) { el.remove(); });
+
+        var toast = document.createElement('div');
+        var alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        toast.className = 'jaf-toast alert ' + alertClass;
+        toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;padding:15px 45px 15px 20px;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,0.2);max-width:400px;animation:jafSlideIn 0.3s ease;transition:opacity 0.3s,transform 0.3s;';
+
+        var text = document.createElement('span');
+        text.textContent = message;
+        toast.appendChild(text);
+
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = 'position:absolute;top:50%;right:10px;transform:translateY(-50%);background:none;border:none;font-size:24px;cursor:pointer;opacity:0.7;padding:0 5px;line-height:1;';
+        closeBtn.onclick = function() {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(function() { toast.remove(); }, 300);
+        };
+        toast.appendChild(closeBtn);
+
+        document.body.appendChild(toast);
+
+        setTimeout(function() {
+            if (toast.parentNode) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
+            }
+        }, 8000);
     }
 };
+
+// Add CSS animation for toasts
+(function() {
+    var style = document.createElement('style');
+    style.textContent = '@keyframes jafSlideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}.jaf-toast{transition:opacity .3s,transform .3s}';
+    document.head.appendChild(style);
+})();
 
 // Initialize
 JoomlaAjaxForms.init();

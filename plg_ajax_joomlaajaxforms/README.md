@@ -1,47 +1,58 @@
 # Joomla! AJAX Forms
 
 [![Build & Test](https://github.com/advansit/Joomla/actions/workflows/joomla-ajax-forms.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/joomla-ajax-forms.yml)
-[![Joomla 4](https://img.shields.io/badge/Joomla-4.x-blue.svg)](https://www.joomla.org/)
+[![Release](https://github.com/advansit/Joomla/actions/workflows/release-joomla-ajax-forms.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/release-joomla-ajax-forms.yml)
 [![Joomla 5](https://img.shields.io/badge/Joomla-5.x-blue.svg)](https://www.joomla.org/)
 [![Joomla 6](https://img.shields.io/badge/Joomla-6.x-blue.svg)](https://www.joomla.org/)
+[![Joomla 7](https://img.shields.io/badge/Joomla-7.x-blue.svg)](https://www.joomla.org/)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-purple.svg)](https://www.php.net/)
 
-A Joomla plugin that provides AJAX handling for core Joomla forms, delivering a seamless user experience without page reloads.
+A Joomla plugin that provides AJAX handling for user forms, authentication, profile management, and J2Store/J2Commerce cart operations — without page reloads.
 
 ## Features
 
-- **Password Reset**: AJAX-powered password reset form
-- **Username Reminder**: AJAX-powered username reminder form
-- **JSON Responses**: Compatible with J2Commerce error format
-- **Security**: CSRF protection, email enumeration prevention
-- **Multilingual**: English and German translations included
-- **Extensible**: Easy to add new form handlers
+| Feature | AJAX Task | Description |
+|---------|-----------|-------------|
+| Login | `login` | Authentication with MFA/2FA support |
+| Logout | `logout` | Session termination with redirect |
+| Registration | `register` | User registration with email verification and admin approval |
+| Password Reset | `reset` | Password reset email request |
+| Username Reminder | `remind` | Username reminder email request |
+| MFA Validation | `mfa_validate` | Multi-factor authentication code verification |
+| Profile Editing | `saveProfile` | Update name, email, password |
+| Cart: Remove Item | `removeCartItem` | Remove item from J2Store/J2Commerce cart |
+| Cart: Get Count | `getCartCount` | Get current cart item count |
+
+All features can be individually enabled/disabled via plugin parameters.
 
 ## Requirements
 
-- Joomla 4.x, 5.x, or 6.x
-- PHP 8.1 or higher
+- Joomla 5.x, 6.x, or 7.x
+- PHP 8.1+
+- J2Store or J2Commerce (only for cart features)
 
 ## Installation
 
-1. Download the plugin package
+1. Download `plg_ajax_joomlaajaxforms.zip` from the [latest release](https://github.com/advansit/Joomla/releases?q=ajaxforms)
 2. Install via Joomla Extension Manager
-3. Enable the plugin under System → Plugins → "Joomla! AJAX Forms"
+3. Enable under System > Plugins > "Joomla! AJAX Forms"
 
 ## Configuration
 
-### Plugin Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| Enable Password Reset | Enable AJAX for password reset form | Yes |
-| Enable Username Reminder | Enable AJAX for username reminder form | Yes |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| Enable Login | AJAX login with MFA support | Yes |
+| Enable Registration | AJAX user registration | Yes |
+| Enable Password Reset | AJAX password reset | Yes |
+| Enable Username Reminder | AJAX username reminder | Yes |
+| Enable Profile Editing | AJAX profile save (name, email, password) | Yes |
+| Enable J2Store Cart | AJAX cart operations (requires J2Store/J2Commerce) | Yes |
 
 ## Usage
 
 ### Template Integration
 
-Add the following to your template overrides for `com_users/reset` and `com_users/remind`:
+Load the script in your template overrides:
 
 ```php
 use Joomla\CMS\Plugin\PluginHelper;
@@ -52,65 +63,68 @@ if (PluginHelper::isEnabled('ajax', 'joomlaajaxforms')) {
 }
 ```
 
-The JavaScript will automatically convert forms with the classes `.reset form.form-validate` and `.remind form.form-validate` to AJAX forms.
+The plugin automatically initializes form handlers for login, reset, remind, and registration forms. For cart and profile operations, use the JavaScript API:
+
+```javascript
+// Remove cart item
+JoomlaAjaxForms.removeCartItem(cartItemId, clickedElement, callback);
+
+// Save profile form
+JoomlaAjaxForms.saveProfile(formElement, callback);
+
+// Logout
+JoomlaAjaxForms.logout(returnUrl);
+```
 
 ### JSON Response Format
 
-Success:
 ```json
 {
     "success": true,
     "message": "Success message",
-    "data": null,
+    "data": { },
     "error": null
 }
 ```
 
-Error (J2Commerce compatible):
+Error responses use J2Commerce-compatible format:
+
 ```json
 {
     "success": false,
     "message": null,
     "data": null,
-    "error": {
-        "warning": "Error message"
-    }
+    "error": { "warning": "Error message" }
 }
 ```
 
-## Extending the Plugin
+## Joomla Compatibility
 
-To add a new form handler, add a new case in the `onAjaxJoomlaajaxforms` method:
+The plugin avoids all APIs deprecated in Joomla 6:
 
-```php
-case 'myform':
-    return $this->handleMyForm();
+- Uses `$this->getApplication()` instead of `Factory::getApplication()`
+- Uses `MailerFactoryInterface` instead of `Factory::getMailer()`
+- Uses `UserFactoryInterface` instead of `User::getInstance()`
+- Uses `->getInput()` instead of `->input`
+
+## Tests
+
+11 test scripts covering installation, configuration, endpoint access, login, registration, reset, remind, security, profile, J2Store cart, and uninstall. Run via Docker:
+
+```bash
+cd plg_ajax_joomlaajaxforms/tests
+docker compose up --build --abort-on-container-exit
 ```
 
-## Security
+## Translations
 
-- CSRF token validation on all requests
-- Generic success messages to prevent email enumeration
-- Input validation and sanitization
+- English (en-GB)
+- German (de-DE) — Swiss Standard German (no ß)
 
-## Changelog
-
-### v1.0.0 (2026-01)
-- Initial release
-- Password reset via AJAX
-- Username reminder via AJAX
-- English and German translations
+82 language keys covering all UI labels, error messages, email templates, and JavaScript strings.
 
 ## License
 
-Proprietary License - Copyright (C) 2025-2026 Advans IT Solutions GmbH
+Proprietary License — Copyright (C) 2025-2026 Advans IT Solutions GmbH
 
 See [LICENSE.txt](../LICENSE.txt) for details.
-
-## Support
-
-Advans IT Solutions GmbH  
-Karl-Barth-Platz 9  
-4052 Basel, Switzerland  
-https://advans.ch
-

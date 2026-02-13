@@ -58,6 +58,10 @@ jobs:
             script: 'remind-request'
           - name: '08 - Security'
             script: 'security'
+          - name: '10 - Profile'
+            script: 'profile'
+          - name: '11 - J2Store Cart'
+            script: 'j2store-cart'
           - name: '09 - Uninstall'
             script: 'uninstall'
     

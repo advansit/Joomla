@@ -6,8 +6,12 @@ Extensions for [Joomla](https://github.com/joomla/joomla-cms) and [J2Commerce](h
 
 ```
 Joomla/
-├── j2commerce/               # J2Commerce Extensions
 ├── plg_ajax_joomlaajaxforms/ # Joomla AJAX Forms Plugin
+├── j2commerce/               # J2Commerce Extensions
+│   ├── com_j2commerce_importexport/
+│   ├── com_j2store_cleanup/
+│   ├── plg_j2commerce_productcompare/
+│   └── plg_privacy_j2commerce/
 ├── shared/                   # Shared build and test scripts
 └── .github/                  # CI/CD workflows
 ```
@@ -16,34 +20,55 @@ Joomla/
 
 ### Joomla Core Extensions
 
-| Extension | Description | Joomla Version |
-|-----------|-------------|----------------|
-| [Joomla! AJAX Forms](plg_ajax_joomlaajaxforms/) | AJAX handling for Joomla core forms (password reset, username reminder) | 4.x, 5.x, 6.x |
+| Extension | Description | Joomla |
+|-----------|-------------|--------|
+| [Joomla! AJAX Forms](plg_ajax_joomlaajaxforms/) | AJAX login, registration, MFA, profile editing, password reset, username reminder, J2Store cart operations | 5.x – 7.x |
 
 ### J2Commerce Extensions
 
-See the `j2commerce/` folder for all available extensions and their documentation.
-
 | Extension | Description |
 |-----------|-------------|
-| Privacy Plugin | GDPR compliance for J2Commerce |
-| 2FA Plugin | Two-Factor Authentication |
-| AcyMailing Integration | Newsletter integration |
-| Product Compare | Compare products side-by-side |
-| Import/Export Component | Bulk data management |
-| Cleanup Component | Database maintenance |
+| [Import/Export](j2commerce/com_j2commerce_importexport/) | Bulk data import/export for J2Commerce |
+| [J2Store Cleanup](j2commerce/com_j2store_cleanup/) | Detect incompatible extensions after J2Store-to-J2Commerce migration |
+| [Product Compare](j2commerce/plg_j2commerce_productcompare/) | Compare products side-by-side |
+| [Privacy](j2commerce/plg_privacy_j2commerce/) | GDPR compliance for J2Commerce |
 
 ## Testing
 
-Each extension has automated tests that run via GitHub Actions.
+Each extension has automated tests that run via GitHub Actions when files in the respective directory are modified.
 
-Tests run automatically when files in the respective extension directory are modified. Manual execution is available via the Actions tab.
+| Workflow | Extension | Trigger |
+|----------|-----------|---------|
+| `joomla-ajax-forms.yml` | Joomla AJAX Forms | `plg_ajax_joomlaajaxforms/**` |
+| `j2commerce-import-export.yml` | Import/Export | `j2commerce/com_j2commerce_importexport/**` |
+| `j2store-cleanup.yml` | J2Store Cleanup | `j2commerce/com_j2store_cleanup/**` |
+| `j2commerce-product-compare.yml` | Product Compare | `j2commerce/plg_j2commerce_productcompare/**` |
+| `j2commerce-privacy.yml` | Privacy | `j2commerce/plg_privacy_j2commerce/**` |
 
 View test results: https://github.com/advansit/Joomla/actions
 
 ## Releases
 
-Each extension has independent releases. View all releases: https://github.com/advansit/Joomla/releases
+Each extension has its own release workflow triggered by extension-specific git tags:
+
+| Workflow | Tag Pattern | Extension |
+|----------|-------------|-----------|
+| `release-joomla-ajax-forms.yml` | `ajaxforms-v*` | Joomla AJAX Forms |
+| `release-importexport.yml` | `importexport-v*` | Import/Export |
+| `release-cleanup.yml` | `cleanup-v*` | J2Store Cleanup |
+| `release-productcompare.yml` | `productcompare-v*` | Product Compare |
+| `release-privacy.yml` | `privacy-v*` | Privacy |
+
+To create a release:
+
+```bash
+git tag ajaxforms-v2.0.0
+git push origin ajaxforms-v2.0.0
+```
+
+Or run the workflow manually via GitHub Actions UI.
+
+View all releases: https://github.com/advansit/Joomla/releases
 
 ## Repository Configuration
 
@@ -139,33 +164,6 @@ Protected branch rules prevent force pushes and ensure code quality standards.
 - ❌ **Wikis** - Documentation is maintained in README files
 - ❌ **Sponsorships** - Not accepting sponsorships
 
-### Automation
-
-#### GitHub Actions Workflows
-**Location:** `.github/workflows/`
-
-**Test Workflows (7):**
-- `joomla-ajax-forms.yml` - Tests for Joomla AJAX Forms plugin
-- `j2commerce-2fa.yml` - Tests for 2FA plugin
-- `j2commerce-acymailing.yml` - Tests for AcyMailing plugin
-- `j2commerce-import-export.yml` - Tests for Import/Export component
-- `j2commerce-privacy.yml` - Tests for Privacy plugin
-- `j2commerce-product-compare.yml` - Tests for Product Compare plugin
-- `j2store-cleanup.yml` - Tests for Cleanup component
-
-Each workflow runs automatically when files in the respective extension directory are modified.
-
-**Release Workflows (7):**
-- `release-joomla-ajax-forms.yml` - Creates releases for Joomla AJAX Forms plugin (tag: `ajaxforms-v*`)
-- `release-2fa.yml` - Creates releases for 2FA plugin
-- `release-acymailing.yml` - Creates releases for AcyMailing plugin
-- `release-cleanup.yml` - Creates releases for Cleanup component
-- `release-importexport.yml` - Creates releases for Import/Export component
-- `release-privacy.yml` - Creates releases for Privacy plugin
-- `release-productcompare.yml` - Creates releases for Product Compare plugin
-
-Each workflow is triggered by git tags (e.g., `ajaxforms-v1.0.0`, `acymailing-v1.0.0`) or can be run manually via GitHub Actions UI.
-
 ### Security Policy
 
 **File:** `SECURITY.md`  
@@ -183,5 +181,4 @@ CHE-316.407.165
 
 https://advans.ch
 
-Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
-
+Copyright (C) 2025-2026 Advans IT Solutions GmbH. All rights reserved.
