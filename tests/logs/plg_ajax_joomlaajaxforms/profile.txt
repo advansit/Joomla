@@ -1,22 +1,7 @@
 === Profile Tests ===
 
 Test: Profile feature config exists... PASS
-Test: handleSaveProfile method exists... ReflectionException {#172
-  #message: "Class "Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms" does not exist"
-  #code: -1
-  #file: "/var/www/html/tests/scripts/10-profile.php"
-  #line: 62
-  trace: {
-    /var/www/html/tests/scripts/10-profile.php:62 {
-      ProfileTest->testHandleSaveProfileMethodExists(): bool
-      › 
-      › $rc = new ReflectionClass('Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms');
-      › if ($rc->hasMethod('handleSaveProfile')) {
-      arguments: {
-        $objectOrClass: "Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms"
-      }
-    }
-    /var/www/html/tests/scripts/10-profile.php:25 { …}
-    /var/www/html/tests/scripts/10-profile.php:104 { …}
-  }
-}
+Test: handleSaveProfile method exists... PASS
+Test: Profile language strings loaded... FAIL (missing: PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVED, PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_ERROR, PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_TOO_SHORT, PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_TITLE)
+
+=== Profile Test Summary ===
