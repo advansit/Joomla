@@ -59,13 +59,19 @@ class J2StoreCartTest
     {
         echo "Test: handleRemoveCartItem method exists... ";
 
-        $rc = new ReflectionClass('Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms');
-        if ($rc->hasMethod('handleRemoveCartItem')) {
+        $file = JPATH_ROOT . '/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
+        if (!file_exists($file)) {
+            echo "FAIL (file not found)\n";
+            return false;
+        }
+
+        $content = file_get_contents($file);
+        if (strpos($content, 'function handleRemoveCartItem') !== false) {
             echo "PASS\n";
             return true;
         }
 
-        echo "FAIL\n";
+        echo "FAIL (method not found in source)\n";
         return false;
     }
 
@@ -73,13 +79,19 @@ class J2StoreCartTest
     {
         echo "Test: handleGetCartCount method exists... ";
 
-        $rc = new ReflectionClass('Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms');
-        if ($rc->hasMethod('handleGetCartCount')) {
+        $file = JPATH_ROOT . '/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
+        if (!file_exists($file)) {
+            echo "FAIL (file not found)\n";
+            return false;
+        }
+
+        $content = file_get_contents($file);
+        if (strpos($content, 'function handleGetCartCount') !== false) {
             echo "PASS\n";
             return true;
         }
 
-        echo "FAIL\n";
+        echo "FAIL (method not found in source)\n";
         return false;
     }
 

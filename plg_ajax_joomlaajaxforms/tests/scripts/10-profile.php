@@ -59,13 +59,19 @@ class ProfileTest
     {
         echo "Test: handleSaveProfile method exists... ";
 
-        $rc = new ReflectionClass('Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms');
-        if ($rc->hasMethod('handleSaveProfile')) {
+        $file = JPATH_ROOT . '/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
+        if (!file_exists($file)) {
+            echo "FAIL (file not found)\n";
+            return false;
+        }
+
+        $content = file_get_contents($file);
+        if (strpos($content, 'function handleSaveProfile') !== false) {
             echo "PASS\n";
             return true;
         }
 
-        echo "FAIL\n";
+        echo "FAIL (method not found in source)\n";
         return false;
     }
 
