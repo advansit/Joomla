@@ -2,7 +2,7 @@
 <updates>
     <update>
         <name>J2Store Cleanup</name>
-        <description>Migration tool for transitioning from J2Store to J2Commerce 4.x</description>
+        <description>Database cleanup utility for J2Store</description>
         <element>com_j2store_cleanup</element>
         <type>component</type>
         <version>1.0.0</version>
