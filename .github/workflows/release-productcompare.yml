@@ -2,19 +2,26 @@ name: Release - J2Commerce Product Compare
 
 on:
   push:
-    tags:
-      - 'productcompare-v*'
+    branches: [main]
+    paths:
+      - 'j2commerce/plg_j2commerce_productcompare/**'
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version number (e.g., 1.0.1)'
-        required: true
-        type: string
+      bump:
+        description: 'Force version bump (leave empty for auto-detect from commits)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - patch
+          - minor
+          - major
 
 jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     permissions:
       contents: write
 
@@ -23,54 +30,104 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version
+      - name: Determine version bump
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=${GITHUB_REF#refs/tags/productcompare-v}
+          TAG_PREFIX="productcompare-v"
+          XML_FILE="j2commerce/plg_j2commerce_productcompare/plg_j2commerce_productcompare.xml"
+          EXT_PATH="j2commerce/plg_j2commerce_productcompare/"
+
+          CURRENT=$(grep -oP '(?<=<version>)[^<]+' "$XML_FILE")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          BUMP="${{ inputs.bump }}"
+
+          if [ -z "$BUMP" ]; then
+            LAST_TAG=$(git tag -l "${TAG_PREFIX}*" --sort=-v:refname | head -1)
+
+            if [ -n "$LAST_TAG" ]; then
+              COMMITS=$(git log "$LAST_TAG"..HEAD --pretty=format:"%s" --no-merges -- "$EXT_PATH")
+            else
+              COMMITS=$(git log --pretty=format:"%s" --no-merges -20 -- "$EXT_PATH")
+            fi
+
+            if [ -z "$COMMITS" ]; then
+              echo "No commits for this extension since last tag — skipping"
+              echo "bump=none" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if echo "$COMMITS" | grep -qiE '^[a-z]+(\(.+\))?!:|BREAKING CHANGE:'; then
+              BUMP="major"
+            elif echo "$COMMITS" | grep -qiE '^feat(\(.+\))?:'; then
+              BUMP="minor"
+            elif echo "$COMMITS" | grep -qiE '^fix(\(.+\))?:'; then
+              BUMP="patch"
+            else
+              echo "No conventional commit found — skipping"
+              echo "bump=none" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW="$MAJOR.$MINOR.$PATCH"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Version: $CURRENT → $NEW ($BUMP)"
 
       - name: Update version in files
+        if: steps.version.outputs.bump != 'none'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.new }}"
+          DATE=$(date +%Y-%m)
           cd j2commerce/plg_j2commerce_productcompare
           echo "$VERSION" > VERSION
           sed -i "s/VERSION=\".*\"/VERSION=\"$VERSION\"/" build.env
-          sed -i "s/<version>.*<\/version>/<version>$VERSION<\/version>/" plg_j2commerce_productcompare.xml
+          sed -i \
+            -e "s/<version>[^<]*<\/version>/<version>$VERSION<\/version>/" \
+            -e "s/<creationDate>[^<]*<\/creationDate>/<creationDate>$DATE<\/creationDate>/" \
+            plg_j2commerce_productcompare.xml
 
       - name: Build extension
+        if: steps.version.outputs.bump != 'none'
         run: |
           cd j2commerce/plg_j2commerce_productcompare
           chmod +x build.sh
           ./build.sh
 
       - name: Find package file
+        if: steps.version.outputs.bump != 'none'
         id: package
         run: |
           cd j2commerce/plg_j2commerce_productcompare
           PACKAGE=$(ls -1 plg_j2commerce_productcompare_*.zip | head -1)
           echo "file=$PACKAGE" >> $GITHUB_OUTPUT
-          echo "Package: $PACKAGE"
 
       - name: Update update.xml
+        if: steps.version.outputs.bump != 'none'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.new }}"
           PACKAGE="${{ steps.package.outputs.file }}"
           cat > j2commerce/plg_j2commerce_productcompare/updates/update.xml << EOF
           <?xml version="1.0" encoding="utf-8"?>
           <updates>
               <update>
                   <name>J2Commerce Product Compare</name>
-                  <description>Product comparison functionality for J2Commerce</description>
-                  <element>productcompare</element>
+                  <description>Product comparison for J2Commerce</description>
+                  <element>j2commerce_productcompare</element>
                   <type>plugin</type>
-                  <folder>j2store</folder>
+                  <folder>j2commerce</folder>
                   <version>$VERSION</version>
                   <infourl>https://github.com/advansit/Joomla/tree/main/j2commerce/plg_j2commerce_productcompare</infourl>
                   <downloads>
@@ -85,25 +142,28 @@ jobs:
           </updates>
           EOF
 
-      - name: Commit version updates
+      - name: Commit, tag and push
+        if: steps.version.outputs.bump != 'none'
         run: |
+          VERSION="${{ steps.version.outputs.new }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add j2commerce/plg_j2commerce_productcompare/VERSION
-          git add j2commerce/plg_j2commerce_productcompare/build.env
-          git add j2commerce/plg_j2commerce_productcompare/plg_j2commerce_productcompare.xml
-          git add j2commerce/plg_j2commerce_productcompare/updates/update.xml
-          git diff --staged --quiet || git commit -m "Release productcompare v${{ steps.version.outputs.version }} [skip ci]"
-          git push origin HEAD:main || true
+          git add j2commerce/plg_j2commerce_productcompare/
+          git diff --staged --quiet || {
+            git commit -m "release: productcompare v${VERSION} [skip ci]"
+            git tag -a "productcompare-v${VERSION}" -m "Release productcompare v${VERSION}"
+            git push origin HEAD:main --follow-tags
+          }
 
       - name: Generate changelog
+        if: steps.version.outputs.bump != 'none'
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null | grep "^productcompare-" || echo "")
+          PREV_TAG=$(git tag -l "productcompare-v*" --sort=-v:refname | sed -n '2p')
           if [ -z "$PREV_TAG" ]; then
             echo "changelog=Initial release" >> $GITHUB_OUTPUT
           else
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges -- j2commerce/plg_j2commerce_productcompare/ | head -20)
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges -- j2commerce/plg_j2commerce_productcompare/ | grep -v '\[skip ci\]' | head -20)
             if [ -z "$CHANGELOG" ]; then
               CHANGELOG="- Bug fixes and improvements"
             fi
@@ -112,32 +172,27 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create or update tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          git tag -fa productcompare-v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
-          git push origin productcompare-v${{ steps.version.outputs.version }} --force
-
       - name: Create Release
+        if: steps.version.outputs.bump != 'none'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: productcompare-v${{ steps.version.outputs.version }}
-          name: J2Commerce Product Compare v${{ steps.version.outputs.version }}
+          tag_name: productcompare-v${{ steps.version.outputs.new }}
+          name: J2Commerce Product Compare v${{ steps.version.outputs.new }}
           body: |
-            ## J2Commerce Product Compare Plugin v${{ steps.version.outputs.version }}
-            
-            Product comparison functionality for J2Commerce stores.
-            
+            ## J2Commerce Product Compare Plugin v${{ steps.version.outputs.new }}
+
+            Product comparison for J2Commerce.
+
             ### Changes
             ${{ steps.changelog.outputs.changelog }}
-            
+
             ### Installation
             1. Download `${{ steps.package.outputs.file }}`
             2. Install via Joomla Extension Manager
             3. Enable plugin in System → Plugins
-            
+
             ### Requirements
-            - Joomla 4.x, 5.x or 6.x
+            - Joomla 5.x, 6.x or 7.x
             - PHP 8.1 or higher
             - J2Commerce 4.x or higher
           files: |
