@@ -67,6 +67,9 @@ if [ -f /var/www/html/configuration.php ]; then
         
         echo "✅ Extension installation complete"
     fi
+    
+    touch /var/www/html/health.txt
+    echo "✅ Health file created"
 fi
 
 # Keep container running
