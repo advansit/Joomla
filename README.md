@@ -49,24 +49,27 @@ View test results: https://github.com/advansit/Joomla/actions
 
 ## Releases
 
-Each extension has its own release workflow triggered by extension-specific git tags:
+Releases are created automatically using [Conventional Commits](https://www.conventionalcommits.org/). When changes are pushed to `main`, the release workflow for each affected extension determines the version bump from commit messages:
 
-| Workflow | Tag Pattern | Extension |
-|----------|-------------|-----------|
-| `release-joomla-ajax-forms.yml` | `ajaxforms-v*` | Joomla AJAX Forms |
-| `release-importexport.yml` | `importexport-v*` | Import/Export |
-| `release-cleanup.yml` | `cleanup-v*` | J2Store Cleanup |
-| `release-productcompare.yml` | `productcompare-v*` | Product Compare |
-| `release-privacy.yml` | `privacy-v*` | Privacy |
+| Commit Prefix | Version Bump | Example |
+|---------------|-------------|---------|
+| `fix:` | Patch (1.0.0 → 1.0.1) | `fix: correct cart count query` |
+| `feat:` | Minor (1.0.0 → 1.1.0) | `feat: add product export filter` |
+| `feat!:` or `BREAKING CHANGE:` | Major (1.0.0 → 2.0.0) | `feat!: require Joomla 5+` |
 
-To create a release:
+Commits without a conventional prefix are ignored — no release is created.
 
-```bash
-git tag ajaxforms-v2.0.0
-git push origin ajaxforms-v2.0.0
-```
+Each extension has its own release workflow, tag prefix and independent version:
 
-Or run the workflow manually via GitHub Actions UI.
+| Workflow | Tag Pattern | Trigger Path |
+|----------|-------------|-------------|
+| `release-joomla-ajax-forms.yml` | `ajaxforms-v*` | `plg_ajax_joomlaajaxforms/**` |
+| `release-importexport.yml` | `importexport-v*` | `j2commerce/com_j2commerce_importexport/**` |
+| `release-cleanup.yml` | `cleanup-v*` | `j2commerce/com_j2store_cleanup/**` |
+| `release-productcompare.yml` | `productcompare-v*` | `j2commerce/plg_j2commerce_productcompare/**` |
+| `release-privacy.yml` | `privacy-v*` | `j2commerce/plg_privacy_j2commerce/**` |
+
+Releases can also be triggered manually via the GitHub Actions UI with a forced bump level (patch/minor/major).
 
 View all releases: https://github.com/advansit/Joomla/releases
 
