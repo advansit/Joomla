@@ -1,7 +1,7 @@
 <?php
 /**
- * Safety Checks Tests for J2Store Cleanup v1.1.0
- * Tests that protected extensions cannot be removed
+ * Safety Checks Tests for J2Store Cleanup
+ * Tests that com_j2store is always protected and classification works correctly
  */
 define('_JEXEC', 1);
 define('JPATH_BASE', '/var/www/html');
@@ -17,202 +17,197 @@ class SafetyChecksTest
     private $db;
     private $passed = 0;
     private $failed = 0;
-
-    // Protected extensions list from j2store_cleanup.php
-    private $protectedElements = [
-        'com_j2store',
-        'com_j2store_cleanup',
-        'com_j2commerce_importexport',
-        'plg_privacy_j2commerce',
-        'plg_j2commerce_productcompare'
-    ];
+    private $tmpDir;
 
     public function __construct()
     {
-        $this->db = Factory::getDbo();
+        $this->db = Factory::getContainer()->get('DatabaseDriver');
+        $this->tmpDir = sys_get_temp_dir() . '/j2cleanup_safety_' . uniqid();
+        mkdir($this->tmpDir, 0755, true);
     }
 
-    /**
-     * Replicate the detection function from j2store_cleanup.php
-     */
-    private function checkJ2StoreCompatibility($manifest, $ext): array
+    public function __destruct()
     {
-        if (in_array($ext->element, $this->protectedElements)) {
-            return ['incompatible' => false, 'reason' => ''];
-        }
-
-        if (!is_object($manifest)) {
-            return ['incompatible' => true, 'reason' => 'Invalid manifest data'];
-        }
-
-        if (isset($manifest->authorUrl) && strpos($manifest->authorUrl, 'j2commerce.com') !== false) {
-            return ['incompatible' => false, 'reason' => ''];
-        }
-
-        $version = $manifest->version ?? 'Unknown';
-        if ($version !== 'Unknown' && version_compare($version, '4.0.0', '<')) {
-            return [
-                'incompatible' => true,
-                'reason' => 'Version ' . $version . ' < 4.0.0'
-            ];
-        }
-
-        if (isset($manifest->authorUrl) && strpos($manifest->authorUrl, 'j2store.org') !== false) {
-            return [
-                'incompatible' => true,
-                'reason' => 'Legacy J2Store (j2store.org)'
-            ];
-        }
-
-        if (isset($manifest->authorEmail) && strpos($manifest->authorEmail, '@j2store.org') !== false) {
-            return [
-                'incompatible' => true,
-                'reason' => 'Legacy J2Store (@j2store.org)'
-            ];
-        }
-
-        return ['incompatible' => false, 'reason' => ''];
+        $this->removeDir($this->tmpDir);
     }
 
-    /**
-     * Check if extension exists in database
-     */
-    private function extensionExists(string $element): bool
+    private function removeDir($dir)
     {
-        $query = $this->db->getQuery(true)
-            ->select('COUNT(*)')
-            ->from('#__extensions')
-            ->where('element = ' . $this->db->quote($element));
-        $this->db->setQuery($query);
-        return (int)$this->db->loadResult() > 0;
+        if (!is_dir($dir)) return;
+        foreach (scandir($dir) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $path = $dir . '/' . $item;
+            is_dir($path) ? $this->removeDir($path) : unlink($path);
+        }
+        rmdir($dir);
     }
 
     private function test(string $name, bool $condition): void
     {
-        if ($condition) {
-            echo "Test: $name... PASS\n";
-            $this->passed++;
-        } else {
-            echo "Test: $name... FAIL\n";
-            $this->failed++;
+        echo 'Test: ' . $name . '... ' . ($condition ? 'PASS' : 'FAIL') . "\n";
+        $condition ? $this->passed++ : $this->failed++;
+    }
+
+    /**
+     * Replicate classifyExtension from j2store_cleanup.php
+     */
+    private function classifyExtension($manifest, $ext, $patterns): array
+    {
+        if ($ext->element === 'com_j2store') {
+            $version = is_object($manifest) ? ($manifest->version ?? '?') : '?';
+            return ['status' => 'core', 'reason' => 'Core component (v' . $version . ')', 'issues' => []];
         }
+
+        $version = is_object($manifest) ? ($manifest->version ?? '?') : '?';
+        $author  = is_object($manifest) ? ($manifest->author ?? '?') : '?';
+        $info    = $author . ', v' . $version;
+
+        // Use tmpDir-based path for testing
+        $path = $this->tmpDir . '/' . $ext->element;
+
+        if (!is_dir($path)) {
+            return ['status' => 'no-files', 'reason' => 'Files not found (' . $info . ')', 'issues' => []];
+        }
+
+        // Scan
+        $issues = [];
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        foreach ($files as $file) {
+            if ($file->getExtension() !== 'php') continue;
+            $content = @file_get_contents($file->getPathname());
+            if ($content === false) continue;
+            $stripped = preg_replace('#/\*.*?\*/#s', '', $content);
+            $stripped = preg_replace('#//.*$#m', '', $stripped);
+            foreach ($patterns['joomla'] as $pattern => $label) {
+                if (preg_match($pattern, $stripped)) {
+                    $issues[] = ['type' => 'joomla', 'detail' => $label];
+                }
+            }
+        }
+        $seen = [];
+        $unique = [];
+        foreach ($issues as $issue) {
+            $key = $issue['detail'];
+            if (!isset($seen[$key])) { $seen[$key] = true; $unique[] = $issue; }
+        }
+
+        if (empty($unique)) {
+            return ['status' => 'compatible', 'reason' => 'No issues (' . $info . ')', 'issues' => []];
+        }
+
+        return ['status' => 'incompatible', 'reason' => count($unique) . ' issue(s) (' . $info . ')', 'issues' => $unique];
+    }
+
+    private function getJ6Patterns(): array
+    {
+        return ['joomla' => [
+            '/\bJFactory\b/'           => 'JFactory (removed in Joomla 6)',
+            '/\bJText\b/'             => 'JText (removed in Joomla 6)',
+            '/Factory::getUser\s*\(/' => 'Factory::getUser() (removed in Joomla 6)',
+            '/Factory::getDbo\s*\(/'  => 'Factory::getDbo() (removed in Joomla 6)',
+        ], 'j2store' => []];
     }
 
     public function run(): bool
     {
-        echo "=== Safety Checks Tests (v1.1.0 Protected Extensions) ===\n\n";
+        echo "=== Safety Checks Tests ===\n\n";
+        $patterns = $this->getJ6Patterns();
 
-        // Test 1: All protected elements are in the list
-        echo "--- Protected Elements List ---\n";
-        $this->test('com_j2store is in protected list', in_array('com_j2store', $this->protectedElements));
-        $this->test('com_j2store_cleanup is in protected list', in_array('com_j2store_cleanup', $this->protectedElements));
-        $this->test('com_j2commerce_importexport is in protected list', in_array('com_j2commerce_importexport', $this->protectedElements));
-        $this->test('plg_privacy_j2commerce is in protected list', in_array('plg_privacy_j2commerce', $this->protectedElements));
-        $this->test('plg_j2commerce_productcompare is in protected list', in_array('plg_j2commerce_productcompare', $this->protectedElements));
+        // --- com_j2store is always core ---
+        echo "--- com_j2store protection ---\n";
+        $ext = (object)['element' => 'com_j2store', 'type' => 'component', 'folder' => '', 'client_id' => 1];
 
-        // Test 2: Protected extensions are never marked as incompatible
-        echo "\n--- Protected Extension Detection ---\n";
-        
-        // Even with old version and j2store.org URL, protected extensions should be compatible
-        $oldManifest = (object)[
-            'name' => 'J2Store Core',
-            'version' => '1.0.0',
-            'author' => 'Alagesan',
-            'authorUrl' => 'http://www.j2store.org',
-            'authorEmail' => 'supports@j2store.org'
+        $manifest = (object)['version' => '4.0.20', 'author' => 'J2Commerce'];
+        $result = $this->classifyExtension($manifest, $ext, $patterns);
+        $this->test('com_j2store v4.0.20 is core', $result['status'] === 'core');
+
+        $manifest = (object)['version' => '3.3.20', 'author' => 'Ramesh'];
+        $result = $this->classifyExtension($manifest, $ext, $patterns);
+        $this->test('com_j2store v3.3.20 is still core', $result['status'] === 'core');
+
+        $result = $this->classifyExtension(null, $ext, $patterns);
+        $this->test('com_j2store with null manifest is still core', $result['status'] === 'core');
+
+        // --- Extension with clean code = compatible ---
+        echo "\n--- Clean extension ---\n";
+        $dir = $this->tmpDir . '/clean_plugin';
+        mkdir($dir, 0755, true);
+        file_put_contents($dir . '/plugin.php', "<?php\nuse Joomla\\CMS\\Factory;\n\$app = Factory::getApplication();\n");
+
+        $ext = (object)['element' => 'clean_plugin', 'type' => 'plugin', 'folder' => 'j2store', 'client_id' => 0];
+        $manifest = (object)['version' => '1.0.0', 'author' => 'Some Vendor'];
+        $result = $this->classifyExtension($manifest, $ext, $patterns);
+        $this->test('Clean plugin is compatible', $result['status'] === 'compatible');
+
+        // --- Extension with old APIs = incompatible ---
+        echo "\n--- Legacy extension ---\n";
+        $dir = $this->tmpDir . '/old_plugin';
+        mkdir($dir, 0755, true);
+        file_put_contents($dir . '/plugin.php', "<?php\n\$app = JFactory::getApplication();\necho JText::_('HELLO');\n");
+
+        $ext = (object)['element' => 'old_plugin', 'type' => 'plugin', 'folder' => 'j2store', 'client_id' => 0];
+        $manifest = (object)['version' => '1.5.0', 'author' => 'Old Vendor', 'authorUrl' => 'http://j2store.org'];
+        $result = $this->classifyExtension($manifest, $ext, $patterns);
+        $this->test('Old plugin is incompatible', $result['status'] === 'incompatible');
+        $this->test('Issues list is not empty', count($result['issues']) > 0);
+
+        // --- Extension with no files = no-files ---
+        echo "\n--- Missing files ---\n";
+        $ext = (object)['element' => 'nonexistent_plugin', 'type' => 'plugin', 'folder' => 'j2store', 'client_id' => 0];
+        $manifest = (object)['version' => '1.0.0', 'author' => 'Test'];
+        $result = $this->classifyExtension($manifest, $ext, $patterns);
+        $this->test('Missing files = no-files status', $result['status'] === 'no-files');
+
+        // --- Any vendor's clean plugin is compatible ---
+        echo "\n--- Vendor-agnostic detection ---\n";
+        $vendors = [
+            ['author' => 'Advans IT Solutions GmbH', 'authorUrl' => 'https://advans.ch'],
+            ['author' => 'J2Commerce', 'authorUrl' => 'https://j2commerce.com'],
+            ['author' => 'Cartrabbit', 'authorUrl' => 'https://cartrabbit.io'],
+            ['author' => 'Random Developer', 'authorUrl' => 'https://example.com'],
         ];
 
-        foreach ($this->protectedElements as $element) {
-            $ext = (object)['element' => $element];
-            $result = $this->checkJ2StoreCompatibility($oldManifest, $ext);
-            $this->test("$element is protected even with old manifest", $result['incompatible'] === false);
+        $dir = $this->tmpDir . '/vendor_test';
+        mkdir($dir, 0755, true);
+        file_put_contents($dir . '/plugin.php', "<?php\nuse Joomla\\CMS\\Factory;\n\$app = Factory::getApplication();\n");
+
+        $ext = (object)['element' => 'vendor_test', 'type' => 'plugin', 'folder' => 'j2store', 'client_id' => 0];
+        foreach ($vendors as $v) {
+            $manifest = (object)array_merge($v, ['version' => '1.0.0']);
+            $result = $this->classifyExtension($manifest, $ext, $patterns);
+            $this->test($v['author'] . ' clean plugin is compatible', $result['status'] === 'compatible');
         }
 
-        // Test 3: Non-protected extensions with same manifest ARE incompatible
-        echo "\n--- Non-Protected Extension Detection ---\n";
-        $nonProtectedElements = [
-            'app_gdpr',
-            'app_simplecsv',
-            'payment_stripe',
-            'app_validationrules',
-            'shipping_standard'
-        ];
+        // --- Any vendor's legacy plugin is incompatible ---
+        echo "\n--- Any vendor's legacy code is flagged ---\n";
+        $dir = $this->tmpDir . '/vendor_legacy';
+        mkdir($dir, 0755, true);
+        file_put_contents($dir . '/plugin.php', "<?php\n\$app = JFactory::getApplication();\n");
 
-        foreach ($nonProtectedElements as $element) {
-            $ext = (object)['element' => $element];
-            $result = $this->checkJ2StoreCompatibility($oldManifest, $ext);
-            $this->test("$element is NOT protected (detected as incompatible)", $result['incompatible'] === true);
+        $ext = (object)['element' => 'vendor_legacy', 'type' => 'plugin', 'folder' => 'j2store', 'client_id' => 0];
+        foreach ($vendors as $v) {
+            $manifest = (object)array_merge($v, ['version' => '2.0.0']);
+            $result = $this->classifyExtension($manifest, $ext, $patterns);
+            $this->test($v['author'] . ' legacy plugin is incompatible', $result['status'] === 'incompatible');
         }
 
-        // Test 4: J2Commerce extensions (by authorUrl) are protected
-        echo "\n--- J2Commerce authorUrl Protection ---\n";
-        $j2commerceManifest = (object)[
-            'name' => 'Some Plugin',
-            'version' => '1.0.0', // Old version but j2commerce.com URL
-            'author' => 'J2Commerce',
-            'authorUrl' => 'https://www.j2commerce.com',
-            'authorEmail' => 'support@j2commerce.com'
-        ];
+        // --- Database: com_j2store exists ---
+        echo "\n--- Database verification ---\n";
+        $query = $this->db->getQuery(true)
+            ->select('COUNT(*)')
+            ->from('#__extensions')
+            ->where('element = ' . $this->db->quote('com_j2store'));
+        $this->db->setQuery($query);
+        $exists = (int)$this->db->loadResult() > 0;
 
-        $ext = (object)['element' => 'app_some_new_plugin'];
-        $result = $this->checkJ2StoreCompatibility($j2commerceManifest, $ext);
-        $this->test('Extension with j2commerce.com authorUrl is protected', $result['incompatible'] === false);
-
-        // Test 5: Verify com_j2store exists in database (if installed)
-        echo "\n--- Database Verification ---\n";
-        $j2storeExists = $this->extensionExists('com_j2store');
-        if ($j2storeExists) {
+        if ($exists) {
             $this->test('com_j2store exists in database', true);
-            
-            // Verify it would not be marked for removal
-            $query = $this->db->getQuery(true)
-                ->select('manifest_cache')
-                ->from('#__extensions')
-                ->where('element = ' . $this->db->quote('com_j2store'));
-            $this->db->setQuery($query);
-            $manifestCache = $this->db->loadResult();
-            $manifest = json_decode($manifestCache);
-            
-            $ext = (object)['element' => 'com_j2store'];
-            $result = $this->checkJ2StoreCompatibility($manifest, $ext);
-            $this->test('com_j2store in database is protected', $result['incompatible'] === false);
         } else {
-            echo "Note: com_j2store not installed, skipping database verification\n";
-            $this->test('Database verification skipped (com_j2store not installed)', true);
+            echo "Note: com_j2store not installed, skipping\n";
+            $this->test('Database check skipped', true);
         }
-
-        // Test 6: Verify cleanup component exists
-        $cleanupExists = $this->extensionExists('com_j2store_cleanup');
-        if ($cleanupExists) {
-            $this->test('com_j2store_cleanup exists in database', true);
-        } else {
-            echo "Note: com_j2store_cleanup not installed yet\n";
-            $this->test('Cleanup component check skipped', true);
-        }
-
-        // Test 7: Edge case - element with similar name but not exact match
-        echo "\n--- Edge Cases ---\n";
-        $similarElements = [
-            'com_j2store_extra',      // Similar but not protected
-            'com_j2store_cleanup_v2', // Similar but not protected
-            'plg_privacy_j2commerce_extended' // Similar but not protected
-        ];
-
-        foreach ($similarElements as $element) {
-            $ext = (object)['element' => $element];
-            $result = $this->checkJ2StoreCompatibility($oldManifest, $ext);
-            $this->test("$element (similar name) is NOT protected", $result['incompatible'] === true);
-        }
-
-        // Test 8: Case sensitivity
-        echo "\n--- Case Sensitivity ---\n";
-        $ext = (object)['element' => 'COM_J2STORE']; // Uppercase
-        $result = $this->checkJ2StoreCompatibility($oldManifest, $ext);
-        $this->test('COM_J2STORE (uppercase) is NOT protected (case sensitive)', $result['incompatible'] === true);
-
-        $ext = (object)['element' => 'Com_J2store']; // Mixed case
-        $result = $this->checkJ2StoreCompatibility($oldManifest, $ext);
-        $this->test('Com_J2store (mixed case) is NOT protected', $result['incompatible'] === true);
 
         echo "\n=== Safety Checks Test Summary ===\n";
         echo "Passed: {$this->passed}\n";

@@ -31,13 +31,14 @@ class CleanupTest extends TestCase
 
     /**
      * Test that component can identify incompatible extensions
+     * via version-aware file scanning
      *
      * @return  void
      * @since   1.0.0
      */
     public function testIdentifiesIncompatibleExtensions()
     {
-        $this->assertTrue(true, 'Incompatibility detection test placeholder');
+        $this->assertTrue(true, 'Version-aware file scanning test placeholder');
     }
 
     /**
