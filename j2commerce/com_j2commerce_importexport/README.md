@@ -42,7 +42,7 @@ Products are matched and updated (instead of duplicated) using three methods:
 
 ## Requirements
 
-- Joomla 4.x, 5.x or 6.x
+- Joomla 5.x, 6.x or 7.x
 - PHP 8.1 or higher
 - J2Commerce/J2Store 4.x or higher
 

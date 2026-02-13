@@ -631,7 +631,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $adminEmail = $this->params->get('admin_email', '');
         if (empty($adminEmail)) {
             // Fall back to site admin email
-            $adminEmail = Factory::getApplication()->get('mailfrom');
+            $adminEmail = $this->getApplication()->get('mailfrom');
         }
 
         if (empty($adminEmail)) {
@@ -648,7 +648,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         }
 
         try {
-            $mailer = Factory::getContainer()->get(MailerFactoryInterface::class)->createMailer();
+            $mailer = $this->getApplication()->getContainer()->get(MailerFactoryInterface::class)->createMailer();
             $mailer->addRecipient($adminEmail);
             $mailer->setSubject($subject);
             $mailer->setBody($body);
@@ -706,7 +706,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                     $db->quote('plg_privacy_j2commerce') . ',' .
                     (int) $userId . ',' .
                     (int) $userId . ',' .
-                    $db->quote(Factory::getApplication()->input->server->get('REMOTE_ADDR', '', 'string'))
+                    $db->quote($this->getApplication()->getInput()->server->get('REMOTE_ADDR', '', 'string'))
                 );
             $db->setQuery($query);
             $db->execute();
@@ -1067,7 +1067,7 @@ HTML;
             $db->execute();
             
             // Log activity and notify admin
-            $user = Factory::getApplication()->getIdentity();
+            $user = $this->getApplication()->getIdentity();
             $this->logActivity('address_deleted', $userId, 'Address ID: ' . $addressId);
             $this->sendAdminNotification('address_deleted', $user, 'Address ID: ' . $addressId);
             
