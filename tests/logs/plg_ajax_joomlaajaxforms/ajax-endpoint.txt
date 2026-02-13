@@ -1,0 +1,9 @@
+=== AJAX Endpoint Tests ===
+
+Test: Plugin is enabled... PASS
+Test: AJAX endpoint accessible... (HTTP 200) PASS
+  Response preview: {"success":false,"message":"Class \"Advans\\Plugin\\Ajax\\JoomlaAjaxForms\\Extension\\JoomlaAjaxForm
+Test: Response contains expected structure... PASS (valid JSON)
+
+=== AJAX Endpoint Test Summary ===
+All tests completed.

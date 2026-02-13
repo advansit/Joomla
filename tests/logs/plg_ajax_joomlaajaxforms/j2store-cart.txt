@@ -1,0 +1,22 @@
+=== J2Store Cart Tests ===
+
+Test: J2Store cart feature config exists... PASS
+Test: handleRemoveCartItem method exists... ReflectionException {#172
+  #message: "Class "Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms" does not exist"
+  #code: -1
+  #file: "/var/www/html/tests/scripts/11-j2store-cart.php"
+  #line: 62
+  trace: {
+    /var/www/html/tests/scripts/11-j2store-cart.php:62 {
+      J2StoreCartTest->testHandleRemoveCartItemMethodExists(): bool
+      › 
+      › $rc = new ReflectionClass('Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms');
+      › if ($rc->hasMethod('handleRemoveCartItem')) {
+      arguments: {
+        $objectOrClass: "Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms"
+      }
+    }
+    /var/www/html/tests/scripts/11-j2store-cart.php:25 { …}
+    /var/www/html/tests/scripts/11-j2store-cart.php:119 { …}
+  }
+}
