@@ -1,7 +1,7 @@
 # System - J2Commerce Privacy Plugin
 **Author:** Advans IT Solutions GmbH  
 **License:** Proprietary  
-**Joomla:** 4.x, 5.x, 6.x  
+**Joomla:** 5.x, 6.x, 7.x  
 **PHP:** 8.0+
 
 GDPR/DSGVO compliance solution for J2Commerce. Features:
@@ -49,7 +49,7 @@ GDPR/DSGVO compliance solution for J2Commerce. Features:
 
 ### Requirements
 
-- Joomla 4.x, 5.x or 6.x
+- Joomla 5.x, 6.x or 7.x
 - PHP 8.0 or higher
 - J2Store 3.3.0 or higher
 - Joomla Privacy Component enabled
