@@ -813,7 +813,7 @@ const JoomlaAjaxForms = {
      * @param {number} count - New cart count
      */
     updateCartBadge: function(count) {
-        document.querySelectorAll('.cart-count, .cart-badge, .j2store-cart-count, .minicart-count').forEach(function(badge) {
+        document.querySelectorAll('.cart-count, .cart-badge, .cart-item-count, .j2store-cart-count, .minicart-count').forEach(function(badge) {
             badge.textContent = count;
             badge.style.display = count === 0 ? 'none' : '';
         });
@@ -823,7 +823,7 @@ const JoomlaAjaxForms = {
      * Show empty cart message
      */
     showEmptyCartMessage: function() {
-        var container = document.querySelector('.j2store-minicart-items, .minicart-items, .cart-items');
+        var container = document.querySelector('.j2store-cart-list, .j2store-minicart-items, .minicart-items, .cart-items');
         if (container) {
             container.innerHTML = '<p class="empty-cart-message">' +
                 (JoomlaAjaxForms.getLang('CART_EMPTY') || 'Your cart is empty.') + '</p>';
