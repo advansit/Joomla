@@ -9,6 +9,7 @@
     <creationDate>2026-01</creationDate>
     <version>2.0.0</version>
     <description>PLG_AJAX_JOOMLAAJAXFORMS_DESC</description>
+    <scriptfile>script.php</scriptfile>
     <namespace path="src">Advans\Plugin\Ajax\JoomlaAjaxForms</namespace>
 
     <files>
