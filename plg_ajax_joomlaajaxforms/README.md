@@ -37,6 +37,18 @@ All features can be individually enabled/disabled via plugin parameters.
 2. Install via Joomla Extension Manager
 3. Enable under System > Plugins > "Joomla! AJAX Forms"
 
+The installer checks the `.htaccess` on the web server. If rewrite rules block `/component/` or `index.php?option=com_*` URLs, `com_ajax` must be whitelisted — otherwise all AJAX calls will fail silently. The installer warns if exceptions are missing.
+
+Required `.htaccess` exceptions (only if URL blocking is active):
+
+```apache
+# Allow com_ajax plugin calls through /component/ blocking
+RewriteCond %{QUERY_STRING} !plugin= [NC]
+
+# Allow com_ajax through index.php?option= blocking
+RewriteCond %{QUERY_STRING} !^option=com_ajax [NC]
+```
+
 ## Configuration
 
 | Parameter | Description | Default |
