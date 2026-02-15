@@ -62,6 +62,8 @@ jobs:
             script: 'profile'
           - name: '11 - J2Store Cart'
             script: 'j2store-cart'
+          - name: '12 - Htaccess Check'
+            script: 'htaccess-check'
           - name: '09 - Uninstall'
             script: 'uninstall'
     
