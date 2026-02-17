@@ -21,7 +21,7 @@ jobs:
           ./build.sh
           mkdir -p tests
           cp *.zip tests/extension.zip
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         with:
           name: extension-package
           path: j2commerce/com_j2commerce_importexport/tests/extension.zip
@@ -65,7 +65,7 @@ jobs:
             script: 'uninstall'
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v4
         with:
           name: extension-package
           path: j2commerce/com_j2commerce_importexport/tests/
@@ -79,7 +79,7 @@ jobs:
           cd j2commerce/com_j2commerce_importexport/tests
           chmod +x run-tests.sh
           ./run-tests.sh ${{ matrix.script }}
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ${{ matrix.script }}-logs
@@ -96,7 +96,7 @@ jobs:
     needs: test
     if: always()
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v4
         with:
           path: test-artifacts/
       - name: Collect and display logs
@@ -109,7 +109,7 @@ jobs:
               find "$dir" -name "*.txt" -exec cat {} \;
             fi
           done
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         with:
           name: all-test-logs
           path: test-artifacts/
