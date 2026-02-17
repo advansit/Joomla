@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI trigger: 2026-02-17
 set -e
 
 echo "=== J2Commerce Test Environment Setup ==="
