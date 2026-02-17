@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI trigger: 2026-02-17
 set -e
 
 echo "=== Joomla AJAX Forms Test Environment Setup ==="
