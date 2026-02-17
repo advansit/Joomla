@@ -201,7 +201,7 @@ class LoginTest
     {
         echo "Test: JavaScript login handler exists... ";
         
-        $jsFile = '/var/www/html/plugins/ajax/joomlaajaxforms/media/js/joomlaajaxforms.js';
+        $jsFile = '/var/www/html/media/plg_ajax_joomlaajaxforms/js/joomlaajaxforms.js';
         
         if (!file_exists($jsFile)) {
             echo "FAIL (JS file not found)\n";
@@ -224,7 +224,7 @@ class LoginTest
     {
         echo "Test: JavaScript MFA handler exists... ";
         
-        $jsFile = '/var/www/html/plugins/ajax/joomlaajaxforms/media/js/joomlaajaxforms.js';
+        $jsFile = '/var/www/html/media/plg_ajax_joomlaajaxforms/js/joomlaajaxforms.js';
         
         if (!file_exists($jsFile)) {
             echo "FAIL (JS file not found)\n";
