@@ -135,6 +135,13 @@ else
     exit 1
 fi
 
+# Enable all newly installed extensions (plugins are disabled by default)
+echo "Enabling installed extensions..."
+mysql -h "${JOOMLA_DB_HOST:-mysql}" -u "${JOOMLA_DB_USER:-joomla}" -p"${JOOMLA_DB_PASSWORD:-joomla_pass}" "${JOOMLA_DB_NAME:-joomla_db}" \
+    -e "UPDATE ${TABLE_PREFIX:-j_}extensions SET enabled = 1 WHERE enabled = 0 AND type IN ('plugin', 'component', 'module') AND extension_id > 10000;" 2>/dev/null \
+    && echo "✅ Extensions enabled" \
+    || echo "⚠️ Could not enable extensions via DB (non-fatal)"
+
 # Create a simple health check file
 echo "OK" > /var/www/html/health.txt
 chown www-data:www-data /var/www/html/health.txt

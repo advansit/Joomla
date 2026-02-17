@@ -150,7 +150,7 @@ class InstallationTest
     {
         echo "Test: JavaScript files installed... ";
         
-        $jsFile = '/var/www/html/plugins/ajax/joomlaajaxforms/media/js/joomlaajaxforms.js';
+        $jsFile = '/var/www/html/media/plg_ajax_joomlaajaxforms/js/joomlaajaxforms.js';
         
         if (file_exists($jsFile)) {
             echo "PASS\n";
