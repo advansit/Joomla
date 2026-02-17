@@ -123,73 +123,17 @@ until [ -f /var/www/html/configuration.php ]; do
     sleep 2
 done
 
-# Install extension
-echo "Installing extension..."
+# Install extension using real Joomla Installer API
+echo "Installing extension via Joomla Installer..."
 sleep 5
+cp /tmp/extension.zip /var/www/html/tmp/extension.zip
+chown www-data:www-data /var/www/html/tmp/extension.zip
 
-cd /tmp
-unzip -q -o extension.zip -d extracted 2>/dev/null || true
-
-# Get table prefix from configuration
-TABLE_PREFIX=$(grep "public \$dbprefix" /var/www/html/configuration.php | grep -oP "'\K[^']+" | head -1)
-TABLE_PREFIX=${TABLE_PREFIX:-j_}
-
-# Determine extension type and paths from manifest
-# Look for main manifest in root first (not in subdirectories like updates/)
-MANIFEST=$(find extracted -maxdepth 1 -name "*.xml" -type f ! -name "phpunit.xml" | head -1)
-# Fallback to any XML if not found in root
-if [ -z "$MANIFEST" ]; then
-    MANIFEST=$(find extracted -name "*.xml" -type f ! -name "phpunit.xml" ! -path "*/updates/*" | head -1)
-fi
-if [ -f "$MANIFEST" ]; then
-    TYPE=$(grep -oP 'type="\K[^"]+' "$MANIFEST" | head -1)
-    ELEMENT=$(grep -oP '<element>\K[^<]+' "$MANIFEST" | head -1)
-    NAME=$(grep -oP '<name>\K[^<]+' "$MANIFEST" | head -1)
-    
-    # Fallback to filename if <element> tag not found
-    if [ -z "$ELEMENT" ]; then
-        ELEMENT=$(basename "$MANIFEST" .xml | sed 's/^plg_[^_]*_//' | sed 's/^com_//')
-    fi
-    
-    echo "Extension: $NAME (type: $TYPE, element: $ELEMENT)"
-    
-    if [ "$TYPE" = "plugin" ]; then
-        FOLDER=$(grep -oP 'group="\K[^"]+' "$MANIFEST" | head -1)
-        INSTALL_PATH="/var/www/html/plugins/$FOLDER/$ELEMENT"
-        echo "Installing plugin to: $INSTALL_PATH"
-        
-        mkdir -p "$INSTALL_PATH"
-        cp -r extracted/* "$INSTALL_PATH/"
-        chown -R www-data:www-data "$INSTALL_PATH"
-        
-        # Register plugin in database (Joomla 5 requires custom_data field)
-        mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
-            INSERT INTO ${TABLE_PREFIX}extensions 
-            (name, type, element, folder, client_id, enabled, access, manifest_cache, params, custom_data) 
-            VALUES ('$NAME', 'plugin', '$ELEMENT', '$FOLDER', 0, 1, 1, '', '{}', '')
-            ON DUPLICATE KEY UPDATE enabled=1;
-        " 2>&1 && echo "✅ Plugin registered" || echo "⚠️ Plugin registration failed"
-        
-    elif [ "$TYPE" = "component" ]; then
-        INSTALL_PATH="/var/www/html/administrator/components/com_$ELEMENT"
-        echo "Installing component to: $INSTALL_PATH"
-        
-        mkdir -p "$INSTALL_PATH"
-        cp -r extracted/administrator/components/com_$ELEMENT/* "$INSTALL_PATH/" 2>/dev/null || cp -r extracted/* "$INSTALL_PATH/"
-        chown -R www-data:www-data "$INSTALL_PATH"
-        
-        # Register component in database (Joomla 5 requires custom_data field)
-        mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
-            INSERT INTO ${TABLE_PREFIX}extensions 
-            (name, type, element, folder, client_id, enabled, access, manifest_cache, params, custom_data) 
-            VALUES ('$NAME', 'component', 'com_$ELEMENT', '', 1, 1, 1, '', '{}', '')
-            ON DUPLICATE KEY UPDATE enabled=1;
-        " 2>/dev/null && echo "✅ Component registered" || echo "⚠️ Component registration skipped"
-    fi
-    
-    echo "✅ Extension installation complete"
+if php /tmp/install-extension.php /var/www/html/tmp/extension.zip; then
+    echo "✅ Extension installed via Joomla Installer"
 else
-    echo "❌ No manifest found"
+    echo "❌ Extension installation FAILED via Joomla Installer"
+    exit 1
 fi
 
 # Create a simple health check file

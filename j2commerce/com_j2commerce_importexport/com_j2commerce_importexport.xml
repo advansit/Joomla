@@ -22,8 +22,6 @@
             <folder>services</folder>
             <folder>src</folder>
             <folder>tmpl</folder>
-            <folder>language</folder>
-            <folder>sql</folder>
         </files>
         
         <languages folder="administrator/language">
