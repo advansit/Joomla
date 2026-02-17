@@ -18,7 +18,7 @@
     <namespace path="src">Advans\Plugin\J2Commerce\ProductCompare</namespace>
 
     <files>
-        <folder>services</folder>
+        <folder plugin="productcompare">services</folder>
         <folder>src</folder>
         <folder>language</folder>
         <folder>tmpl</folder>
