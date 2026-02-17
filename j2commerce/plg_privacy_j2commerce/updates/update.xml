@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <updates>
     <update>
-        <name>Privacy - J2Commerce</name>
-        <description>GDPR privacy compliance for J2Commerce</description>
+        <name>J2Commerce Privacy</name>
+        <description>Privacy plugin for J2Commerce GDPR compliance</description>
         <element>j2commerce</element>
         <type>plugin</type>
-        <folder>system</folder>
-        <version>1.0.0</version>
+        <folder>privacy</folder>
+        <version>1.0.1</version>
         <infourl>https://github.com/advansit/Joomla/tree/main/j2commerce/plg_privacy_j2commerce</infourl>
         <downloads>
-            <downloadurl type="full" format="zip">https://github.com/advansit/Joomla/releases/download/privacy-v1.0.0/plg_privacy_j2commerce_2.0.0.zip</downloadurl>
+            <downloadurl type="full" format="zip">https://github.com/advansit/Joomla/releases/download/privacy-v1.0.1/plg_privacy_j2commerce_1.0.1.zip</downloadurl>
         </downloads>
         <tags>
             <tag>stable</tag>
