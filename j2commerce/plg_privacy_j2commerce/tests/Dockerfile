@@ -11,7 +11,6 @@ RUN echo "[client]\nskip-ssl" > /etc/mysql/conf.d/no-ssl.cnf
 
 # Copy extension package
 COPY extension.zip /tmp/extension.zip
-COPY scripts/install-extension.php /tmp/install-extension.php
 
 # Copy J2Commerce mock tables SQL
 COPY scripts/j2store-mock-tables.sql /tmp/j2store-mock-tables.sql
