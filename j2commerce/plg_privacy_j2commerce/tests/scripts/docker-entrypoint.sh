@@ -136,10 +136,13 @@ fi
 
 # Enable all newly installed extensions (plugins are disabled by default)
 echo "Enabling installed extensions..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db \
-    -e "UPDATE j_extensions SET enabled = 1 WHERE enabled = 0 AND type IN ('plugin', 'component', 'module');" 2>/dev/null \
+ENABLE_RESULT=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db \
+    -e "UPDATE j_extensions SET enabled = 1 WHERE enabled = 0 AND type = 'plugin';" 2>&1) \
     && echo "✅ Extensions enabled" \
-    || echo "⚠️ Could not enable extensions via DB (non-fatal)"
+    || echo "⚠️ Enable failed: $ENABLE_RESULT"
+# Verify
+mysql -h mysql -u joomla -pjoomla_pass joomla_db \
+    -e "SELECT extension_id, element, type, enabled FROM j_extensions WHERE type = 'plugin' ORDER BY extension_id DESC LIMIT 5;" 2>&1 || true
 
 # Install J2Commerce mock tables for testing
 if [ -f "/tmp/j2store-mock-tables.sql" ]; then

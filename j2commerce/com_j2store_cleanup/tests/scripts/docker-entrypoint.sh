@@ -5,15 +5,12 @@ echo "=== J2Commerce Test Environment Setup ==="
 echo "Extension: ${EXTENSION_NAME:-unknown}"
 echo "=========================================="
 
-# Run original Joomla entrypoint
 /entrypoint.sh apache2-foreground &
 JOOMLA_PID=$!
 
-# Wait for Joomla to be ready
 echo "Waiting for Joomla to initialize..."
 sleep 15
 
-# Check if Joomla is initialized
 if [ -f /var/www/html/configuration.php ]; then
     echo "Joomla is initialized, installing extension..."
     sleep 5
@@ -27,17 +24,15 @@ if [ -f /var/www/html/configuration.php ]; then
         exit 1
     fi
     
-    # Enable all newly installed extensions
     echo "Enabling installed extensions..."
     mysql -h "${JOOMLA_DB_HOST:-mysql}" -u "${JOOMLA_DB_USER:-joomla}" -p"${JOOMLA_DB_PASSWORD:-joomla_pass}" "${JOOMLA_DB_NAME:-joomla_db}" \
-        -e "UPDATE j_extensions SET enabled = 1 WHERE enabled = 0 AND type IN ('plugin', 'component', 'module');" 2>/dev/null \
+        -e "UPDATE j_extensions SET enabled = 1 WHERE enabled = 0 AND type = 'plugin';" 2>&1 \
         && echo "✅ Extensions enabled" \
-        || echo "⚠️ Could not enable extensions via DB (non-fatal)"
+        || echo "⚠️ Could not enable extensions via DB"
     
     echo "OK" > /var/www/html/health.txt
     chown www-data:www-data /var/www/html/health.txt 2>/dev/null || true
     echo "✅ Health file created"
 fi
 
-# Keep container running
 wait $JOOMLA_PID
