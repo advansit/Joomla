@@ -5,7 +5,6 @@ echo "=== J2Commerce Test Environment Setup ==="
 echo "Extension: ${EXTENSION_NAME:-unknown}"
 echo "=========================================="
 
-# Run original Joomla entrypoint
 /entrypoint.sh apache2-foreground &
 JOOMLA_PID=$!
 
@@ -27,8 +26,10 @@ if [ -f /var/www/html/configuration.php ]; then
     
     # Enable all newly installed plugins (disabled by default in Joomla)
     echo "Enabling installed extensions..."
+    DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; echo (new JConfig)->dbprefix;" 2>/dev/null || echo "j_")
+    echo "DB prefix: ${DB_PREFIX}"
     mysql -h "${JOOMLA_DB_HOST:-mysql}" -u "${JOOMLA_DB_USER:-joomla}" -p"${JOOMLA_DB_PASSWORD:-joomla_pass}" "${JOOMLA_DB_NAME:-joomla_db}" \
-        -e "UPDATE j_extensions SET enabled = 1 WHERE enabled = 0 AND type = 'plugin';" 2>&1 \
+        -e "UPDATE ${DB_PREFIX}extensions SET enabled = 1 WHERE enabled = 0 AND type = 'plugin';" 2>&1 \
         && echo "✅ Extensions enabled" \
         || echo "⚠️ Could not enable extensions via DB"
     
