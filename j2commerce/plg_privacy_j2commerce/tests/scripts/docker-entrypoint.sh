@@ -137,7 +137,7 @@ fi
 # Enable all newly installed extensions (plugins are disabled by default)
 echo "Enabling installed extensions..."
 mysql -h mysql -u joomla -pjoomla_pass joomla_db \
-    -e "UPDATE ${TABLE_PREFIX:-j_}extensions SET enabled = 1 WHERE enabled = 0 AND type IN ('plugin', 'component', 'module') AND extension_id > 10000;" 2>/dev/null \
+    -e "UPDATE j_extensions SET enabled = 1 WHERE enabled = 0 AND type IN ('plugin', 'component', 'module');" 2>/dev/null \
     && echo "✅ Extensions enabled" \
     || echo "⚠️ Could not enable extensions via DB (non-fatal)"
 
