@@ -18,7 +18,7 @@ jobs:
           chmod +x build.sh
           ./build.sh
           cp *.zip tests/extension.zip
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: extension-package
           path: j2commerce/plg_j2commerce_productcompare/tests/extension.zip
@@ -63,7 +63,7 @@ jobs:
           cd j2commerce/plg_j2commerce_productcompare/tests
           chmod +x run-tests.sh
           ./run-tests.sh ${{ matrix.script }}
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ${{ matrix.script }}-logs
