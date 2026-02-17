@@ -124,15 +124,13 @@ until [ -f /var/www/html/configuration.php ]; do
 done
 
 # Install extension using real Joomla Installer API
-echo "Installing extension via Joomla Installer..."
+echo "Installing extension via Joomla CLI..."
 sleep 5
 cp /tmp/extension.zip /var/www/html/tmp/extension.zip
-chown www-data:www-data /var/www/html/tmp/extension.zip
-
-if php /tmp/install-extension.php /var/www/html/tmp/extension.zip; then
-    echo "✅ Extension installed via Joomla Installer"
+if php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/extension.zip; then
+    echo "✅ Extension installed via Joomla CLI"
 else
-    echo "❌ Extension installation FAILED via Joomla Installer"
+    echo "❌ Extension installation FAILED via Joomla CLI"
     exit 1
 fi
 
