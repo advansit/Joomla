@@ -1,0 +1,6 @@
+=== Installation Tests ===
+
+Test: Basic check... PASS
+
+=== Installation Test Summary ===
+All tests completed.

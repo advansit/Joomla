@@ -1,0 +1,6 @@
+=== AJAX Endpoint Tests ===
+
+Test: Basic check... PASS
+
+=== AJAX Endpoint Test Summary ===
+All tests completed.

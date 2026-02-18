@@ -1,0 +1,6 @@
+=== Media Files Tests ===
+
+Test: Basic check... PASS
+
+=== Media Files Test Summary ===
+All tests completed.
