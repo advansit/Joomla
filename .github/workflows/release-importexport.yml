@@ -152,8 +152,8 @@ jobs:
           git add j2commerce/com_j2commerce_importexport/
           git diff --staged --quiet || {
             git commit -m "release: importexport v${VERSION} [skip ci]"
-            git tag -a "importexport-v${VERSION}" -m "Release importexport v${VERSION}"
-            git push origin HEAD:main --follow-tags
+            git tag -fa "importexport-v${VERSION}" -m "Release importexport v${VERSION}"
+            git push origin HEAD:main --follow-tags --force
           }
 
       - name: Generate changelog

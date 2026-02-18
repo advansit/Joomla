@@ -153,8 +153,8 @@ jobs:
           git add j2commerce/plg_privacy_j2commerce/
           git diff --staged --quiet || {
             git commit -m "release: privacy v${VERSION} [skip ci]"
-            git tag -a "privacy-v${VERSION}" -m "Release privacy v${VERSION}"
-            git push origin HEAD:main --follow-tags
+            git tag -fa "privacy-v${VERSION}" -m "Release privacy v${VERSION}"
+            git push origin HEAD:main --follow-tags --force
           }
 
       - name: Generate changelog
