@@ -11,6 +11,11 @@ services:
       JOOMLA_DB_USER: joomla
       JOOMLA_DB_PASSWORD: joomla_pass
       JOOMLA_DB_NAME: joomla_db
+      JOOMLA_SITE_NAME: "Test Site"
+      JOOMLA_ADMIN_USER: admin
+      JOOMLA_ADMIN_USERNAME: admin
+      JOOMLA_ADMIN_PASSWORD: "Admin123456789!@#"
+      JOOMLA_ADMIN_EMAIL: admin@test.local
     volumes:
       - joomla_data:/var/www/html
     depends_on:
