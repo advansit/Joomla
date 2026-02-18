@@ -153,8 +153,8 @@ jobs:
           git add j2commerce/plg_j2commerce_productcompare/
           git diff --staged --quiet || {
             git commit -m "release: productcompare v${VERSION} [skip ci]"
-            git tag -a "productcompare-v${VERSION}" -m "Release productcompare v${VERSION}"
-            git push origin HEAD:main --follow-tags
+            git tag -fa "productcompare-v${VERSION}" -m "Release productcompare v${VERSION}"
+            git push origin HEAD:main --follow-tags --force
           }
 
       - name: Generate changelog
