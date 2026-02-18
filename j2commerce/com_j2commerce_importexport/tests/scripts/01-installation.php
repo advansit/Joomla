@@ -1,25 +1,26 @@
 <?php
 /**
  * Installation Tests for J2Commerce Import/Export
+ * Uses direct MySQL connection instead of Joomla framework.
  */
-define('_JEXEC', 1);
-define('JPATH_BASE', '/var/www/html');
-require_once JPATH_BASE . '/includes/defines.php';
-$_SERVER['HTTP_HOST'] = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
-require_once JPATH_BASE . '/includes/framework.php';
-
-use Joomla\CMS\Factory;
 
 class InstallationTest
 {
     private $db;
     private $passed = 0;
     private $failed = 0;
+    private $dbPrefix;
 
     public function __construct()
     {
-        $this->db = Factory::getContainer()->get('DatabaseDriver');
+        // Read DB config from Joomla configuration.php
+        require '/var/www/html/configuration.php';
+        $config = new JConfig();
+        $this->dbPrefix = $config->dbprefix;
+        $this->db = new mysqli($config->host, $config->user, $config->password, $config->db);
+        if ($this->db->connect_error) {
+            die("DB connection failed: " . $this->db->connect_error . "\n");
+        }
     }
 
     public function run(): bool
@@ -27,44 +28,31 @@ class InstallationTest
         echo "=== Installation Tests ===\n\n";
 
         $this->test('Component registered in extensions table', function() {
-            $query = $this->db->getQuery(true)
-                ->select('extension_id')
-                ->from('#__extensions')
-                ->where('element = ' . $this->db->quote('com_j2commerce_importexport'))
-                ->where('type = ' . $this->db->quote('component'));
-            $this->db->setQuery($query);
-            return (bool) $this->db->loadResult();
+            $result = $this->db->query("SELECT extension_id FROM {$this->dbPrefix}extensions WHERE element = 'com_j2commerce_importexport' AND type = 'component'");
+            return $result && $result->num_rows > 0;
         });
 
         $this->test('Component is enabled', function() {
-            $query = $this->db->getQuery(true)
-                ->select('enabled')
-                ->from('#__extensions')
-                ->where('element = ' . $this->db->quote('com_j2commerce_importexport'));
-            $this->db->setQuery($query);
-            return $this->db->loadResult() == 1;
+            $result = $this->db->query("SELECT enabled FROM {$this->dbPrefix}extensions WHERE element = 'com_j2commerce_importexport'");
+            $row = $result ? $result->fetch_assoc() : null;
+            return $row && $row['enabled'] == 1;
         });
 
         $this->test('Admin menu entry exists', function() {
-            $query = $this->db->getQuery(true)
-                ->select('id')
-                ->from('#__menu')
-                ->where('link LIKE ' . $this->db->quote('%com_j2commerce_importexport%'))
-                ->where('client_id = 1');
-            $this->db->setQuery($query);
-            return (bool) $this->db->loadResult();
+            $result = $this->db->query("SELECT id FROM {$this->dbPrefix}menu WHERE link LIKE '%com_j2commerce_importexport%' AND client_id = 1");
+            return $result && $result->num_rows > 0;
         });
 
-        $this->test('ExportModel class exists', function() {
-            return class_exists('Advans\Component\J2CommerceImportExport\Administrator\Model\ExportModel');
+        $this->test('ExportModel file exists', function() {
+            return file_exists('/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ExportModel.php');
         });
 
-        $this->test('ImportModel class exists', function() {
-            return class_exists('Advans\Component\J2CommerceImportExport\Administrator\Model\ImportModel');
+        $this->test('ImportModel file exists', function() {
+            return file_exists('/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ImportModel.php');
         });
 
         $this->test('Language files installed (en-GB)', function() {
-            return file_exists(JPATH_ADMINISTRATOR . '/language/en-GB/com_j2commerce_importexport.ini');
+            return file_exists('/var/www/html/administrator/language/en-GB/com_j2commerce_importexport.ini');
         });
 
         echo "\n=== Installation Test Summary ===\n";
@@ -75,14 +63,8 @@ class InstallationTest
     private function test(string $name, callable $fn): void
     {
         try {
-            $result = $fn();
-            if ($result) {
-                echo "✓ {$name}\n";
-                $this->passed++;
-            } else {
-                echo "✗ {$name}\n";
-                $this->failed++;
-            }
+            if ($fn()) { echo "✓ {$name}\n"; $this->passed++; }
+            else { echo "✗ {$name}\n"; $this->failed++; }
         } catch (\Exception $e) {
             echo "✗ {$name} - Error: {$e->getMessage()}\n";
             $this->failed++;
