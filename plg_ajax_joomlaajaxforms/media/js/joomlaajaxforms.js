@@ -2,11 +2,23 @@
  * @package     Joomla.Plugin
  * @subpackage  Ajax.JoomlaAjaxForms
  *
- * @copyright   Copyright (C) 2025-2026 Advans IT Solutions GmbH. All rights reserved.
- * @license     Proprietary License - See LICENSE.txt
+ * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+ * @license     Proprietary License
  */
 
 'use strict';
+
+/**
+ * Get language string from Joomla script options
+ */
+function getFormsLang(key, fallback) {
+    try {
+        var opts = Joomla.getOptions('plg_ajax_joomlaajaxforms') || {};
+        return opts[key] || fallback;
+    } catch (e) {
+        return fallback;
+    }
+}
 
 /**
  * Joomla AJAX Forms Handler
@@ -17,10 +29,26 @@ const JoomlaAjaxForms = {
      * Configuration
      */
     config: {
-        baseUrl: 'index.php?option=com_ajax&plugin=joomlaajaxforms&format=json',
+        baseUrl: 'index.php',
         errorClass: 'alert alert-danger',
         successClass: 'alert alert-success',
         loadingClass: 'is-loading'
+    },
+
+    /**
+     * Build URLSearchParams with base AJAX parameters.
+     * All params go in POST body to avoid Joomla SEF redirect &amp; encoding bug.
+     */
+    buildBaseParams: function(task, tokenName) {
+        var params = new URLSearchParams();
+        params.append('option', 'com_ajax');
+        params.append('plugin', 'joomlaajaxforms');
+        params.append('format', 'json');
+        params.append('task', task);
+        if (tokenName) {
+            params.append(tokenName, '1');
+        }
+        return params;
     },
 
     /**
@@ -144,21 +172,16 @@ const JoomlaAjaxForms = {
             const returnUrl = formData.get('return') || '';
 
             const tokenName = JoomlaAjaxForms.getTokenName(form);
-            let url = JoomlaAjaxForms.config.baseUrl + '&task=login';
-            if (tokenName) {
-                url += '&' + tokenName + '=1';
-            }
-
-            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
-            messageContainer.style.display = 'none';
-
-            const body = new URLSearchParams();
+            const body = JoomlaAjaxForms.buildBaseParams('login', tokenName);
             body.append('username', username);
             body.append('password', password);
             if (remember) body.append('remember', '1');
             if (returnUrl) body.append('return', returnUrl);
 
-            fetch(url, {
+            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
+            messageContainer.style.display = 'none';
+
+            fetch(JoomlaAjaxForms.config.baseUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: body.toString()
@@ -193,7 +216,7 @@ const JoomlaAjaxForms = {
             })
             .catch(function(error) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
-                JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
+                JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred. Please try again.'), 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
         });
@@ -224,27 +247,26 @@ const JoomlaAjaxForms = {
 
         // Build MFA form HTML
         const defaultMethod = mfaData.methods[0];
-        const lang = JoomlaAjaxForms.getLang;
         mfaContainer.innerHTML = `
             <div class="alert alert-info mb-3">
-                ${mfaData.methods.length > 1 ? (lang('MFA_INFO_MULTI') || 'Please select an authentication method and enter the code.') : (lang('MFA_INFO_SINGLE') || 'Please enter your authentication code.')}
+                ${mfaData.methods.length > 1 ? getFormsLang('MFA_SELECT_METHOD', 'Please select an authentication method and enter the code.') : getFormsLang('MFA_ENTER_CODE', 'Please enter your authentication code.')}
             </div>
             ${mfaData.methods.length > 1 ? `
             <div class="control-group mb-3">
-                <label for="mfa-method" class="form-label">${lang('MFA_METHOD_LABEL') || 'Method'}</label>
+                <label for="mfa-method" class="form-label">${getFormsLang('MFA_METHOD', 'Method')}</label>
                 <select id="mfa-method" name="mfa_method" class="form-select">
                     ${mfaData.methods.map(m => `<option value="${m.id}">${m.title || m.method}</option>`).join('')}
                 </select>
             </div>
             ` : `<input type="hidden" id="mfa-method" name="mfa_method" value="${defaultMethod.id}">`}
             <div class="control-group mb-3">
-                <label for="mfa-code" class="form-label">${lang('MFA_CODE_LABEL') || 'Authentication code'}</label>
+                <label for="mfa-code" class="form-label">${getFormsLang('MFA_CODE_LABEL', 'Authentication code')}</label>
                 <input type="text" id="mfa-code" name="mfa_code" class="form-control" 
                        autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" 
                        maxlength="6" placeholder="000000" required autofocus>
             </div>
             <div class="mfa-actions mb-3">
-                <button type="button" class="btn btn-link" id="mfa-cancel">${lang('MFA_CANCEL') || 'Cancel'}</button>
+                <button type="button" class="btn btn-link" id="mfa-cancel">${getFormsLang('MFA_CANCEL', 'Cancel')}</button>
             </div>
         `;
 
@@ -255,7 +277,7 @@ const JoomlaAjaxForms = {
         const submitBtn = originalForm.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.dataset.originalText = submitBtn.textContent;
-            submitBtn.textContent = JoomlaAjaxForms.getLang('MFA_VERIFY') || 'Verify';
+            submitBtn.textContent = getFormsLang('MFA_VERIFY', 'Verify');
         }
 
         // Handle cancel
@@ -336,23 +358,18 @@ const JoomlaAjaxForms = {
         const recordId = methodSelect ? methodSelect.value : form.dataset.mfaRecordId;
 
         if (!code || code.length < 6) {
-            JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('MFA_CODE_INVALID') || 'Please enter a valid 6-digit code.', 'error');
+            JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('MFA_CODE_INVALID_LENGTH', 'Please enter a valid 6-digit code.'), 'error');
             return;
         }
 
-        let url = JoomlaAjaxForms.config.baseUrl + '&task=mfa_validate';
-        if (tokenName) {
-            url += '&' + tokenName + '=1';
-        }
+        const body = JoomlaAjaxForms.buildBaseParams('mfa_validate', tokenName);
+        body.append('code', code);
+        body.append('record_id', recordId);
 
         const submitBtn = JoomlaAjaxForms.disableSubmit(form);
         messageContainer.style.display = 'none';
 
-        const body = new URLSearchParams();
-        body.append('code', code);
-        body.append('record_id', recordId);
-
-        fetch(url, {
+        fetch(JoomlaAjaxForms.config.baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
@@ -389,7 +406,7 @@ const JoomlaAjaxForms = {
         })
         .catch(function(error) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
-            JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
+            JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred. Please try again.'), 'error');
             console.error('JoomlaAjaxForms Error:', error);
         });
     },
@@ -416,15 +433,7 @@ const JoomlaAjaxForms = {
             const password2 = formData.get('jform[password2]') || formData.get('password2') || '';
 
             const tokenName = JoomlaAjaxForms.getTokenName(form);
-            let url = JoomlaAjaxForms.config.baseUrl + '&task=register';
-            if (tokenName) {
-                url += '&' + tokenName + '=1';
-            }
-
-            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
-            messageContainer.style.display = 'none';
-
-            const body = new URLSearchParams();
+            const body = JoomlaAjaxForms.buildBaseParams('register', tokenName);
             body.append('name', name);
             body.append('username', username);
             body.append('email', email);
@@ -432,7 +441,10 @@ const JoomlaAjaxForms = {
             body.append('password', password);
             body.append('password2', password2);
 
-            fetch(url, {
+            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
+            messageContainer.style.display = 'none';
+
+            fetch(JoomlaAjaxForms.config.baseUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: body.toString()
@@ -452,7 +464,7 @@ const JoomlaAjaxForms = {
             })
             .catch(function(error) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
-                JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
+                JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred. Please try again.'), 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
         });
@@ -482,22 +494,16 @@ const JoomlaAjaxForms = {
 
             const formData = new FormData(form);
             const tokenName = JoomlaAjaxForms.getTokenName(form);
-            
-            let url = JoomlaAjaxForms.config.baseUrl + '&task=' + task;
-            if (tokenName) {
-                url += '&' + tokenName + '=1';
-            }
-
-            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
-            messageContainer.style.display = 'none';
-
-            const body = new URLSearchParams();
+            const body = JoomlaAjaxForms.buildBaseParams(task, tokenName);
             fields.forEach(function(field) {
                 const value = formData.get('jform[' + field + ']') || formData.get(field) || '';
                 body.append(field, value);
             });
 
-            fetch(url, {
+            const submitBtn = JoomlaAjaxForms.disableSubmit(form);
+            messageContainer.style.display = 'none';
+
+            fetch(JoomlaAjaxForms.config.baseUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: body.toString()
@@ -517,7 +523,7 @@ const JoomlaAjaxForms = {
             })
             .catch(function(error) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
-                JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getLang('ERROR_GENERIC') || 'An error occurred. Please try again.', 'error');
+                JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred. Please try again.'), 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
 
@@ -622,7 +628,7 @@ const JoomlaAjaxForms = {
         if (data.message) {
             return data.message;
         }
-        return JoomlaAjaxForms.getLang('ERROR_DEFAULT') || 'An error occurred';
+        return getFormsLang('ERROR_GENERIC', 'An error occurred');
     },
 
     /**
@@ -655,17 +661,12 @@ const JoomlaAjaxForms = {
             tokenName = tokenInput.name;
         }
 
-        let url = JoomlaAjaxForms.config.baseUrl + '&task=logout';
-        if (tokenName) {
-            url += '&' + tokenName + '=1';
-        }
-
-        const body = new URLSearchParams();
+        const body = JoomlaAjaxForms.buildBaseParams('logout', tokenName);
         if (returnUrl) {
             body.append('return', returnUrl);
         }
 
-        return fetch(url, {
+        return fetch(JoomlaAjaxForms.config.baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
@@ -680,73 +681,68 @@ const JoomlaAjaxForms = {
             }
             return data;
         });
-    },
-
+    }
     /**
      * Remove item from J2Store cart via AJAX
      *
-     * @param {number} cartItemId - The cart item ID to remove
-     * @param {HTMLElement} element - The element that triggered the removal
-     * @param {function} callback - Optional callback
+     * @param {number} cartitemId - Cart item ID to remove
+     * @param {Element} clickedElement - The clicked element (for visual feedback)
+     * @param {Function} callback - Callback(error, data)
      */
-    removeCartItem: function(cartItemId, element, callback) {
-        const tokenName = JoomlaAjaxForms.getTokenFromPage();
-        let url = JoomlaAjaxForms.config.baseUrl + '&task=removeCartItem&cartitem_id=' + cartItemId;
-        if (tokenName) {
-            url += '&' + tokenName + '=1';
+    removeCartItem: function(cartitemId, clickedElement, callback) {
+        var tokenName = '';
+        var tokenInput = document.querySelector('input[type="hidden"][value="1"]');
+        if (tokenInput && tokenInput.name.length === 32) {
+            tokenName = tokenInput.name;
         }
 
-        if (element) {
-            element.classList.add('loading');
-            element.disabled = true;
+        var body = JoomlaAjaxForms.buildBaseParams('removeCartItem', tokenName);
+        body.append('cartitem_id', cartitemId);
+
+        // Visual feedback: fade out the item
+        var cartItem = clickedElement ? clickedElement.closest('.cartitems') : null;
+        if (cartItem) {
+            cartItem.style.opacity = '0.5';
         }
 
-        fetch(url, {
-            method: 'GET',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        fetch(JoomlaAjaxForms.config.baseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
         })
         .then(function(response) { return response.json(); })
         .then(function(rawData) {
-            const data = JoomlaAjaxForms.unwrapResponse(rawData);
-
+            var data = JoomlaAjaxForms.unwrapResponse(rawData);
             if (data.success) {
-                var cartRow = document.querySelector('[data-cartitem-id="' + cartItemId + '"]');
-                if (!cartRow && element) {
-                    cartRow = element.closest('.j2store-cart-item, .cart-item, tr, .minicart-item');
+                // Remove the item from DOM
+                if (cartItem) {
+                    cartItem.remove();
                 }
-
-                if (cartRow) {
-                    cartRow.style.transition = 'opacity 0.3s, transform 0.3s';
-                    cartRow.style.opacity = '0';
-                    cartRow.style.transform = 'translateX(-20px)';
-
-                    setTimeout(function() {
-                        cartRow.remove();
-                        JoomlaAjaxForms.updateCartBadge(data.data ? data.data.cartCount : 0);
-                        if (data.data && data.data.cartCount === 0) {
-                            JoomlaAjaxForms.showEmptyCartMessage();
+                // Update cart count badge
+                var countBadges = document.querySelectorAll('.cart-item-count');
+                countBadges.forEach(function(badge) {
+                    if (data.data && typeof data.data.cartCount !== 'undefined') {
+                        badge.textContent = data.data.cartCount;
+                        if (data.data.cartCount === 0) {
+                            badge.style.display = 'none';
                         }
-                    }, 300);
+                    }
+                });
+                // Update subtotal
+                if (data.data && data.data.cartTotal) {
+                    var subtotal = document.querySelector('.top-subtotal span');
+                    if (subtotal) {
+                        subtotal.innerHTML = data.data.cartTotal;
+                    }
                 }
-
-                JoomlaAjaxForms.showToast(data.message, 'success');
                 if (callback) callback(null, data);
             } else {
-                var errorMsg = JoomlaAjaxForms.getErrorMessage(data);
-                JoomlaAjaxForms.showToast(errorMsg, 'error');
-                if (element) {
-                    element.classList.remove('loading');
-                    element.disabled = false;
-                }
-                if (callback) callback(errorMsg, null);
+                if (cartItem) cartItem.style.opacity = '1';
+                if (callback) callback(data.message || 'Error', null);
             }
         })
         .catch(function(error) {
-            JoomlaAjaxForms.showToast(JoomlaAjaxForms.getLang('ERROR_NETWORK') || 'Network error. Please try again.', 'error');
-            if (element) {
-                element.classList.remove('loading');
-                element.disabled = false;
-            }
+            if (cartItem) cartItem.style.opacity = '1';
             if (callback) callback(error, null);
         });
     },
@@ -754,172 +750,45 @@ const JoomlaAjaxForms = {
     /**
      * Save user profile via AJAX
      *
-     * @param {HTMLFormElement} form - The profile form element
-     * @param {function} callback - Optional callback
+     * @param {HTMLFormElement} form - The profile form
      */
-    saveProfile: function(form, callback) {
-        const formData = new FormData(form);
-        const tokenName = JoomlaAjaxForms.getTokenName(form) || JoomlaAjaxForms.getTokenFromPage();
+    saveProfile: function(form) {
+        var tokenName = JoomlaAjaxForms.getTokenName(form);
+        var body = JoomlaAjaxForms.buildBaseParams('saveProfile', tokenName);
 
-        let url = JoomlaAjaxForms.config.baseUrl + '&task=saveProfile';
-        if (tokenName) {
-            url += '&' + tokenName + '=1';
-        }
+        // Collect all form fields
+        var formData = new FormData(form);
+        formData.forEach(function(value, key) {
+            if (key !== 'option' && key !== 'plugin' && key !== 'format' && key !== 'task') {
+                body.append(key, value);
+            }
+        });
 
-        const submitBtn = JoomlaAjaxForms.disableSubmit(form);
+        var messageContainer = form.querySelector('.ajax-message') || JoomlaAjaxForms.createMessageContainer(form);
+        var submitBtn = JoomlaAjaxForms.disableSubmit(form);
+        messageContainer.style.display = 'none';
 
-        fetch(url, {
+        fetch(JoomlaAjaxForms.config.baseUrl, {
             method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
         })
         .then(function(response) { return response.json(); })
         .then(function(rawData) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
-            const data = JoomlaAjaxForms.unwrapResponse(rawData);
-
+            var data = JoomlaAjaxForms.unwrapResponse(rawData);
             if (data.success) {
-                JoomlaAjaxForms.showToast(data.message, 'success');
-
-                // Update displayed user name if visible
-                if (data.data && data.data.user && data.data.user.name) {
-                    document.querySelectorAll('.user-name, .username').forEach(function(el) {
-                        el.textContent = data.data.user.name;
-                    });
-                }
-
-                // Clear password fields
-                form.querySelectorAll('input[type="password"]').forEach(function(field) {
-                    field.value = '';
-                });
-
-                if (callback) callback(null, data);
+                JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
             } else {
-                var errorMsg = JoomlaAjaxForms.getErrorMessage(data);
-                JoomlaAjaxForms.showToast(errorMsg, 'error');
-                if (callback) callback(errorMsg, null);
+                JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getErrorMessage(data), 'error');
             }
         })
         .catch(function(error) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
-            JoomlaAjaxForms.showToast(JoomlaAjaxForms.getLang('ERROR_NETWORK') || 'Network error. Please try again.', 'error');
-            if (callback) callback(error, null);
+            JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred.'), 'error');
         });
-    },
-
-    /**
-     * Update cart badge count elements
-     *
-     * @param {number} count - New cart count
-     */
-    updateCartBadge: function(count) {
-        document.querySelectorAll('.cart-count, .cart-badge, .cart-item-count, .j2store-cart-count, .minicart-count').forEach(function(badge) {
-            badge.textContent = count;
-            badge.style.display = count === 0 ? 'none' : '';
-        });
-    },
-
-    /**
-     * Show empty cart message
-     */
-    showEmptyCartMessage: function() {
-        var container = document.querySelector('.j2store-cart-list, .j2store-minicart-items, .minicart-items, .cart-items');
-        if (container) {
-            container.innerHTML = '<p class="empty-cart-message">' +
-                (JoomlaAjaxForms.getLang('CART_EMPTY') || 'Your cart is empty.') + '</p>';
-        }
-    },
-
-    /**
-     * Get language string from Joomla script options
-     *
-     * @param {string} key - Language key (without prefix)
-     * @returns {string|null}
-     */
-    getLang: function(key) {
-        if (typeof Joomla !== 'undefined' && Joomla.getOptions) {
-            var options = Joomla.getOptions('plg_ajax_joomlaajaxforms');
-            if (options && options[key]) {
-                return options[key];
-            }
-        }
-        return null;
-    },
-
-    /**
-     * Get CSRF token from page (outside of a form context)
-     *
-     * @returns {string}
-     */
-    getTokenFromPage: function() {
-        var tokenInput = document.querySelector('input[type="hidden"][value="1"]');
-        if (tokenInput && tokenInput.name.length === 32) {
-            return tokenInput.name;
-        }
-        if (typeof Joomla !== 'undefined' && Joomla.getOptions) {
-            var options = Joomla.getOptions('csrf.token');
-            if (options) {
-                return Object.keys(options)[0];
-            }
-        }
-        return '';
-    },
-
-    /**
-     * Show a toast notification
-     *
-     * @param {string} message - Message text
-     * @param {string} type - 'success' or 'error'
-     */
-    showToast: function(message, type) {
-        if (!message || message === 'null') {
-            message = type === 'success'
-                ? (JoomlaAjaxForms.getLang('SUCCESS') || 'Success')
-                : (JoomlaAjaxForms.getLang('ERROR_DEFAULT') || 'An error occurred');
-        }
-
-        // Remove existing toasts
-        document.querySelectorAll('.jaf-toast').forEach(function(el) { el.remove(); });
-
-        var toast = document.createElement('div');
-        var alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-        toast.className = 'jaf-toast alert ' + alertClass;
-        toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;padding:15px 45px 15px 20px;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,0.2);max-width:400px;animation:jafSlideIn 0.3s ease;transition:opacity 0.3s,transform 0.3s;';
-
-        var text = document.createElement('span');
-        text.textContent = message;
-        toast.appendChild(text);
-
-        var closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.setAttribute('aria-label', 'Close');
-        closeBtn.innerHTML = '&times;';
-        closeBtn.style.cssText = 'position:absolute;top:50%;right:10px;transform:translateY(-50%);background:none;border:none;font-size:24px;cursor:pointer;opacity:0.7;padding:0 5px;line-height:1;';
-        closeBtn.onclick = function() {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(20px)';
-            setTimeout(function() { toast.remove(); }, 300);
-        };
-        toast.appendChild(closeBtn);
-
-        document.body.appendChild(toast);
-
-        setTimeout(function() {
-            if (toast.parentNode) {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateX(20px)';
-                setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
-            }
-        }, 8000);
     }
 };
-
-// Add CSS animation for toasts
-(function() {
-    var style = document.createElement('style');
-    style.textContent = '@keyframes jafSlideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}.jaf-toast{transition:opacity .3s,transform .3s}';
-    document.head.appendChild(style);
-})();
 
 // Initialize
 JoomlaAjaxForms.init();

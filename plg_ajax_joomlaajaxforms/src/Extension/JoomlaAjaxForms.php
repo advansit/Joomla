@@ -4,8 +4,8 @@
  * @package     Joomla.Plugin
  * @subpackage  Ajax.JoomlaAjaxForms
  *
- * @copyright   Copyright (C) 2025-2026 Advans IT Solutions GmbH. All rights reserved.
- * @license     Proprietary License - See LICENSE.txt
+ * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+ * @license     Proprietary License
  */
 
 namespace Advans\Plugin\Ajax\JoomlaAjaxForms\Extension;
@@ -14,171 +14,116 @@ defined('_JEXEC') or die;
 
 use Joomla\CMS\Authentication\Authentication;
 use Joomla\CMS\Component\ComponentHelper;
+use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
+use Joomla\CMS\Log\Log;
 use Joomla\CMS\Mail\MailerFactoryInterface;
 use Joomla\CMS\Plugin\CMSPlugin;
-use Joomla\CMS\Plugin\PluginHelper;
+use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
-use Joomla\CMS\User\User;
+use Joomla\CMS\Uri\Uri;
+use Joomla\CMS\User\UserFactoryInterface;
 use Joomla\CMS\User\UserHelper;
-use Joomla\Database\DatabaseAwareTrait;
-use Joomla\Database\ParameterType;
+use Joomla\Database\DatabaseInterface;
 use Joomla\Event\DispatcherInterface;
-use Joomla\Event\Event;
 use Joomla\Event\SubscriberInterface;
 
-/**
- * Joomla AJAX Forms Plugin
- *
- * Provides AJAX handling for Joomla core forms (password reset, username reminder, etc.)
- * Returns JSON responses for seamless user experience without page reloads.
- */
 class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 {
-    use DatabaseAwareTrait;
-
-    /**
-     * Load plugin language files automatically
-     *
-     * @var boolean
-     */
     protected $autoloadLanguage = true;
 
-    /**
-     * Constructor
-     *
-     * @param   DispatcherInterface  $dispatcher  The event dispatcher
-     * @param   array                $config      Plugin configuration
-     */
-    public function __construct(DispatcherInterface $dispatcher, array $config)
-    {
-        parent::__construct($dispatcher, $config);
-    }
-
-    /**
-     * Returns an array of events this subscriber will listen to.
-     *
-     * @return array
-     */
     public static function getSubscribedEvents(): array
     {
         return [
+            'onAfterRoute'          => 'onAfterRoute',
             'onAjaxJoomlaajaxforms' => 'onAjaxJoomlaajaxforms',
-            'onBeforeRender' => 'onBeforeRender',
+            'onBeforeRender'        => 'onBeforeRender',
         ];
     }
 
     /**
-     * Inject JavaScript language strings before page render
+     * Intercept AJAX requests before Joomla's SEF redirect.
      *
-     * @return void
+     * Joomla 5.x encodes & as &amp; in redirect Location headers,
+     * causing infinite 303 loops for com_ajax URLs with multiple
+     * query parameters. This handler detects our AJAX requests
+     * early and responds directly.
+     */
+    public function onAfterRoute(): void
+    {
+        $app = $this->getApplication();
+        $input = $app->getInput();
+
+        if ($input->getCmd('option') !== 'com_ajax'
+            || $input->getCmd('plugin') !== 'joomlaajaxforms'
+            || $input->getCmd('format', 'html') !== 'json'
+        ) {
+            return;
+        }
+
+        // This is our AJAX request — handle it directly
+        $result = $this->onAjaxJoomlaajaxforms();
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        echo json_encode(['data' => [$result]], JSON_UNESCAPED_UNICODE);
+        $app->close();
+    }
+
+    /**
+     * Pass language strings to JavaScript via Joomla script options
      */
     public function onBeforeRender(): void
     {
         $doc = $this->getApplication()->getDocument();
-
-        if ($doc->getType() !== 'html') {
-            return;
+        if (method_exists($doc, 'addScriptOptions')) {
+            $doc->addScriptOptions('plg_ajax_joomlaajaxforms', [
+                'ERROR_GENERIC'          => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_ERROR_GENERIC'),
+                'MFA_SELECT_METHOD'      => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_SELECT_METHOD'),
+                'MFA_ENTER_CODE'         => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_ENTER_CODE'),
+                'MFA_METHOD'             => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_METHOD'),
+                'MFA_CODE_LABEL'         => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CODE_LABEL'),
+                'MFA_CANCEL'             => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CANCEL'),
+                'MFA_VERIFY'             => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_VERIFY'),
+                'MFA_CODE_INVALID_LENGTH' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CODE_INVALID_LENGTH'),
+            ]);
         }
-
-        $doc->addScriptOptions('plg_ajax_joomlaajaxforms', [
-            'ERROR_GENERIC'      => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_ERROR_GENERIC'),
-            'ERROR_NETWORK'      => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_ERROR_NETWORK'),
-            'ERROR_DEFAULT'      => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_ERROR_DEFAULT'),
-            'SUCCESS'            => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_SUCCESS'),
-            'MFA_INFO_MULTI'     => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_INFO_MULTI'),
-            'MFA_INFO_SINGLE'    => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_INFO_SINGLE'),
-            'MFA_CODE_INVALID'   => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CODE_INVALID'),
-            'MFA_METHOD_LABEL'   => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_METHOD_LABEL'),
-            'MFA_CODE_LABEL'     => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CODE_LABEL'),
-            'MFA_CANCEL'         => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CANCEL'),
-            'MFA_VERIFY'         => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_VERIFY'),
-            'CART_EMPTY'         => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_EMPTY'),
-        ]);
     }
+
+
 
     /**
      * Main AJAX handler
      *
-     * @param   Event  $event  The event object
-     *
-     * @return  void
+     * @return  string  JSON response
      */
-    public function onAjaxJoomlaajaxforms(Event $event): void
+    public function onAjaxJoomlaajaxforms(): string
     {
-        $result = $this->handleRequest();
-        $event->addResult($result);
-    }
-
-    /**
-     * Handle the AJAX request
-     *
-     * @return string JSON response
-     */
-    protected function handleRequest(): string
-    {
-        // Verify CSRF token
-        if (!Session::checkToken('get') && !Session::checkToken('post')) {
+        // Validate CSRF token
+        if (!Session::checkToken('get') && !Session::checkToken('post') && !Session::checkToken()) {
             return $this->jsonError(Text::_('JINVALID_TOKEN'));
         }
 
-        $task = $this->getApplication()->getInput()->get('task', '', 'cmd');
+        $input = $this->getApplication()->getInput();
+        $task = $input->getCmd('task', '');
 
         switch ($task) {
             case 'login':
-                if ($this->params->get('enable_login', 1)) {
-                    return $this->handleLogin();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
+                return $this->handleLogin();
             case 'logout':
-                if ($this->params->get('enable_login', 1)) {
-                    return $this->handleLogout();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
+                return $this->handleLogout();
             case 'register':
-                if ($this->params->get('enable_registration', 1)) {
-                    return $this->handleRegistration();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
+                return $this->handleRegistration();
             case 'reset':
-                if ($this->params->get('enable_reset', 1)) {
-                    return $this->handleReset();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
+                return $this->handleReset();
             case 'remind':
-                if ($this->params->get('enable_remind', 1)) {
-                    return $this->handleRemind();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
+                return $this->handleRemind();
             case 'mfa_validate':
-                if ($this->params->get('enable_login', 1)) {
-                    return $this->handleMfaValidate();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
-            case 'saveProfile':
-                if ($this->params->get('enable_profile', 1)) {
-                    return $this->handleSaveProfile();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
+                return $this->handleMfaValidate();
             case 'removeCartItem':
-                if ($this->params->get('enable_j2store_cart', 1)) {
-                    return $this->handleRemoveCartItem();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
-            case 'getCartCount':
-                if ($this->params->get('enable_j2store_cart', 1)) {
-                    return $this->handleGetCartCount();
-                }
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
-
+                return $this->handleRemoveCartItem();
+            case 'saveProfile':
+                return $this->handleSaveProfile();
             default:
                 return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_INVALID_TASK'));
         }
@@ -187,406 +132,109 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     /**
      * Handle login request
      *
-     * @return string JSON response
+     * @return  string  JSON response
      */
     protected function handleLogin(): string
     {
-        $username = $this->getApplication()->getInput()->post->get('username', '', 'username');
-        $password = $this->getApplication()->getInput()->post->get('password', '', 'raw');
-        $remember = $this->getApplication()->getInput()->post->get('remember', false, 'bool');
-
-        // Validate input
-        if (empty($username)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_USERNAME_REQUIRED'));
+        if (!$this->params->get('enable_login', 1)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
         }
 
-        if (empty($password)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_REQUIRED'));
-        }
-
-        // Check if user is already logged in
         $user = $this->getApplication()->getIdentity();
         if ($user && !$user->guest) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_ALREADY_LOGGED_IN'));
         }
 
-        // First, authenticate without logging in to check MFA
-        $authenticate = Authentication::getInstance();
-        $response = $authenticate->authenticate([
-            'username' => $username,
-            'password' => $password,
-        ]);
+        $input = $this->getApplication()->getInput();
+        $username = $input->post->getString('username', '');
+        $password = $input->post->getString('password', '');
+        $remember = $input->post->getInt('remember', 0);
+        $returnUrl = $input->post->getBase64('return', '');
 
-        if ($response->status !== Authentication::STATUS_SUCCESS) {
+        if (empty($username) || empty($password)) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_FAILED'));
         }
 
-        // Get user ID to check MFA
-        $db = $this->getDatabase();
-        $query = $db->getQuery(true)
-            ->select('id')
-            ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('username') . ' = :username')
-            ->bind(':username', $username);
-        $db->setQuery($query);
-        $userId = (int) $db->loadResult();
-
-        if ($userId === 0) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_FAILED'));
-        }
-
-        // Check if MFA is enabled for this user
-        $mfaRecords = $this->getUserMfaRecords($userId);
-        
-        if (!empty($mfaRecords)) {
-            // MFA is required - store credentials in session for second step
-            $session = $this->getApplication()->getSession();
-            $session->set('ajax_mfa_user_id', $userId);
-            $session->set('ajax_mfa_remember', $remember);
-            $session->set('ajax_mfa_return', $this->getApplication()->getInput()->post->get('return', '', 'base64'));
-            $session->set('ajax_mfa_timestamp', time());
-
-            // Get available MFA methods
-            $methods = [];
-            foreach ($mfaRecords as $record) {
-                $methods[] = [
-                    'id'     => $record->id,
-                    'method' => $record->method,
-                    'title'  => $record->title,
-                ];
-            }
-
-            return $this->jsonSuccess(
-                Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_REQUIRED'),
-                [
-                    'mfa_required' => true,
-                    'methods'      => $methods,
-                    'default_id'   => $mfaRecords[0]->id,
-                ]
-            );
-        }
-
-        // No MFA - proceed with normal login
         $credentials = [
             'username' => $username,
             'password' => $password,
         ];
 
         $options = [
-            'remember' => $remember,
-            'silent'   => true,
+            'remember' => (bool) $remember,
+            'action'   => 'core.login.site',
         ];
 
         $result = $this->getApplication()->login($credentials, $options);
 
         if ($result === true) {
             $user = $this->getApplication()->getIdentity();
-            
-            return $this->jsonSuccess(
-                Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
-                [
-                    'user' => [
-                        'id'       => $user->id,
-                        'name'     => $user->name,
-                        'username' => $user->username,
-                    ],
-                    'redirect' => $this->getLoginRedirect(),
-                ]
-            );
+
+            // Check if MFA is required
+            $mfaMethods = $this->getMfaMethods($user->id);
+            if (!empty($mfaMethods)) {
+                // Store credentials in session for MFA validation
+                $session = $this->getApplication()->getSession();
+                $session->set('mfa_user_id', $user->id);
+                $session->set('mfa_pending', true);
+
+                // Logout user until MFA is validated
+                $this->getApplication()->logout($user->id);
+
+                return $this->jsonSuccess([
+                    'mfa_required' => true,
+                    'methods'      => $mfaMethods,
+                    'message'      => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_REQUIRED'),
+                ]);
+            }
+
+            $redirect = '';
+            if ($returnUrl) {
+                $redirect = base64_decode($returnUrl);
+            }
+            if (empty($redirect)) {
+                $redirect = Uri::base();
+            }
+
+            return $this->jsonSuccess([
+                'redirect' => $redirect,
+                'message'  => Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
+            ]);
         }
 
         return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_FAILED'));
     }
 
     /**
-     * Handle MFA validation request
-     *
-     * @return string JSON response
-     */
-    protected function handleMfaValidate(): string
-    {
-        $session = $this->getApplication()->getSession();
-        
-        // Get stored MFA session data
-        $userId = $session->get('ajax_mfa_user_id', 0);
-        $remember = $session->get('ajax_mfa_remember', false);
-        $timestamp = $session->get('ajax_mfa_timestamp', 0);
-        
-        // Validate session (max 5 minutes)
-        if (!$userId || (time() - $timestamp) > 300) {
-            $this->clearMfaSession();
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_SESSION_EXPIRED'));
-        }
-
-        $code = $this->getApplication()->getInput()->post->get('code', '', 'string');
-        $recordId = $this->getApplication()->getInput()->post->get('record_id', 0, 'int');
-
-        if (empty($code)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_REQUIRED'));
-        }
-
-        // Get the MFA record
-        $record = $this->getMfaRecord($recordId, $userId);
-        
-        if (!$record) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_INVALID_METHOD'));
-        }
-
-        // Validate the MFA code
-        if (!$this->validateMfaCode($record, $code)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_INVALID'));
-        }
-
-        // MFA validated - complete login
-        $userFactory = $this->getApplication()->getContainer()->get(\Joomla\CMS\User\UserFactoryInterface::class);
-        $user = $userFactory->loadUserById($userId);
-        
-        // Clear MFA session data
-        $this->clearMfaSession();
-
-        // Force login the user
-        $options = [
-            'remember' => $remember,
-            'silent'   => true,
-        ];
-
-        // Set the user as logged in
-        $session->set('user', $user);
-        $this->getApplication()->loadIdentity($user);
-
-        // Trigger login event
-        PluginHelper::importPlugin('user');
-        $this->getApplication()->triggerEvent('onUserLogin', [(array) $user, $options]);
-
-        return $this->jsonSuccess(
-            Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
-            [
-                'user' => [
-                    'id'       => $user->id,
-                    'name'     => $user->name,
-                    'username' => $user->username,
-                ],
-                'redirect' => $this->getLoginRedirect(),
-            ]
-        );
-    }
-
-    /**
-     * Get MFA records for a user
-     *
-     * @param   int  $userId  User ID
-     *
-     * @return  array
-     */
-    protected function getUserMfaRecords(int $userId): array
-    {
-        // Check if MFA plugins are enabled
-        if (!PluginHelper::isEnabled('multifactorauth')) {
-            return [];
-        }
-
-        $db = $this->getDatabase();
-        $query = $db->getQuery(true)
-            ->select('*')
-            ->from($db->quoteName('#__user_mfa'))
-            ->where($db->quoteName('user_id') . ' = :userId')
-            ->bind(':userId', $userId, \Joomla\Database\ParameterType::INTEGER);
-
-        $db->setQuery($query);
-        
-        try {
-            return $db->loadObjectList() ?: [];
-        } catch (\Exception $e) {
-            return [];
-        }
-    }
-
-    /**
-     * Get a specific MFA record
-     *
-     * @param   int  $recordId  Record ID
-     * @param   int  $userId    User ID
-     *
-     * @return  object|null
-     */
-    protected function getMfaRecord(int $recordId, int $userId): ?object
-    {
-        $db = $this->getDatabase();
-        $query = $db->getQuery(true)
-            ->select('*')
-            ->from($db->quoteName('#__user_mfa'))
-            ->where($db->quoteName('id') . ' = :recordId')
-            ->where($db->quoteName('user_id') . ' = :userId')
-            ->bind(':recordId', $recordId, \Joomla\Database\ParameterType::INTEGER)
-            ->bind(':userId', $userId, \Joomla\Database\ParameterType::INTEGER);
-
-        $db->setQuery($query);
-        
-        try {
-            return $db->loadObject();
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Validate MFA code
-     *
-     * @param   object  $record  MFA record
-     * @param   string  $code    User-provided code
-     *
-     * @return  bool
-     */
-    protected function validateMfaCode(object $record, string $code): bool
-    {
-        // Import MFA plugins
-        PluginHelper::importPlugin('multifactorauth');
-
-        // Get the MFA plugin for this method
-        $event = new \Joomla\CMS\Event\MultiFactor\Validate($record, $this->getApplication()->getIdentity() ?: $this->getApplication()->getContainer()->get(\Joomla\CMS\User\UserFactoryInterface::class)->loadUserById($record->user_id), $code);
-        
-        try {
-            $this->getApplication()->getDispatcher()->dispatch('onUserMultifactorValidate', $event);
-            return $event->isValid();
-        } catch (\Exception $e) {
-            // Fallback: Manual TOTP validation for the most common case
-            if ($record->method === 'totp') {
-                return $this->validateTotpCode($record, $code);
-            }
-            return false;
-        }
-    }
-
-    /**
-     * Validate TOTP code manually (fallback)
-     *
-     * @param   object  $record  MFA record
-     * @param   string  $code    User-provided code
-     *
-     * @return  bool
-     */
-    protected function validateTotpCode(object $record, string $code): bool
-    {
-        $options = json_decode($record->options, true);
-        
-        if (empty($options['key'])) {
-            return false;
-        }
-
-        $secret = $options['key'];
-        $code = preg_replace('/\s+/', '', $code);
-        
-        if (strlen($code) !== 6 || !ctype_digit($code)) {
-            return false;
-        }
-
-        // Check current and adjacent time windows (30 second intervals)
-        $timeSlice = floor(time() / 30);
-        
-        for ($i = -1; $i <= 1; $i++) {
-            $calculatedCode = $this->getTotpCode($secret, $timeSlice + $i);
-            if (hash_equals($calculatedCode, $code)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Calculate TOTP code for a given time slice
-     *
-     * @param   string  $secret     Base32 encoded secret
-     * @param   int     $timeSlice  Time slice
-     *
-     * @return  string
-     */
-    protected function getTotpCode(string $secret, int $timeSlice): string
-    {
-        // Decode base32 secret
-        $secret = $this->base32Decode($secret);
-        
-        // Pack time slice as 64-bit big-endian
-        $time = pack('N*', 0, $timeSlice);
-        
-        // Calculate HMAC-SHA1
-        $hash = hash_hmac('sha1', $time, $secret, true);
-        
-        // Get offset from last nibble
-        $offset = ord($hash[19]) & 0x0F;
-        
-        // Get 4 bytes from offset
-        $binary = (ord($hash[$offset]) & 0x7F) << 24
-            | (ord($hash[$offset + 1]) & 0xFF) << 16
-            | (ord($hash[$offset + 2]) & 0xFF) << 8
-            | (ord($hash[$offset + 3]) & 0xFF);
-        
-        // Get 6-digit code
-        return str_pad($binary % 1000000, 6, '0', STR_PAD_LEFT);
-    }
-
-    /**
-     * Decode base32 string
-     *
-     * @param   string  $input  Base32 encoded string
-     *
-     * @return  string
-     */
-    protected function base32Decode(string $input): string
-    {
-        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        $input = strtoupper(rtrim($input, '='));
-        $output = '';
-        $buffer = 0;
-        $bitsLeft = 0;
-
-        for ($i = 0; $i < strlen($input); $i++) {
-            $buffer = ($buffer << 5) | strpos($alphabet, $input[$i]);
-            $bitsLeft += 5;
-            
-            if ($bitsLeft >= 8) {
-                $bitsLeft -= 8;
-                $output .= chr(($buffer >> $bitsLeft) & 0xFF);
-            }
-        }
-
-        return $output;
-    }
-
-    /**
-     * Clear MFA session data
-     *
-     * @return  void
-     */
-    protected function clearMfaSession(): void
-    {
-        $session = $this->getApplication()->getSession();
-        $session->clear('ajax_mfa_user_id');
-        $session->clear('ajax_mfa_remember');
-        $session->clear('ajax_mfa_return');
-        $session->clear('ajax_mfa_timestamp');
-    }
-
-    /**
      * Handle logout request
      *
-     * @return string JSON response
+     * @return  string  JSON response
      */
     protected function handleLogout(): string
     {
         $user = $this->getApplication()->getIdentity();
-        
         if (!$user || $user->guest) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NOT_LOGGED_IN'));
         }
 
+        $input = $this->getApplication()->getInput();
+        $returnUrl = $input->post->getBase64('return', '');
+
         $result = $this->getApplication()->logout();
 
         if ($result === true) {
-            return $this->jsonSuccess(
-                Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGOUT_SUCCESS'),
-                ['redirect' => $this->getLogoutRedirect()]
-            );
+            $redirect = '';
+            if ($returnUrl) {
+                $redirect = base64_decode($returnUrl);
+            }
+            if (empty($redirect)) {
+                $redirect = Uri::base();
+            }
+
+            return $this->jsonSuccess([
+                'redirect' => $redirect,
+                'message'  => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGOUT_SUCCESS'),
+            ]);
         }
 
         return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGOUT_FAILED'));
@@ -595,534 +243,403 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     /**
      * Handle registration request
      *
-     * @return string JSON response
+     * @return  string  JSON response
      */
     protected function handleRegistration(): string
     {
-        // Check if registration is allowed
+        if (!$this->params->get('enable_registration', 1)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
+        }
+
         $usersConfig = ComponentHelper::getParams('com_users');
-        if (!$usersConfig->get('allowUserRegistration', 0)) {
+        if (!$usersConfig->get('allowUserRegistration')) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_DISABLED'));
         }
 
-        // Get form data
-        $name      = $this->getApplication()->getInput()->post->get('name', '', 'string');
-        $username  = $this->getApplication()->getInput()->post->get('username', '', 'username');
-        $email     = $this->getApplication()->getInput()->post->get('email', '', 'string');
-        $email2    = $this->getApplication()->getInput()->post->get('email2', '', 'string');
-        $password  = $this->getApplication()->getInput()->post->get('password', '', 'raw');
-        $password2 = $this->getApplication()->getInput()->post->get('password2', '', 'raw');
+        $input = $this->getApplication()->getInput();
+        $name = trim($input->post->getString('name', ''));
+        $username = trim($input->post->getString('username', ''));
+        $email = trim($input->post->getString('email', ''));
+        $email2 = trim($input->post->getString('email2', ''));
+        $password = $input->post->getString('password', '');
+        $password2 = $input->post->getString('password2', '');
 
-        // Validate required fields
+        // Validation
         if (empty($name)) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NAME_REQUIRED'));
         }
-
-        if (empty($username)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_USERNAME_REQUIRED'));
+        if (empty($username) || strlen($username) < 2) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_USERNAME_TOO_SHORT'));
         }
-
-        if (empty($email)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_REQUIRED'));
-        }
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
         }
-
         if ($email !== $email2) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_MISMATCH'));
         }
-
         if (empty($password)) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_REQUIRED'));
         }
-
         if ($password !== $password2) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_MISMATCH'));
         }
 
-        // Check username length
-        if (strlen($username) < 2) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_USERNAME_TOO_SHORT'));
-        }
+        // Check if username/email already exists
+        $db = Factory::getContainer()->get(DatabaseInterface::class);
 
-        // Check if username already exists
-        $db = $this->getDatabase();
         $query = $db->getQuery(true)
-            ->select('id')
+            ->select('COUNT(*)')
             ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('username') . ' = :username')
-            ->bind(':username', $username);
-
+            ->where($db->quoteName('username') . ' = ' . $db->quote($username));
         $db->setQuery($query);
-        if ($db->loadResult()) {
+        if ($db->loadResult() > 0) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_USERNAME_EXISTS'));
         }
 
-        // Check if email already exists
         $query = $db->getQuery(true)
-            ->select('id')
+            ->select('COUNT(*)')
             ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('email') . ' = :email')
-            ->bind(':email', $email);
-
+            ->where($db->quoteName('email') . ' = ' . $db->quote($email));
         $db->setQuery($query);
-        if ($db->loadResult()) {
+        if ($db->loadResult() > 0) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_EXISTS'));
         }
 
-        // Create user
-        $user = new User();
-        $data = [
-            'name'      => $name,
-            'username'  => $username,
-            'email'     => $email,
-            'password'  => $password,
-            'password2' => $password2,
-        ];
-
-        // Get default user group
-        $defaultUserGroup = $usersConfig->get('new_usertype', 2);
-        $data['groups'] = [$defaultUserGroup];
-
-        // Check if activation is required
-        $userActivation = $usersConfig->get('useractivation', 0);
-        if ($userActivation == 1) {
-            // Self-activation
-            $data['activation'] = UserHelper::genRandomPassword(32);
-            $data['block'] = 1;
-        } elseif ($userActivation == 2) {
-            // Admin activation
-            $data['activation'] = UserHelper::genRandomPassword(32);
-            $data['block'] = 1;
-        }
-
-        // Bind and save
-        if (!$user->bind($data)) {
-            return $this->jsonError($user->getError() ?: Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_FAILED'));
-        }
-
-        if (!$user->save()) {
-            return $this->jsonError($user->getError() ?: Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_FAILED'));
-        }
-
-        // Send activation email if required
-        if ($userActivation == 1) {
-            $this->sendActivationEmail($user, $data['activation']);
-            return $this->jsonSuccess(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_ACTIVATE_SELF'));
-        } elseif ($userActivation == 2) {
-            $this->sendActivationEmail($user, $data['activation']);
-            $this->sendAdminActivationEmail($user);
-            return $this->jsonSuccess(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_ACTIVATE_ADMIN'));
-        }
-
-        return $this->jsonSuccess(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_SUCCESS'));
-    }
-
-    /**
-     * Get login redirect URL
-     *
-     * @return string
-     */
-    protected function getLoginRedirect(): string
-    {
-        $return = $this->getApplication()->getInput()->post->get('return', '', 'base64');
-        
-        if ($return) {
-            $return = base64_decode($return);
-            if (\Joomla\CMS\Uri\Uri::isInternal($return)) {
-                return $return;
-            }
-        }
-
-        return \Joomla\CMS\Uri\Uri::root();
-    }
-
-    /**
-     * Get logout redirect URL
-     *
-     * @return string
-     */
-    protected function getLogoutRedirect(): string
-    {
-        $return = $this->getApplication()->getInput()->post->get('return', '', 'base64');
-        
-        if ($return) {
-            $return = base64_decode($return);
-            if (\Joomla\CMS\Uri\Uri::isInternal($return)) {
-                return $return;
-            }
-        }
-
-        return \Joomla\CMS\Uri\Uri::root();
-    }
-
-    /**
-     * Send activation email to user
-     *
-     * @param   User    $user        User object
-     * @param   string  $activation  Activation token
-     *
-     * @return boolean
-     */
-    protected function sendActivationEmail(User $user, string $activation): bool
-    {
-        $config = $this->getApplication()->getConfig();
-        $sitename = $config->get('sitename');
-        $mailfrom = $config->get('mailfrom');
-        $fromname = $config->get('fromname');
-
-        $link = \Joomla\CMS\Uri\Uri::root() . 'index.php?option=com_users&task=registration.activate&token=' . $activation;
-
-        $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_ACTIVATION_EMAIL_SUBJECT', $sitename);
-        $body = Text::sprintf(
-            'PLG_AJAX_JOOMLAAJAXFORMS_ACTIVATION_EMAIL_BODY',
-            $user->name,
-            $sitename,
-            $link,
-            $activation
-        );
-
         try {
-            $mailer = $this->getMailer();
-            $mailer->setSender([$mailfrom, $fromname]);
-            $mailer->addRecipient($user->email);
-            $mailer->setSubject($subject);
-            $mailer->setBody($body);
+            $user = new \Joomla\CMS\User\User();
+            $user->name = $name;
+            $user->username = $username;
+            $user->email = $email;
+            $user->password = UserHelper::hashPassword($password);
 
-            return $mailer->Send();
+            $userActivation = $usersConfig->get('useractivation');
+            $defaultGroup = $usersConfig->get('new_usertype', 2);
+
+            $user->groups = [$defaultGroup];
+
+            if ($userActivation == 1) {
+                // Self-activation
+                $user->activation = UserHelper::genRandomPassword(32);
+                $user->block = 1;
+            } elseif ($userActivation == 2) {
+                // Admin activation
+                $user->activation = UserHelper::genRandomPassword(32);
+                $user->block = 1;
+            } else {
+                $user->block = 0;
+            }
+
+            $user->registerDate = Factory::getDate()->toSql();
+
+            if (!$user->save()) {
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_FAILED'));
+            }
+
+            // Send activation email if needed
+            if ($userActivation == 1) {
+                $this->sendActivationEmail($user, $usersConfig);
+                return $this->jsonSuccess([
+                    'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_ACTIVATE_SELF'),
+                ]);
+            } elseif ($userActivation == 2) {
+                $this->sendActivationEmail($user, $usersConfig);
+                $this->sendAdminNotification($user);
+                return $this->jsonSuccess([
+                    'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_ACTIVATE_ADMIN'),
+                ]);
+            }
+
+            return $this->jsonSuccess([
+                'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_SUCCESS'),
+            ]);
         } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Send notification to admins about new registration
-     *
-     * @param   User  $user  User object
-     *
-     * @return boolean
-     */
-    protected function sendAdminActivationEmail(User $user): bool
-    {
-        $config = $this->getApplication()->getConfig();
-        $sitename = $config->get('sitename');
-        $mailfrom = $config->get('mailfrom');
-        $fromname = $config->get('fromname');
-
-        $db = $this->getDatabase();
-        $query = $db->getQuery(true)
-            ->select($db->quoteName('email'))
-            ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('sendEmail') . ' = 1')
-            ->where($db->quoteName('block') . ' = 0');
-
-        $db->setQuery($query);
-        $adminEmails = $db->loadColumn();
-
-        if (empty($adminEmails)) {
-            return true;
-        }
-
-        $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_ADMIN_ACTIVATION_EMAIL_SUBJECT', $sitename);
-        $body = Text::sprintf(
-            'PLG_AJAX_JOOMLAAJAXFORMS_ADMIN_ACTIVATION_EMAIL_BODY',
-            $sitename,
-            $user->name,
-            $user->username,
-            $user->email
-        );
-
-        try {
-            $mailer = $this->getMailer();
-            $mailer->setSender([$mailfrom, $fromname]);
-            $mailer->addRecipient($adminEmails);
-            $mailer->setSubject($subject);
-            $mailer->setBody($body);
-
-            return $mailer->Send();
-        } catch (\Exception $e) {
-            return false;
+            Log::add('Registration error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REGISTRATION_FAILED'));
         }
     }
 
     /**
      * Handle password reset request
      *
-     * @return string JSON response
+     * @return  string  JSON response
      */
     protected function handleReset(): string
     {
-        $email = $this->getApplication()->getInput()->post->get('email', '', 'string');
-        $email = trim($email);
-
-        // Validate email
-        if (empty($email)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_REQUIRED'));
-        }
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
-        }
-
-        // Find user by email
-        $db = $this->getDatabase();
-        $query = $db->getQuery(true)
-            ->select($db->quoteName(['id', 'username', 'email', 'block']))
-            ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('email') . ' = :email')
-            ->bind(':email', $email);
-
-        $db->setQuery($query);
-        $user = $db->loadObject();
-
-        // Security: Always return success message to prevent email enumeration
-        if (!$user || $user->block) {
-            // Log the attempt but return generic success
-            return $this->jsonSuccess(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_RESET_SUCCESS'));
-        }
-
-        // Generate reset token
-        $token = UserHelper::genRandomPassword(32);
-        $hashedToken = UserHelper::hashPassword($token);
-
-        // Store token in database
-        $query = $db->getQuery(true)
-            ->update($db->quoteName('#__users'))
-            ->set($db->quoteName('activation') . ' = :token')
-            ->where($db->quoteName('id') . ' = :id')
-            ->bind(':token', $hashedToken)
-            ->bind(':id', $user->id);
-
-        $db->setQuery($query);
-
-        try {
-            $db->execute();
-        } catch (\Exception $e) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_ERROR_DATABASE'));
-        }
-
-        // Send reset email
-        if (!$this->sendResetEmail($user, $token)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_ERROR_EMAIL'));
-        }
-
-        return $this->jsonSuccess(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_RESET_SUCCESS'));
-    }
-
-    /**
-     * Handle username reminder request
-     *
-     * @return string JSON response
-     */
-    protected function handleRemind(): string
-    {
-        $email = $this->getApplication()->getInput()->post->get('email', '', 'string');
-        $email = trim($email);
-
-        // Validate email
-        if (empty($email)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_REQUIRED'));
-        }
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
-        }
-
-        // Find user by email
-        $db = $this->getDatabase();
-        $query = $db->getQuery(true)
-            ->select($db->quoteName(['id', 'username', 'email', 'name', 'block']))
-            ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('email') . ' = :email')
-            ->bind(':email', $email);
-
-        $db->setQuery($query);
-        $user = $db->loadObject();
-
-        // Security: Always return success message to prevent email enumeration
-        if (!$user || $user->block) {
-            return $this->jsonSuccess(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REMIND_SUCCESS'));
-        }
-
-        // Send reminder email
-        if (!$this->sendRemindEmail($user)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_ERROR_EMAIL'));
-        }
-
-        return $this->jsonSuccess(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REMIND_SUCCESS'));
-    }
-
-    /**
-     * Handle user profile save request
-     *
-     * @return string JSON response
-     */
-    protected function handleSaveProfile(): string
-    {
-        $user = $this->getApplication()->getIdentity();
-
-        if ($user->guest) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NOT_LOGGED_IN'));
+        if (!$this->params->get('enable_reset', 1)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
         }
 
         $input = $this->getApplication()->getInput();
-
-        $name = trim($input->post->getString('name', ''));
         $email = trim($input->post->getString('email', ''));
-
-        if (empty($name)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NAME_REQUIRED'));
-        }
 
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
         }
 
+        // Always return success to prevent email enumeration
         try {
-            $db = $this->getDatabase();
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
             $query = $db->getQuery(true)
-                ->select('id')
+                ->select('*')
                 ->from($db->quoteName('#__users'))
-                ->where($db->quoteName('email') . ' = :email')
-                ->where($db->quoteName('id') . ' != :userId')
-                ->bind(':email', $email)
-                ->bind(':userId', $user->id, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('email') . ' = ' . $db->quote($email))
+                ->where($db->quoteName('block') . ' = 0');
             $db->setQuery($query);
+            $user = $db->loadObject();
 
-            if ($db->loadResult()) {
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_EXISTS'));
+            if ($user) {
+                $token = UserHelper::genRandomPassword(32);
+                $hashedToken = UserHelper::hashPassword($token);
+                $tokenCreated = Factory::getDate()->toSql();
+
+                $query = $db->getQuery(true)
+                    ->update($db->quoteName('#__users'))
+                    ->set($db->quoteName('activation') . ' = ' . $db->quote($hashedToken))
+                    ->set($db->quoteName('lastResetTime') . ' = ' . $db->quote($tokenCreated))
+                    ->where($db->quoteName('id') . ' = ' . (int) $user->id);
+                $db->setQuery($query);
+                $db->execute();
+
+                $this->sendResetEmail($user, $token);
             }
-
-            $userTable = $user->getTable();
-            $userTable->load($user->id);
-
-            $userTable->name = $name;
-            $userTable->email = $email;
-
-            // Handle password change if provided
-            $password1 = $input->post->getString('password1', '');
-            $password2 = $input->post->getString('password2', '');
-
-            if (!empty($password1)) {
-                if ($password1 !== $password2) {
-                    return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_MISMATCH'));
-                }
-
-                if (strlen($password1) < 12) {
-                    return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_TOO_SHORT'));
-                }
-
-                $userTable->password = UserHelper::hashPassword($password1);
-            }
-
-            if (!$userTable->store()) {
-                $error = $userTable->getError();
-                return $this->jsonError($error ?: Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_ERROR'));
-            }
-
-            // Update session with new user data
-            $user->name = $name;
-            $user->email = $email;
-
-            return $this->jsonSuccess(
-                Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVED'),
-                [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                    ],
-                ]
-            );
         } catch (\Exception $e) {
-            $msg = $e->getMessage();
-            return $this->jsonError($msg ?: Text::_('PLG_AJAX_JOOMLAAJAXFORMS_UNEXPECTED_ERROR'));
+            Log::add('Password reset error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+        }
+
+        return $this->jsonSuccess([
+            'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_RESET_SUCCESS'),
+        ]);
+    }
+
+    /**
+     * Handle username reminder request
+     *
+     * @return  string  JSON response
+     */
+    protected function handleRemind(): string
+    {
+        if (!$this->params->get('enable_remind', 1)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_TASK_DISABLED'));
+        }
+
+        $input = $this->getApplication()->getInput();
+        $email = trim($input->post->getString('email', ''));
+
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
+        }
+
+        // Always return success to prevent email enumeration
+        try {
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $query = $db->getQuery(true)
+                ->select('*')
+                ->from($db->quoteName('#__users'))
+                ->where($db->quoteName('email') . ' = ' . $db->quote($email))
+                ->where($db->quoteName('block') . ' = 0');
+            $db->setQuery($query);
+            $user = $db->loadObject();
+
+            if ($user) {
+                $this->sendRemindEmail($user);
+            }
+        } catch (\Exception $e) {
+            Log::add('Username remind error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+        }
+
+        return $this->jsonSuccess([
+            'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REMIND_SUCCESS'),
+        ]);
+    }
+
+    /**
+     * Handle MFA code validation
+     *
+     * @return  string  JSON response
+     */
+    protected function handleMfaValidate(): string
+    {
+        $session = $this->getApplication()->getSession();
+        $userId = $session->get('mfa_user_id', 0);
+        $pending = $session->get('mfa_pending', false);
+
+        if (!$userId || !$pending) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_SESSION_EXPIRED'));
+        }
+
+        $input = $this->getApplication()->getInput();
+        $code = trim($input->post->getString('code', ''));
+        $recordId = $input->post->getInt('record_id', 0);
+
+        if (empty($code)) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_REQUIRED'));
+        }
+
+        try {
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+
+            // Get the MFA record
+            $query = $db->getQuery(true)
+                ->select('*')
+                ->from($db->quoteName('#__user_mfa'))
+                ->where($db->quoteName('id') . ' = ' . (int) $recordId)
+                ->where($db->quoteName('user_id') . ' = ' . (int) $userId);
+            $db->setQuery($query);
+            $record = $db->loadObject();
+
+            if (!$record) {
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_INVALID_METHOD'));
+            }
+
+            // Validate the code using Joomla's MFA system
+            $user = Factory::getContainer()->get(UserFactoryInterface::class)->loadUserById($userId);
+
+            // Use the MFA plugin to validate
+            $this->getApplication()->getDispatcher()->dispatch('onUserMultifactorValidate', new \Joomla\Event\Event('onUserMultifactorValidate', [$record, $code]));
+
+            // If we get here without exception, the code is valid
+            // Clear MFA session data
+            $session->clear('mfa_user_id');
+            $session->clear('mfa_pending');
+
+            // Log the user in
+            $credentials = ['username' => $user->username];
+            $options = ['action' => 'core.login.site', 'skip_mfa' => true];
+            $this->getApplication()->login($credentials, $options);
+
+            return $this->jsonSuccess([
+                'redirect' => Uri::base(),
+                'message'  => Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
+            ]);
+        } catch (\Exception $e) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_INVALID'));
         }
     }
 
     /**
-     * Remove an item from the J2Store cart
-     *
-     * @return string JSON response
+     * Handle cart item removal via J2Store API
      */
     protected function handleRemoveCartItem(): string
     {
         $input = $this->getApplication()->getInput();
-        $cartItemId = $input->getInt('cartitem_id', 0);
+        $cartitemId = $input->getInt('cartitem_id', 0);
 
-        if ($cartItemId <= 0) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_INVALID_CART_ITEM'));
-        }
-
-        if (!file_exists(JPATH_ADMINISTRATOR . '/components/com_j2store/j2store.php')) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND'));
+        if (!$cartitemId) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_REMOVE_FAILED'));
         }
 
         try {
-            if (!defined('F0F_INCLUDED')) {
-                include_once JPATH_LIBRARIES . '/f0f/include.php';
-            }
-            require_once JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php';
-
-            $model = \F0FModel::getTmpInstance('Carts', 'J2StoreModel');
-            $result = $model->deleteItem();
-
-            if ($result) {
-                $order = \F0FModel::getTmpInstance('Orders', 'J2StoreModel')->initOrder()->getOrder();
-                $items = $order->getItems();
-
-                $cartCount = 0;
-                foreach ($items as $item) {
-                    $cartCount += (int) $item->orderitem_quantity;
-                }
-
-                return $this->jsonSuccess(
-                    Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_ITEM_REMOVED'),
-                    [
-                        'cartCount' => $cartCount,
-                        'cartTotal' => $order->order_total,
-                        'cartItemId' => $cartItemId,
-                    ]
-                );
+            if (!class_exists('J2Store')) {
+                require_once JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php';
             }
 
-            $error = $model->getError();
-            return $this->jsonError($error ?: Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_REMOVE_FAILED'));
+            $model = \J2Store::model('Carts');
+            $model->setState('cartitem_id', $cartitemId);
+            $model->remove();
+
+            // Get updated cart info
+            $helper = \J2Store::helper('Cart');
+            $cartItems = $helper->getItems();
+            $cartCount = 0;
+            foreach ($cartItems as $item) {
+                $cartCount += $item->orderitem_quantity;
+            }
+
+            return $this->jsonSuccess([
+                'cartCount' => $cartCount,
+                'message'   => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_ITEM_REMOVED'),
+            ]);
         } catch (\Exception $e) {
-            return $this->jsonError($e->getMessage());
+            Log::add('Cart remove error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_REMOVE_FAILED'));
         }
     }
 
     /**
-     * Get current cart item count
-     *
-     * @return string JSON response
+     * Handle profile save
      */
-    protected function handleGetCartCount(): string
+    protected function handleSaveProfile(): string
+    {
+        $user = $this->getApplication()->getIdentity();
+        if (!$user || $user->guest) {
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NOT_LOGGED_IN'));
+        }
+
+        $input = $this->getApplication()->getInput();
+
+        try {
+            $data = [
+                'name'  => trim($input->post->getString('name', '')),
+                'email' => trim($input->post->getString('email', '')),
+            ];
+
+            if (empty($data['name'])) {
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NAME_REQUIRED'));
+            }
+            if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
+            }
+
+            $user->name = $data['name'];
+            $user->email = $data['email'];
+
+            // Update password if provided
+            $password = $input->post->getString('password', '');
+            $password2 = $input->post->getString('password2', '');
+            if (!empty($password)) {
+                if ($password !== $password2) {
+                    return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_MISMATCH'));
+                }
+                $user->password = UserHelper::hashPassword($password);
+            }
+
+            if (!$user->save(true)) {
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_FAILED'));
+            }
+
+            return $this->jsonSuccess([
+                'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVED'),
+            ]);
+        } catch (\Exception $e) {
+            Log::add('Profile save error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_FAILED'));
+        }
+    }
+
+    /**
+     * Get MFA methods for a user
+     *
+     * @param   int  $userId  User ID
+     *
+     * @return  array  MFA methods
+     */
+    protected function getMfaMethods(int $userId): array
     {
         try {
-            if (!file_exists(JPATH_ADMINISTRATOR . '/components/com_j2store/j2store.php')) {
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND'));
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $query = $db->getQuery(true)
+                ->select([$db->quoteName('id'), $db->quoteName('title'), $db->quoteName('method')])
+                ->from($db->quoteName('#__user_mfa'))
+                ->where($db->quoteName('user_id') . ' = ' . (int) $userId);
+            $db->setQuery($query);
+            $records = $db->loadObjectList();
+
+            if (empty($records)) {
+                return [];
             }
 
-            if (!defined('F0F_INCLUDED')) {
-                include_once JPATH_LIBRARIES . '/f0f/include.php';
-            }
-            require_once JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php';
-
-            $order = \F0FModel::getTmpInstance('Orders', 'J2StoreModel')->initOrder()->getOrder();
-            $items = $order->getItems();
-
-            $cartCount = 0;
-            foreach ($items as $item) {
-                $cartCount += (int) $item->orderitem_quantity;
+            $methods = [];
+            foreach ($records as $record) {
+                $methods[] = [
+                    'id'     => $record->id,
+                    'title'  => $record->title,
+                    'method' => $record->method,
+                ];
             }
 
-            return $this->jsonSuccess('', ['cartCount' => $cartCount]);
+            return $methods;
         } catch (\Exception $e) {
-            return $this->jsonError($e->getMessage());
+            return [];
         }
     }
 
@@ -1132,36 +649,31 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      * @param   object  $user   User object
      * @param   string  $token  Reset token
      *
-     * @return boolean
+     * @return  void
      */
-    protected function sendResetEmail(object $user, string $token): bool
+    protected function sendResetEmail(object $user, string $token): void
     {
-        $config = $this->getApplication()->getConfig();
-        $sitename = $config->get('sitename');
-        $mailfrom = $config->get('mailfrom');
-        $fromname = $config->get('fromname');
-
-        $link = \Joomla\CMS\Uri\Uri::root() . 'index.php?option=com_users&view=reset&layout=confirm&token=' . $token;
-
-        $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_RESET_EMAIL_SUBJECT', $sitename);
-        $body = Text::sprintf(
-            'PLG_AJAX_JOOMLAAJAXFORMS_RESET_EMAIL_BODY',
-            $user->name,
-            $sitename,
-            $link,
-            $token
-        );
-
         try {
-            $mailer = $this->getMailer();
-            $mailer->setSender([$mailfrom, $fromname]);
-            $mailer->addRecipient($user->email);
+            $siteName = $this->getApplication()->get('sitename');
+            $resetLink = Uri::root() . 'index.php?option=com_users&view=reset&layout=confirm&token=' . $token;
+
+            $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_RESET_EMAIL_SUBJECT', $siteName);
+            $body = Text::sprintf(
+                'PLG_AJAX_JOOMLAAJAXFORMS_RESET_EMAIL_BODY',
+                $user->name,
+                $siteName,
+                $resetLink,
+                $token,
+                $siteName
+            );
+
+            $mailer = Factory::getContainer()->get(MailerFactoryInterface::class)->createMailer();
+            $mailer->addRecipient($user->email, $user->name);
             $mailer->setSubject($subject);
             $mailer->setBody($body);
-
-            return $mailer->Send();
+            $mailer->Send();
         } catch (\Exception $e) {
-            return false;
+            Log::add('Reset email error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
         }
     }
 
@@ -1170,86 +682,121 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      *
      * @param   object  $user  User object
      *
-     * @return boolean
+     * @return  void
      */
-    protected function sendRemindEmail(object $user): bool
+    protected function sendRemindEmail(object $user): void
     {
-        $config = $this->getApplication()->getConfig();
-        $sitename = $config->get('sitename');
-        $mailfrom = $config->get('mailfrom');
-        $fromname = $config->get('fromname');
-
-        $link = \Joomla\CMS\Uri\Uri::root() . 'index.php?option=com_users&view=login';
-
-        $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_REMIND_EMAIL_SUBJECT', $sitename);
-        $body = Text::sprintf(
-            'PLG_AJAX_JOOMLAAJAXFORMS_REMIND_EMAIL_BODY',
-            $user->name,
-            $sitename,
-            $user->username,
-            $link
-        );
-
         try {
-            $mailer = $this->getMailer();
-            $mailer->setSender([$mailfrom, $fromname]);
-            $mailer->addRecipient($user->email);
+            $siteName = $this->getApplication()->get('sitename');
+            $loginLink = Uri::root() . 'index.php?option=com_users&view=login';
+
+            $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_REMIND_EMAIL_SUBJECT', $siteName);
+            $body = Text::sprintf(
+                'PLG_AJAX_JOOMLAAJAXFORMS_REMIND_EMAIL_BODY',
+                $user->name,
+                $siteName,
+                $user->username,
+                $loginLink,
+                $siteName
+            );
+
+            $mailer = Factory::getContainer()->get(MailerFactoryInterface::class)->createMailer();
+            $mailer->addRecipient($user->email, $user->name);
             $mailer->setSubject($subject);
             $mailer->setBody($body);
-
-            return $mailer->Send();
+            $mailer->Send();
         } catch (\Exception $e) {
-            return false;
+            Log::add('Remind email error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
         }
     }
 
     /**
-     * Return JSON success response
+     * Send activation email
      *
-     * @param   string  $message  Success message
-     * @param   mixed   $data     Optional data
+     * @param   \Joomla\CMS\User\User  $user    User object
+     * @param   \Joomla\Registry\Registry  $config  Users config
      *
-     * @return string
+     * @return  void
      */
-    protected function jsonSuccess(string $message, $data = null): string
+    protected function sendActivationEmail($user, $config): void
     {
-        return json_encode([
-            'success' => true,
-            'message' => $message,
-            'data' => $data,
-            'error' => null
-        ]);
+        try {
+            $siteName = $this->getApplication()->get('sitename');
+            $activationLink = Uri::root() . 'index.php?option=com_users&task=registration.activate&token=' . $user->activation;
+
+            $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_ACTIVATION_EMAIL_SUBJECT', $siteName);
+            $body = Text::sprintf(
+                'PLG_AJAX_JOOMLAAJAXFORMS_ACTIVATION_EMAIL_BODY',
+                $user->name,
+                $siteName,
+                $activationLink,
+                $user->activation,
+                $siteName
+            );
+
+            $mailer = Factory::getContainer()->get(MailerFactoryInterface::class)->createMailer();
+            $mailer->addRecipient($user->email, $user->name);
+            $mailer->setSubject($subject);
+            $mailer->setBody($body);
+            $mailer->Send();
+        } catch (\Exception $e) {
+            Log::add('Activation email error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+        }
     }
 
     /**
-     * Return JSON error response (J2Commerce compatible format)
+     * Send admin notification about new registration
+     *
+     * @param   \Joomla\CMS\User\User  $user  User object
+     *
+     * @return  void
+     */
+    protected function sendAdminNotification($user): void
+    {
+        try {
+            $siteName = $this->getApplication()->get('sitename');
+            $adminEmail = $this->getApplication()->get('mailfrom');
+
+            $subject = Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_ADMIN_ACTIVATION_EMAIL_SUBJECT', $siteName);
+            $body = Text::sprintf(
+                'PLG_AJAX_JOOMLAAJAXFORMS_ADMIN_ACTIVATION_EMAIL_BODY',
+                $siteName,
+                $user->name,
+                $user->username,
+                $user->email
+            );
+
+            $mailer = Factory::getContainer()->get(MailerFactoryInterface::class)->createMailer();
+            $mailer->addRecipient($adminEmail);
+            $mailer->setSubject($subject);
+            $mailer->setBody($body);
+            $mailer->Send();
+        } catch (\Exception $e) {
+            Log::add('Admin notification error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+        }
+    }
+
+    /**
+     * Return a JSON success response
+     *
+     * @param   array  $data  Additional data
+     *
+     * @return  string
+     */
+    protected function jsonSuccess(array $data = []): string
+    {
+        return json_encode(array_merge(['success' => true], $data));
+    }
+
+    /**
+     * Return a JSON error response
      *
      * @param   string  $message  Error message
      *
-     * @return string
+     * @return  string
      */
     protected function jsonError(string $message): string
     {
-        return json_encode([
-            'success' => false,
-            'message' => null,
-            'data' => null,
-            'error' => [
-                'warning' => $message
-            ]
-        ]);
-    }
-
-    /**
-     * Get a mailer instance via the MailerFactory (J6-compatible)
-     *
-     * @return \Joomla\CMS\Mail\Mail
-     */
-    protected function getMailer(): \Joomla\CMS\Mail\Mail
-    {
-        return $this->getApplication()
-            ->getContainer()
-            ->get(MailerFactoryInterface::class)
-            ->createMailer();
+        return json_encode(['success' => false, 'message' => $message]);
     }
 }
