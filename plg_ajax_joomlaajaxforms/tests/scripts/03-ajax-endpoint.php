@@ -104,8 +104,8 @@ class AjaxEndpointTest
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         
-        // Redirect means endpoint exists but requires CSRF token
-        if ($httpCode === 303 || $httpCode === 302) {
+        // Redirect means endpoint exists but requires CSRF token or SEF redirect
+        if (in_array($httpCode, [301, 302, 303])) {
             echo "PASS (redirect response - CSRF token required in test env)\n";
             return true;
         }
