@@ -1,154 +1,42 @@
 #!/bin/bash
-# CI trigger: 2026-02-17
 set -e
 
 echo "=== J2Commerce Import/Export Test Environment Setup ==="
 echo "Extension: ${EXTENSION_NAME:-J2Commerce Import/Export}"
 echo "======================================================="
 
-# Wait for MySQL to be ready
-echo "Waiting for MySQL..."
-until mysql -h mysql -u joomla -pjoomla_pass -e "SELECT 1" &>/dev/null; do
-    sleep 2
-done
-echo "✅ MySQL is ready"
-
-# Run original Joomla entrypoint in background
+# Run original Joomla entrypoint
 /entrypoint.sh apache2-foreground &
 JOOMLA_PID=$!
 
-# Wait for Joomla files to be extracted
-echo "Waiting for Joomla files..."
-sleep 10
+echo "Waiting for Joomla to initialize..."
+sleep 15
 
-# Check if Joomla needs installation
-if [ ! -f /var/www/html/configuration.php ]; then
-    echo "Installing Joomla via CLI..."
+if [ -f /var/www/html/configuration.php ]; then
+    echo "Joomla is initialized, installing extension..."
+    sleep 5
     
-    # Wait for files to be fully extracted
-    until [ -f /var/www/html/installation/joomla.php ] || [ -f /var/www/html/cli/joomla.php ]; do
-        sleep 2
-    done
-    
-    # Use Joomla CLI installer (Joomla 4+)
-    if [ -f /var/www/html/cli/joomla.php ]; then
-        php /var/www/html/cli/joomla.php site:install \
-            --db-host=mysql \
-            --db-user=joomla \
-            --db-pass=joomla_pass \
-            --db-name=joomla_db \
-            --db-prefix=j_ \
-            --db-type=mysql \
-            --site-name="Test Site" \
-            --admin-user="admin" \
-            --admin-username="admin" \
-            --admin-password="Admin123!" \
-            --admin-email="admin@test.local" \
-            --no-interaction 2>&1 || echo "CLI install attempted"
+    echo "Installing extension via Joomla CLI..."
+    cp /tmp/extension.zip /var/www/html/tmp/extension.zip
+    if php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/extension.zip; then
+        echo "✅ Extension installed via Joomla CLI"
+    else
+        echo "❌ Extension installation FAILED via Joomla CLI"
+        exit 1
     fi
     
-    # Fallback: Create configuration.php manually if CLI failed
-    if [ ! -f /var/www/html/configuration.php ]; then
-        echo "Creating configuration.php manually..."
-        cat > /var/www/html/configuration.php << 'EOFCONFIG'
-<?php
-class JConfig {
-    public $offline = false;
-    public $offline_message = 'This site is down for maintenance.';
-    public $display_offline_message = 1;
-    public $offline_image = '';
-    public $sitename = 'Test Site';
-    public $editor = 'tinymce';
-    public $captcha = '0';
-    public $list_limit = 20;
-    public $access = 1;
-    public $debug = false;
-    public $debug_lang = false;
-    public $debug_lang_const = true;
-    public $dbtype = 'mysqli';
-    public $host = 'mysql';
-    public $user = 'joomla';
-    public $password = 'joomla_pass';
-    public $db = 'joomla_db';
-    public $dbprefix = 'j_';
-    public $dbencryption = 0;
-    public $dbsslverifyservercert = false;
-    public $dbsslkey = '';
-    public $dbsslcert = '';
-    public $dbsslca = '';
-    public $dbsslcipher = '';
-    public $force_ssl = 0;
-    public $live_site = '';
-    public $secret = 'testsecret123456';
-    public $gzip = false;
-    public $error_reporting = 'default';
-    public $helpurl = 'https://help.joomla.org/proxy';
-    public $tmp_path = '/var/www/html/tmp';
-    public $log_path = '/var/www/html/administrator/logs';
-    public $lifetime = 15;
-    public $session_handler = 'database';
-    public $shared_session = false;
-    public $session_metadata = true;
-}
-EOFCONFIG
-        chown www-data:www-data /var/www/html/configuration.php
-        
-        # Import Joomla schema
-        echo "Importing Joomla database schema..."
-        if [ -f /var/www/html/installation/sql/mysql/base.sql ]; then
-            mysql -h mysql -u joomla -pjoomla_pass joomla_db < /var/www/html/installation/sql/mysql/base.sql 2>/dev/null || true
-        fi
-        if [ -f /var/www/html/installation/sql/mysql/extensions.sql ]; then
-            mysql -h mysql -u joomla -pjoomla_pass joomla_db < /var/www/html/installation/sql/mysql/extensions.sql 2>/dev/null || true
-        fi
-        if [ -f /var/www/html/installation/sql/mysql/supports.sql ]; then
-            mysql -h mysql -u joomla -pjoomla_pass joomla_db < /var/www/html/installation/sql/mysql/supports.sql 2>/dev/null || true
-        fi
-        
-        # Create admin user
-        ADMIN_PASS_HASH=$(php -r "echo password_hash('Admin123!', PASSWORD_BCRYPT);")
-        mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
-            INSERT INTO j_users (id, name, username, email, password, block, sendEmail, registerDate, params) 
-            VALUES (42, 'Super User', 'admin', 'admin@test.local', '$ADMIN_PASS_HASH', 0, 1, NOW(), '{}')
-            ON DUPLICATE KEY UPDATE password='$ADMIN_PASS_HASH';
-            INSERT INTO j_user_usergroup_map (user_id, group_id) VALUES (42, 8) ON DUPLICATE KEY UPDATE group_id=8;
-        " 2>/dev/null || true
-    fi
+    # Enable all newly installed extensions
+    echo "Enabling installed extensions..."
+    DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; echo (new JConfig)->dbprefix;" 2>/dev/null || echo "j_")
+    echo "DB prefix: ${DB_PREFIX}"
+    mysql -h "${JOOMLA_DB_HOST:-mysql}" -u "${JOOMLA_DB_USER:-joomla}" -p"${JOOMLA_DB_PASSWORD:-joomla_pass}" "${JOOMLA_DB_NAME:-joomla_db}" \
+        -e "UPDATE ${DB_PREFIX}extensions SET enabled = 1 WHERE enabled = 0 AND type = 'plugin';" 2>&1 \
+        && echo "✅ Extensions enabled" \
+        || echo "⚠️ Could not enable extensions via DB"
     
-    echo "✅ Joomla installation complete"
+    echo "OK" > /var/www/html/health.txt
+    chown www-data:www-data /var/www/html/health.txt 2>/dev/null || true
+    echo "✅ Health file created"
 fi
 
-# Wait for configuration.php
-echo "Waiting for Joomla configuration..."
-until [ -f /var/www/html/configuration.php ]; do
-    sleep 2
-done
-
-# Install extension using real Joomla Installer API
-echo "Installing extension via Joomla CLI..."
-sleep 5
-cp /tmp/extension.zip /var/www/html/tmp/extension.zip
-if php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/extension.zip; then
-    echo "✅ Extension installed via Joomla CLI"
-else
-    echo "❌ Extension installation FAILED via Joomla CLI"
-    exit 1
-fi
-
-# Enable all newly installed extensions (plugins are disabled by default)
-echo "Enabling installed extensions..."
-DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; echo (new JConfig)->dbprefix;" 2>/dev/null || echo "j_")
-echo "DB prefix: ${DB_PREFIX}"
-mysql -h "${JOOMLA_DB_HOST:-mysql}" -u "${JOOMLA_DB_USER:-joomla}" -p"${JOOMLA_DB_PASSWORD:-joomla_pass}" "${JOOMLA_DB_NAME:-joomla_db}" \
-    -e "UPDATE ${DB_PREFIX}extensions SET enabled = 1 WHERE enabled = 0 AND type = 'plugin';" 2>&1 \
-    && echo "✅ Extensions enabled" \
-    || echo "⚠️ Could not enable extensions via DB"
-
-# Create a simple health check file
-echo "OK" > /var/www/html/health.txt
-chown www-data:www-data /var/www/html/health.txt
-
-echo "✅ Container ready"
-
-# Keep container running
 wait $JOOMLA_PID
