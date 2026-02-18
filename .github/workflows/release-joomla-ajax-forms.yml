@@ -1,10 +1,6 @@
 name: Release - Joomla Ajax Forms
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'plg_ajax_joomlaajaxforms/**'
   workflow_dispatch:
     inputs:
       bump:

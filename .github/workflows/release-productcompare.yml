@@ -1,10 +1,6 @@
 name: Release - J2Commerce Product Compare
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'j2commerce/plg_j2commerce_productcompare/**'
   workflow_dispatch:
     inputs:
       bump:
