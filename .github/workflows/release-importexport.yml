@@ -169,11 +169,30 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
 
+      - name: Delete previous releases
+        if: steps.version.outputs.bump != 'none'
+        run: |
+          TAG_PREFIX="importexport-v"
+          NEW_TAG="${TAG_PREFIX}${{ steps.version.outputs.new }}"
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            | jq -r ".[] | select(.tag_name | startswith(\"${TAG_PREFIX}\")) | select(.tag_name != \"${NEW_TAG}\") | .id" \
+            | while read -r id; do
+                echo "Deleting release $id"
+                curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                  "https://api.github.com/repos/${{ github.repository }}/releases/$id"
+              done
+          git tag -l "${TAG_PREFIX}*" | grep -v "^${NEW_TAG}$" | while read -r tag; do
+            echo "Deleting tag $tag"
+            git push origin --delete "$tag" 2>/dev/null || true
+          done
+
       - name: Create Release
         if: steps.version.outputs.bump != 'none'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: importexport-v${{ steps.version.outputs.new }}
+          make_latest: true
           name: J2Commerce Import/Export v${{ steps.version.outputs.new }}
           body: |
             ## J2Commerce Import/Export Component v${{ steps.version.outputs.new }}
