@@ -153,7 +153,7 @@ jobs:
           git diff --staged --quiet || {
             git commit -m "release: importexport v${VERSION} [skip ci]"
             git tag -fa "importexport-v${VERSION}" -m "Release importexport v${VERSION}"
-            git pull --rebase origin main && git push origin HEAD:main --follow-tags
+            for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main --follow-tags && break; sleep 5; done
           }
 
       - name: Generate changelog
