@@ -154,7 +154,7 @@ jobs:
           git diff --staged --quiet || {
             git commit -m "release: productcompare v${VERSION} [skip ci]"
             git tag -fa "productcompare-v${VERSION}" -m "Release productcompare v${VERSION}"
-            git push origin HEAD:main --follow-tags --force
+            git push origin HEAD:main --follow-tags
           }
 
       - name: Generate changelog
