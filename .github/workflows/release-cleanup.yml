@@ -1,10 +1,6 @@
 name: Release - J2Store Cleanup
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'j2commerce/com_j2store_cleanup/**'
   workflow_dispatch:
     inputs:
       bump:

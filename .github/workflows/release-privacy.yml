@@ -1,10 +1,6 @@
 name: Release - J2Commerce Privacy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'j2commerce/plg_privacy_j2commerce/**'
   workflow_dispatch:
     inputs:
       bump:
