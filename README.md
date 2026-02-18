@@ -49,7 +49,15 @@ View test results: https://github.com/advansit/Joomla/actions
 
 ## Releases
 
-Releases are created automatically using [Conventional Commits](https://www.conventionalcommits.org/). When changes are pushed to `main`, the release workflow for each affected extension determines the version bump from commit messages:
+Releases are created **manually** via the GitHub Actions UI (`workflow_dispatch`). Each extension has its own release workflow, tag prefix and independent version.
+
+### How to create a release
+
+1. Go to **Actions** → select the release workflow for the extension
+2. Click **Run workflow**
+3. Choose a bump level or leave empty for auto-detect from commits
+
+Auto-detect uses [Conventional Commits](https://www.conventionalcommits.org/) since the last tag:
 
 | Commit Prefix | Version Bump | Example |
 |---------------|-------------|---------|
@@ -59,17 +67,17 @@ Releases are created automatically using [Conventional Commits](https://www.conv
 
 Commits without a conventional prefix are ignored — no release is created.
 
-Each extension has its own release workflow, tag prefix and independent version:
+### Release workflows
 
-| Workflow | Tag Pattern | Trigger Path |
-|----------|-------------|-------------|
-| `release-joomla-ajax-forms.yml` | `ajaxforms-v*` | `plg_ajax_joomlaajaxforms/**` |
-| `release-importexport.yml` | `importexport-v*` | `j2commerce/com_j2commerce_importexport/**` |
-| `release-cleanup.yml` | `cleanup-v*` | `j2commerce/com_j2store_cleanup/**` |
-| `release-productcompare.yml` | `productcompare-v*` | `j2commerce/plg_j2commerce_productcompare/**` |
-| `release-privacy.yml` | `privacy-v*` | `j2commerce/plg_privacy_j2commerce/**` |
+| Workflow | Tag Pattern |
+|----------|-------------|
+| `release-joomla-ajax-forms.yml` | `ajaxforms-v*` |
+| `release-importexport.yml` | `importexport-v*` |
+| `release-cleanup.yml` | `cleanup-v*` |
+| `release-productcompare.yml` | `productcompare-v*` |
+| `release-privacy.yml` | `privacy-v*` |
 
-Releases can also be triggered manually via the GitHub Actions UI with a forced bump level (patch/minor/major).
+Each release workflow deletes the previous release and tag for the same extension before creating the new one. This ensures there is always exactly one release per extension.
 
 View all releases: https://github.com/advansit/Joomla/releases
 
