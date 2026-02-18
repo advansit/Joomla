@@ -153,7 +153,7 @@ jobs:
           git diff --staged --quiet || {
             git commit -m "release: cleanup v${VERSION} [skip ci]"
             git tag -fa "cleanup-v${VERSION}" -m "Release cleanup v${VERSION}"
-            git push origin HEAD:main --follow-tags
+            git pull --rebase origin main && git push origin HEAD:main --follow-tags
           }
 
       - name: Generate changelog

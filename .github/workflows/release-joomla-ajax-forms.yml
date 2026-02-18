@@ -155,7 +155,7 @@ jobs:
           git diff --staged --quiet || {
             git commit -m "release: ajaxforms v${VERSION} [skip ci]"
             git tag -fa "ajaxforms-v${VERSION}" -m "Release ajaxforms v${VERSION}"
-            git push origin HEAD:main --follow-tags
+            git pull --rebase origin main && git push origin HEAD:main --follow-tags
           }
 
       - name: Generate changelog
