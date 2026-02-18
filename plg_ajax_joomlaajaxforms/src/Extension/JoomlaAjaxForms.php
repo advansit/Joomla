@@ -533,9 +533,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 require_once JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php';
             }
 
-            $model = \J2Store::model('Carts');
-            $model->setState('cartitem_id', $cartitemId);
-            $model->remove();
+            // Remove cart item via direct DB query (compatible with all J2Store/J2Commerce versions)
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $query = $db->getQuery(true)
+                ->delete($db->quoteName('#__j2store_cartitems'))
+                ->where($db->quoteName('j2store_cartitem_id') . ' = ' . (int) $cartitemId);
+            $db->setQuery($query);
+            $db->execute();
 
             // Get updated cart info
             $helper = \J2Store::helper('Cart');
