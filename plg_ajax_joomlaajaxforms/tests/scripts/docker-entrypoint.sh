@@ -9,7 +9,14 @@ echo "================================================="
 JOOMLA_PID=$!
 
 echo "Waiting for Joomla to initialize..."
-sleep 15
+TIMEOUT=120
+ELAPSED=0
+while [ ! -f /var/www/html/configuration.php ] && [ $ELAPSED -lt $TIMEOUT ]; do
+    sleep 5
+    ELAPSED=$((ELAPSED + 5))
+    echo "  Waiting... ($ELAPSED/$TIMEOUT seconds)"
+done
+
 
 if [ -f /var/www/html/configuration.php ]; then
     echo "Joomla is initialized, installing extension..."
