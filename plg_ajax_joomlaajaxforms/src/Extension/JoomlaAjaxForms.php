@@ -541,12 +541,19 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $helper = \J2Store::helper('Cart');
             $cartItems = $helper->getItems();
             $cartCount = 0;
+            $cartTotal = 0;
             foreach ($cartItems as $item) {
                 $cartCount += $item->orderitem_quantity;
+                $cartTotal += $item->orderitem_finalprice;
             }
+
+            // Format the total using J2Store currency
+            $currency = \J2Store::currency();
+            $formattedTotal = $currency->format($cartTotal);
 
             return $this->jsonSuccess([
                 'cartCount' => $cartCount,
+                'cartTotal' => Text::sprintf('J2STORE_CART_TOTAL', $cartCount, $formattedTotal),
                 'message'   => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_ITEM_REMOVED'),
             ]);
         } catch (\Exception $e) {
