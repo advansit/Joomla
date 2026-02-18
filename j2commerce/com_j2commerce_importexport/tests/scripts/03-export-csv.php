@@ -13,9 +13,9 @@ class ExportCsvTest
     {
         echo "=== CSV Export Tests ===\n\n";
 
-        $this->test('ExportModel supports CSV format', function() {
-            $content = file_get_contents($this->basePath . '/src/Model/ExportModel.php');
-            return stripos($content, 'csv') !== false;
+        $this->test('ExportController supports CSV format', function() {
+            $content = file_get_contents($this->basePath . '/src/Controller/ExportController.php');
+            return stripos($content, 'csv') !== false && stripos($content, 'exportCSV') !== false;
         });
 
         $this->test('ExportController handles CSV requests', function() {
