@@ -681,7 +681,7 @@ const JoomlaAjaxForms = {
             }
             return data;
         });
-    }
+    },
     /**
      * Remove item from J2Store cart via AJAX
      *
