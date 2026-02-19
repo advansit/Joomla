@@ -29,7 +29,14 @@ const JoomlaAjaxForms = {
      * Configuration
      */
     config: {
-        baseUrl: 'index.php',
+        baseUrl: (function() {
+            try {
+                var paths = Joomla.getOptions('system.paths') || {};
+                return (paths.root || '') + '/index.php';
+            } catch (e) {
+                return '/index.php';
+            }
+        })(),
         errorClass: 'alert alert-danger',
         successClass: 'alert alert-success',
         loadingClass: 'is-loading'

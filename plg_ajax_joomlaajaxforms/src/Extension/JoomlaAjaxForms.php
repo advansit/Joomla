@@ -594,8 +594,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $user->name = $data['name'];
             $user->email = $data['email'];
 
-            // Update password if provided
-            $password = $input->post->getString('password', '');
+            // Update password if provided (form sends password1/password2)
+            $password = $input->post->getString('password1', '');
             $password2 = $input->post->getString('password2', '');
             if (!empty($password)) {
                 if ($password !== $password2) {
