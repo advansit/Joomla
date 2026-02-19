@@ -1,7 +1,7 @@
 === Security Tests ===
 
 Test: CSRF token validation in code... PASS
-Test: Prepared statements for SQL... PASS
+Test: Prepared statements for SQL... FAIL (prepared statements not found)
 Test: Email enumeration prevention logic... PASS
 Test: Blocked user check in code... PASS
 Test: JSON encoding for responses... PASS
