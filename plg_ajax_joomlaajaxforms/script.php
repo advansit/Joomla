@@ -53,16 +53,14 @@ class PlgAjaxJoomlaajaxformsInstallerScript
 
         $issues = [];
 
-        // Check 1: If /component/ URLs are blocked, is com_ajax excluded?
-        // Look for a RewriteRule that redirects /component/ away
-        if (preg_match('/RewriteCond.*\/component\/.*\n.*RewriteRule.*component/im', $content)) {
-            // Component blocking is active — check for com_ajax exception
-            $hasPluginException = (bool) preg_match(
-                '/RewriteCond.*QUERY_STRING.*!plugin=/im',
+        // Check 1: If /component/ URLs are blocked, is /component/ajax excluded?
+        if (preg_match('/RewriteCond.*\/component\/.*\n.*RewriteRule.*component/ims', $content)) {
+            $hasAjaxPathException = (bool) preg_match(
+                '/RewriteCond.*component\/ajax/im',
                 $content
             );
 
-            if (!$hasPluginException) {
+            if (!$hasAjaxPathException) {
                 $issues[] = Text::_('PLG_AJAX_JOOMLAAJAXFORMS_HTACCESS_COMPONENT_BLOCKED');
             }
         }
