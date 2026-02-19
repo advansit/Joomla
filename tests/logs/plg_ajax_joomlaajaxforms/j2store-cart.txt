@@ -2,7 +2,7 @@
 
 Test: J2Store cart feature config exists... PASS
 Test: handleRemoveCartItem method exists... PASS
-Test: handleGetCartCount method exists... PASS
-Test: Cart language strings loaded... PASS
+Test: handleGetCartCount method exists... FAIL (method not found in source)
+Test: Cart language strings loaded... FAIL (missing: PLG_AJAX_JOOMLAAJAXFORMS_INVALID_CART_ITEM, PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND)
 
 === J2Store Cart Test Summary ===

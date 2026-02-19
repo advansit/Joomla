@@ -2,6 +2,6 @@
 
 Test: Profile feature config exists... PASS
 Test: handleSaveProfile method exists... PASS
-Test: Profile language strings loaded... PASS
+Test: Profile language strings loaded... FAIL (missing: PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_ERROR, PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_TOO_SHORT)
 
 === Profile Test Summary ===
