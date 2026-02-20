@@ -182,6 +182,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 // Logout user until MFA is validated
                 $this->getApplication()->logout($user->id);
 
+                // Clear any system messages queued during the brief login
+                // (e.g. MFA plugin adding "no permission" messages)
+                $this->getApplication()->getMessageQueue(true);
+
                 return $this->jsonSuccess([
                     'mfa_required' => true,
                     'methods'      => $mfaMethods,
