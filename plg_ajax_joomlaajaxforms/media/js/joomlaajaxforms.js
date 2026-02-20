@@ -111,6 +111,14 @@ const JoomlaAjaxForms = {
         selectors.forEach(function(selector) {
             const forms = document.querySelectorAll(selector);
             forms.forEach(function(form) {
+                // Skip logout forms that happen to match login selectors
+                var taskInput = form.querySelector('input[name="task"]');
+                if (taskInput && taskInput.value && taskInput.value.indexOf('logout') !== -1) {
+                    return;
+                }
+                if (form.action && form.action.indexOf('logout') !== -1) {
+                    return;
+                }
                 if (!form.dataset.ajaxInitialized) {
                     JoomlaAjaxForms.convertLoginForm(form);
                     form.dataset.ajaxInitialized = 'true';
