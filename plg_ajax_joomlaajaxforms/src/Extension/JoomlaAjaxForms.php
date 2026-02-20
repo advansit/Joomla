@@ -196,12 +196,22 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 ]);
             }
 
+            // Clear any system messages from the login process
+            $this->getApplication()->getMessageQueue(true);
+            $session = $this->getApplication()->getSession();
+            $session->set('application.queue', []);
+
+            // Determine redirect: POST return param > session return URL > profile page
             $redirect = '';
             if ($returnUrl) {
                 $redirect = base64_decode($returnUrl);
             }
             if (empty($redirect)) {
-                $redirect = Uri::base();
+                $redirect = $session->get('com_users.return_url', '');
+                $session->clear('com_users.return_url');
+            }
+            if (empty($redirect) || !Uri::isInternal($redirect)) {
+                $redirect = Route::_('index.php?option=com_j2store&view=myprofile', false);
             }
 
             return $this->jsonSuccess([
@@ -512,11 +522,25 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
             // Log the user in
             $credentials = ['username' => $user->username];
-            $options = ['action' => 'core.login.site', 'skip_mfa' => true];
+            $options = ['action' => 'core.login.site'];
             $this->getApplication()->login($credentials, $options);
 
+            // Mark MFA as completed so Joomla does not redirect to captive page
+            $session->set('com_users.mfa_checked', 1);
+
+            // Clear any system messages from the login process
+            $this->getApplication()->getMessageQueue(true);
+            $session->set('application.queue', []);
+
+            // Determine redirect: use return URL from session or profile page
+            $returnUrl = $session->get('com_users.return_url', '');
+            if (empty($returnUrl) || !Uri::isInternal($returnUrl)) {
+                $returnUrl = Route::_('index.php?option=com_j2store&view=myprofile', false);
+            }
+            $session->clear('com_users.return_url');
+
             return $this->jsonSuccess([
-                'redirect' => Uri::base(),
+                'redirect' => $returnUrl,
                 'message'  => Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
             ]);
         } catch (\Exception $e) {
