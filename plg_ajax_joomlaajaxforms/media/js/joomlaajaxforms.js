@@ -805,12 +805,23 @@ const JoomlaAjaxForms = {
         var submitBtn = JoomlaAjaxForms.disableSubmit(form);
         messageContainer.style.display = 'none';
 
+        console.log('[JoomlaAjaxForms] Profile save URL:', JoomlaAjaxForms.config.baseUrl, 'body:', body.toString().substring(0, 300));
         fetch(JoomlaAjaxForms.config.baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
         })
-        .then(function(response) { return response.json(); })
+        .then(function(response) {
+            console.log('[JoomlaAjaxForms] Profile save response:', response.status, response.url, 'redirected:', response.redirected);
+            return response.text().then(function(text) {
+                console.log('[JoomlaAjaxForms] Profile save body:', text.substring(0, 500));
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Invalid JSON (status ' + response.status + '): ' + text.substring(0, 200));
+                }
+            });
+        })
         .then(function(rawData) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
             var data = JoomlaAjaxForms.unwrapResponse(rawData);

@@ -582,6 +582,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             // Joomla profile form sends jform[name], jform[email1], jform[password1], jform[password2]
             $jform = $input->post->get('jform', [], 'array');
 
+            // Debug: log what we received
+            Log::add('Profile save jform: ' . json_encode(array_keys($jform)), Log::DEBUG, 'plg_ajax_joomlaajaxforms');
+
             $name  = trim($jform['name'] ?? $input->post->getString('name', ''));
             $email = trim($jform['email1'] ?? $jform['email'] ?? $input->post->getString('email', ''));
 
@@ -592,8 +595,16 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
             }
 
-            $user->name = $name;
-            $user->email = $email;
+            // Only update fields that changed
+            $changed = false;
+            if ($user->name !== $name) {
+                $user->name = $name;
+                $changed = true;
+            }
+            if ($user->email !== $email) {
+                $user->email = $email;
+                $changed = true;
+            }
 
             // Update password if provided
             $password  = $jform['password1'] ?? $input->post->getString('password1', '');
@@ -603,11 +614,19 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                     return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_MISMATCH'));
                 }
                 $user->password = UserHelper::hashPassword($password);
+                $changed = true;
+            }
+
+            if (!$changed) {
+                return $this->jsonSuccess([
+                    'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVED'),
+                ]);
             }
 
             if (!$user->save(true)) {
                 $errors = $user->getErrors();
-                $errorMsg = !empty($errors) ? implode(' ', $errors) : Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_FAILED');
+                $errorMsg = !empty($errors) ? implode(' ', array_map('strval', $errors)) : Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_FAILED');
+                Log::add('Profile save failed: ' . $errorMsg, Log::ERROR, 'plg_ajax_joomlaajaxforms');
                 return $this->jsonError($errorMsg);
             }
 
@@ -615,8 +634,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVED'),
             ]);
         } catch (\Exception $e) {
-            Log::add('Profile save error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_FAILED'));
+            Log::add('Profile save exception: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+            return $this->jsonError($e->getMessage());
         }
     }
 
