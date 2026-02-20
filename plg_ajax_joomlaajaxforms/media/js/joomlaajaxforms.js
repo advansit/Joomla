@@ -770,8 +770,12 @@ const JoomlaAjaxForms = {
             forms.forEach(function(form) {
                 if (!form.dataset.ajaxInitialized) {
                     console.log('[JoomlaAjaxForms] Converting profile form to AJAX');
+                    // Prevent Joomla's form validator from submitting normally
+                    form.classList.remove('form-validate');
+                    form.setAttribute('novalidate', 'novalidate');
                     form.addEventListener('submit', function(e) {
                         e.preventDefault();
+                        e.stopPropagation();
                         JoomlaAjaxForms.saveProfile(form);
                     });
                     form.dataset.ajaxInitialized = 'true';
@@ -817,6 +821,7 @@ const JoomlaAjaxForms = {
             }
         })
         .catch(function(error) {
+            console.error('[JoomlaAjaxForms] Profile save error:', error);
             JoomlaAjaxForms.enableSubmit(submitBtn);
             JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred.'), 'error');
         });
