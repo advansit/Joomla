@@ -6,7 +6,7 @@
  * @license     Proprietary
  */
 
-namespace Advans\Plugin\System\J2Commerce\Extension;
+namespace Advans\Plugin\Privacy\J2Commerce\Extension;
 
 defined('_JEXEC') or die;
 
@@ -872,7 +872,7 @@ HTML;
         $confirmMsg = Text::_('PLG_PRIVACY_J2COMMERCE_DELETE_ADDRESS_CONFIRM');
         $successMsg = Text::_('PLG_PRIVACY_J2COMMERCE_DELETE_ADDRESS_SUCCESS');
         $errorMsg = Text::_('PLG_PRIVACY_J2COMMERCE_DELETE_ADDRESS_ERROR');
-        $ajaxUrl = Uri::base() . 'index.php?option=com_ajax&plugin=j2commerce_privacy&group=system&format=json';
+        $ajaxUrl = Uri::base() . 'index.php?option=com_ajax&plugin=j2commerce_privacy&group=privacy&format=json';
 
         $script = <<<SCRIPT
 <script>

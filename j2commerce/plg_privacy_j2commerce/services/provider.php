@@ -14,7 +14,7 @@ use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
 use Joomla\Event\DispatcherInterface;
-use Advans\Plugin\System\J2Commerce\Extension\J2Commerce;
+use Advans\Plugin\Privacy\J2Commerce\Extension\J2Commerce;
 
 return new class implements ServiceProviderInterface
 {
@@ -25,7 +25,7 @@ return new class implements ServiceProviderInterface
             function (Container $container) {
                 $plugin = new J2Commerce(
                     $container->get(DispatcherInterface::class),
-                    (array) PluginHelper::getPlugin('system', 'j2commerce')
+                    (array) PluginHelper::getPlugin('privacy', 'j2commerce')
                 );
                 $plugin->setApplication(Factory::getApplication());
                 $plugin->setDatabase(Factory::getContainer()->get('DatabaseDriver'));

@@ -6,7 +6,7 @@
  * @license     Proprietary
  */
 
-namespace Advans\Plugin\System\J2Commerce\Task;
+namespace Advans\Plugin\Privacy\J2Commerce\Task;
 
 defined('_JEXEC') or die;
 

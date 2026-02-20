@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension type="plugin" group="system" method="upgrade">
+<extension type="plugin" group="privacy" method="upgrade">
     <autoloadLanguage>true</autoloadLanguage>
     <scriptfile>script.php</scriptfile>
     <name>PLG_PRIVACY_J2COMMERCE</name>
@@ -10,12 +10,12 @@
     <license>Proprietary</license>
     <authorEmail>info@advans.ch</authorEmail>
     <authorUrl>https://advans.ch</authorUrl>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <description>PLG_PRIVACY_J2COMMERCE_XML_DESCRIPTION</description>
     
     <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
 
-    <namespace path="src">Advans\Plugin\System\J2Commerce</namespace>
+    <namespace path="src">Advans\Plugin\Privacy\J2Commerce</namespace>
 
     <files>
         <folder plugin="j2commerce">services</folder>
