@@ -664,7 +664,17 @@ const JoomlaAjaxForms = {
         container.className = 'ajax-message ' + (type === 'success' 
             ? JoomlaAjaxForms.config.successClass 
             : JoomlaAjaxForms.config.errorClass);
-        container.textContent = message;
+        container.innerHTML = '';
+        var textNode = document.createElement('span');
+        textNode.textContent = message || '';
+        container.appendChild(textNode);
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'close';
+        closeBtn.setAttribute('aria-label', 'Schliessen');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', function() { container.remove(); });
+        container.appendChild(closeBtn);
         container.style.display = 'block';
         container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
