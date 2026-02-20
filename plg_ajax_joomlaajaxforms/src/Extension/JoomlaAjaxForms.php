@@ -86,6 +86,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 'MFA_CANCEL'             => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CANCEL'),
                 'MFA_VERIFY'             => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_VERIFY'),
                 'MFA_CODE_INVALID_LENGTH' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_JS_MFA_CODE_INVALID_LENGTH'),
+                'PROFILE_SAVED'          => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVED'),
             ]);
         }
     }

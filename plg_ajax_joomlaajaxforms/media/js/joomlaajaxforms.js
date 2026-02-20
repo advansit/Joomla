@@ -66,10 +66,17 @@ const JoomlaAjaxForms = {
      */
     unwrapResponse: function(response) {
         if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-            try {
-                return JSON.parse(response.data[0]);
-            } catch (e) {
-                return response;
+            var item = response.data[0];
+            // data[0] can be a JSON string or already an object
+            if (typeof item === 'string') {
+                try {
+                    return JSON.parse(item);
+                } catch (e) {
+                    return { success: response.success, message: item };
+                }
+            }
+            if (typeof item === 'object' && item !== null) {
+                return item;
             }
         }
         return response;
@@ -814,7 +821,8 @@ const JoomlaAjaxForms = {
             JoomlaAjaxForms.enableSubmit(submitBtn);
             var data = JoomlaAjaxForms.unwrapResponse(rawData);
             if (data.success) {
-                JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
+                var msg = data.message || getFormsLang('PROFILE_SAVED', 'Profile saved.');
+                JoomlaAjaxForms.showMessage(messageContainer, msg, 'success');
             } else {
                 JoomlaAjaxForms.showMessage(messageContainer, JoomlaAjaxForms.getErrorMessage(data), 'error');
             }
