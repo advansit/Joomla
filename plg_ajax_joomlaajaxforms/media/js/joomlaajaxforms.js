@@ -253,6 +253,12 @@ const JoomlaAjaxForms = {
      * @param {string} tokenName - CSRF token name
      */
     showMfaForm: function(originalForm, messageContainer, mfaData, tokenName) {
+        // Clear any system messages (e.g. "no permission" from brief login/logout)
+        var smc = document.getElementById('system-message-container');
+        if (smc) {
+            smc.querySelectorAll('joomla-alert, .alert').forEach(function(el) { el.remove(); });
+        }
+
         // Hide original form fields
         const formFields = originalForm.querySelectorAll('.control-group, .form-group, .mb-3');
         formFields.forEach(function(field) {
