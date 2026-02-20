@@ -579,24 +579,25 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $input = $this->getApplication()->getInput();
 
         try {
-            $data = [
-                'name'  => trim($input->post->getString('name', '')),
-                'email' => trim($input->post->getString('email', '')),
-            ];
+            // Joomla profile form sends jform[name], jform[email1], jform[password1], jform[password2]
+            $jform = $input->post->get('jform', [], 'array');
 
-            if (empty($data['name'])) {
+            $name  = trim($jform['name'] ?? $input->post->getString('name', ''));
+            $email = trim($jform['email1'] ?? $jform['email'] ?? $input->post->getString('email', ''));
+
+            if (empty($name)) {
                 return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_NAME_REQUIRED'));
             }
-            if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_INVALID'));
             }
 
-            $user->name = $data['name'];
-            $user->email = $data['email'];
+            $user->name = $name;
+            $user->email = $email;
 
-            // Update password if provided (form sends password1/password2)
-            $password = $input->post->getString('password1', '');
-            $password2 = $input->post->getString('password2', '');
+            // Update password if provided
+            $password  = $jform['password1'] ?? $input->post->getString('password1', '');
+            $password2 = $jform['password2'] ?? $input->post->getString('password2', '');
             if (!empty($password)) {
                 if ($password !== $password2) {
                     return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_MISMATCH'));
@@ -605,7 +606,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             }
 
             if (!$user->save(true)) {
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_FAILED'));
+                $errors = $user->getErrors();
+                $errorMsg = !empty($errors) ? implode(' ', $errors) : Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PROFILE_SAVE_FAILED');
+                return $this->jsonError($errorMsg);
             }
 
             return $this->jsonSuccess([

@@ -86,6 +86,7 @@ const JoomlaAjaxForms = {
             JoomlaAjaxForms.initRegistrationForm();
             JoomlaAjaxForms.initResetForm();
             JoomlaAjaxForms.initRemindForm();
+            JoomlaAjaxForms.initProfileForm();
         });
     },
 
@@ -751,6 +752,31 @@ const JoomlaAjaxForms = {
         .catch(function(error) {
             if (cartItem) cartItem.style.opacity = '1';
             if (callback) callback(error, null);
+        });
+    },
+
+    /**
+     * Initialize profile edit form
+     */
+    initProfileForm: function() {
+        var selectors = [
+            '#member-profile',
+            '.profile-edit form.form-validate',
+            'form[action*="profile.save"]'
+        ];
+
+        selectors.forEach(function(selector) {
+            var forms = document.querySelectorAll(selector);
+            forms.forEach(function(form) {
+                if (!form.dataset.ajaxInitialized) {
+                    console.log('[JoomlaAjaxForms] Converting profile form to AJAX');
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        JoomlaAjaxForms.saveProfile(form);
+                    });
+                    form.dataset.ajaxInitialized = 'true';
+                }
+            });
         });
     },
 
