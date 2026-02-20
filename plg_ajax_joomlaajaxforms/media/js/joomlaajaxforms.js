@@ -29,12 +29,13 @@ const JoomlaAjaxForms = {
      * Configuration
      */
     config: {
+        // option, plugin, format go in URL query to prevent Joomla SEF 301 redirect
         baseUrl: (function() {
             try {
                 var paths = Joomla.getOptions('system.paths') || {};
-                return (paths.root || '') + '/index.php';
+                return (paths.root || '') + '/index.php?option=com_ajax&plugin=joomlaajaxforms&format=json';
             } catch (e) {
-                return '/index.php';
+                return '/index.php?option=com_ajax&plugin=joomlaajaxforms&format=json';
             }
         })(),
         errorClass: 'alert alert-danger',
@@ -43,14 +44,12 @@ const JoomlaAjaxForms = {
     },
 
     /**
-     * Build URLSearchParams with base AJAX parameters.
-     * All params go in POST body to avoid Joomla SEF redirect &amp; encoding bug.
+     * Build URLSearchParams with POST body parameters.
+     * Only task and token go in POST body; option/plugin/format are in the URL
+     * query string to prevent Joomla's SEF router from issuing a 301 redirect.
      */
     buildBaseParams: function(task, tokenName) {
         var params = new URLSearchParams();
-        params.append('option', 'com_ajax');
-        params.append('plugin', 'joomlaajaxforms');
-        params.append('format', 'json');
         params.append('task', task);
         if (tokenName) {
             params.append(tokenName, '1');
@@ -805,23 +804,12 @@ const JoomlaAjaxForms = {
         var submitBtn = JoomlaAjaxForms.disableSubmit(form);
         messageContainer.style.display = 'none';
 
-        console.log('[JoomlaAjaxForms] Profile save URL:', JoomlaAjaxForms.config.baseUrl, 'body:', body.toString().substring(0, 300));
         fetch(JoomlaAjaxForms.config.baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
         })
-        .then(function(response) {
-            console.log('[JoomlaAjaxForms] Profile save response:', response.status, response.url, 'redirected:', response.redirected);
-            return response.text().then(function(text) {
-                console.log('[JoomlaAjaxForms] Profile save body:', text.substring(0, 500));
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    throw new Error('Invalid JSON (status ' + response.status + '): ' + text.substring(0, 200));
-                }
-            });
-        })
+        .then(function(response) { return response.json(); })
         .then(function(rawData) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
             var data = JoomlaAjaxForms.unwrapResponse(rawData);
