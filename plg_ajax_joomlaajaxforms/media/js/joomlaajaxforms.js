@@ -215,15 +215,17 @@ const JoomlaAjaxForms = {
 
                 if (data.success) {
                     // Check if MFA is required
-                    if (data.data && data.data.mfa_required) {
-                        JoomlaAjaxForms.showMfaForm(form, messageContainer, data.data, tokenName);
+                    var mfaData = (data.data && data.data.mfa_required) ? data.data : (data.mfa_required ? data : null);
+                    if (mfaData && mfaData.mfa_required) {
+                        JoomlaAjaxForms.showMfaForm(form, messageContainer, mfaData, tokenName);
                     } else {
                         JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
                         
                         // Redirect after successful login
-                        if (data.data && data.data.redirect) {
+                        var redirect = (data.data && data.data.redirect) || data.redirect;
+                        if (redirect) {
                             setTimeout(function() {
-                                window.location.href = data.data.redirect;
+                                window.location.href = redirect;
                             }, 1000);
                         } else {
                             setTimeout(function() {
@@ -410,10 +412,11 @@ const JoomlaAjaxForms = {
             if (data.success) {
                 JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
                 
-                // Redirect after successful login
-                if (data.data && data.data.redirect) {
+                // Redirect after successful MFA validation
+                var redirect = (data.data && data.data.redirect) || data.redirect;
+                if (redirect) {
                     setTimeout(function() {
-                        window.location.href = data.data.redirect;
+                        window.location.href = redirect;
                     }, 1000);
                 } else {
                     setTimeout(function() {
