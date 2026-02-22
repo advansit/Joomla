@@ -160,16 +160,20 @@ class LoginTest
         
         $content = file_get_contents($classFile);
         
-        $hasGetUserMfaRecords = strpos($content, 'function getUserMfaRecords') !== false;
-        $hasValidateMfaCode = strpos($content, 'function validateMfaCode') !== false;
-        $hasValidateTotpCode = strpos($content, 'function validateTotpCode') !== false;
+        // The plugin uses getMfaMethods to query #__user_mfa and handleMfaValidate
+        // for the validation flow (delegating to Joomla's MFA infrastructure)
+        $hasGetMfaMethods = strpos($content, 'function getMfaMethods') !== false;
+        $hasHandleMfaValidate = strpos($content, 'function handleMfaValidate') !== false;
         
-        if ($hasGetUserMfaRecords && $hasValidateMfaCode && $hasValidateTotpCode) {
+        if ($hasGetMfaMethods && $hasHandleMfaValidate) {
             echo "PASS\n";
             return true;
         }
         
-        echo "FAIL (MFA helper methods incomplete)\n";
+        $missing = [];
+        if (!$hasGetMfaMethods) $missing[] = 'getMfaMethods';
+        if (!$hasHandleMfaValidate) $missing[] = 'handleMfaValidate';
+        echo "FAIL (missing: " . implode(', ', $missing) . ")\n";
         return false;
     }
 

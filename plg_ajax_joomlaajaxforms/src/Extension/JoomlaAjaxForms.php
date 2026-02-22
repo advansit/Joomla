@@ -25,6 +25,7 @@ use Joomla\CMS\Uri\Uri;
 use Joomla\CMS\User\UserFactoryInterface;
 use Joomla\CMS\User\UserHelper;
 use Joomla\Database\DatabaseInterface;
+use Joomla\Database\ParameterType;
 use Joomla\Event\DispatcherInterface;
 use Joomla\Event\SubscriberInterface;
 
@@ -123,6 +124,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 return $this->handleMfaValidate();
             case 'removeCartItem':
                 return $this->handleRemoveCartItem();
+            case 'getCartCount':
+                return $this->handleGetCartCount();
             case 'saveProfile':
                 return $this->handleSaveProfile();
             default:
@@ -313,7 +316,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $query = $db->getQuery(true)
             ->select('COUNT(*)')
             ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('username') . ' = ' . $db->quote($username));
+            ->where($db->quoteName('username') . ' = :username')
+            ->bind(':username', $username);
         $db->setQuery($query);
         if ($db->loadResult() > 0) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_USERNAME_EXISTS'));
@@ -322,7 +326,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $query = $db->getQuery(true)
             ->select('COUNT(*)')
             ->from($db->quoteName('#__users'))
-            ->where($db->quoteName('email') . ' = ' . $db->quote($email));
+            ->where($db->quoteName('email') . ' = :email')
+            ->bind(':email', $email);
         $db->setQuery($query);
         if ($db->loadResult() > 0) {
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_EMAIL_EXISTS'));
@@ -405,8 +410,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $query = $db->getQuery(true)
                 ->select('*')
                 ->from($db->quoteName('#__users'))
-                ->where($db->quoteName('email') . ' = ' . $db->quote($email))
-                ->where($db->quoteName('block') . ' = 0');
+                ->where($db->quoteName('email') . ' = :email')
+                ->where($db->quoteName('block') . ' = 0')
+                ->bind(':email', $email);
             $db->setQuery($query);
             $user = $db->loadObject();
 
@@ -417,9 +423,12 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
                 $query = $db->getQuery(true)
                     ->update($db->quoteName('#__users'))
-                    ->set($db->quoteName('activation') . ' = ' . $db->quote($hashedToken))
-                    ->set($db->quoteName('lastResetTime') . ' = ' . $db->quote($tokenCreated))
-                    ->where($db->quoteName('id') . ' = ' . (int) $user->id);
+                    ->set($db->quoteName('activation') . ' = :activation')
+                    ->set($db->quoteName('lastResetTime') . ' = :resetTime')
+                    ->where($db->quoteName('id') . ' = :userId')
+                    ->bind(':activation', $hashedToken)
+                    ->bind(':resetTime', $tokenCreated)
+                    ->bind(':userId', $user->id, ParameterType::INTEGER);
                 $db->setQuery($query);
                 $db->execute();
 
@@ -458,8 +467,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $query = $db->getQuery(true)
                 ->select('*')
                 ->from($db->quoteName('#__users'))
-                ->where($db->quoteName('email') . ' = ' . $db->quote($email))
-                ->where($db->quoteName('block') . ' = 0');
+                ->where($db->quoteName('email') . ' = :email')
+                ->where($db->quoteName('block') . ' = 0')
+                ->bind(':email', $email);
             $db->setQuery($query);
             $user = $db->loadObject();
 
@@ -505,8 +515,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $query = $db->getQuery(true)
                 ->select('*')
                 ->from($db->quoteName('#__user_mfa'))
-                ->where($db->quoteName('id') . ' = ' . (int) $recordId)
-                ->where($db->quoteName('user_id') . ' = ' . (int) $userId);
+                ->where($db->quoteName('id') . ' = :recordId')
+                ->where($db->quoteName('user_id') . ' = :userId')
+                ->bind(':recordId', $recordId, ParameterType::INTEGER)
+                ->bind(':userId', $userId, ParameterType::INTEGER);
             $db->setQuery($query);
             $record = $db->loadObject();
 
@@ -562,10 +574,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $cartitemId = $input->getInt('cartitem_id', 0);
 
         if (!$cartitemId) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_REMOVE_FAILED'));
+            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_INVALID_CART_ITEM'));
         }
 
         try {
+            if (!file_exists(JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php')) {
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND'));
+            }
             if (!class_exists('J2Store')) {
                 require_once JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php';
             }
@@ -574,7 +589,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $db = Factory::getContainer()->get(DatabaseInterface::class);
             $query = $db->getQuery(true)
                 ->delete($db->quoteName('#__j2store_cartitems'))
-                ->where($db->quoteName('j2store_cartitem_id') . ' = ' . (int) $cartitemId);
+                ->where($db->quoteName('j2store_cartitem_id') . ' = :cartitemId')
+                ->bind(':cartitemId', $cartitemId, ParameterType::INTEGER);
             $db->setQuery($query);
             $db->execute();
 
@@ -600,6 +616,35 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         } catch (\Exception $e) {
             Log::add('Cart remove error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_REMOVE_FAILED'));
+        }
+    }
+
+    /**
+     * Return the current cart item count for the logged-in user.
+     */
+    protected function handleGetCartCount(): string
+    {
+        try {
+            if (!file_exists(JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php')) {
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND'));
+            }
+            if (!class_exists('J2Store')) {
+                require_once JPATH_ADMINISTRATOR . '/components/com_j2store/helpers/j2store.php';
+            }
+
+            $helper = \J2Store::helper('Cart');
+            $cartItems = $helper->getItems();
+            $cartCount = 0;
+            foreach ($cartItems as $item) {
+                $cartCount += $item->orderitem_quantity;
+            }
+
+            return $this->jsonSuccess([
+                'cartCount' => $cartCount,
+            ]);
+        } catch (\Exception $e) {
+            Log::add('Cart count error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
+            return $this->jsonSuccess(['cartCount' => 0]);
         }
     }
 
@@ -650,6 +695,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 if ($password !== $password2) {
                     return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_MISMATCH'));
                 }
+                $minLength = (int) ComponentHelper::getParams('com_users')->get('minimum_length', 12);
+                if (strlen($password) < $minLength) {
+                    return $this->jsonError(Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_PASSWORD_TOO_SHORT', $minLength));
+                }
                 $user->password = UserHelper::hashPassword($password);
                 $changed = true;
             }
@@ -690,7 +739,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $query = $db->getQuery(true)
                 ->select([$db->quoteName('id'), $db->quoteName('title'), $db->quoteName('method')])
                 ->from($db->quoteName('#__user_mfa'))
-                ->where($db->quoteName('user_id') . ' = ' . (int) $userId);
+                ->where($db->quoteName('user_id') . ' = :userId')
+                ->bind(':userId', $userId, ParameterType::INTEGER);
             $db->setQuery($query);
             $records = $db->loadObjectList();
 
