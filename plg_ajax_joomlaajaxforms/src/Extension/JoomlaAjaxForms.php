@@ -220,6 +220,11 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             ]);
         }
 
+        // Clear Joomla's message queue so com_ajax doesn't expose the
+        // English authentication error from plg_authentication_joomla.
+        $this->getApplication()->getMessageQueue(true);
+        $this->getApplication()->getSession()->set('application.queue', []);
+
         return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_FAILED'));
     }
 
