@@ -38,6 +38,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $sTd = 'padding:8px 10px;border:1px solid #d1d5db;vertical-align:top';
             $sTdL = $sTd . ';font-weight:600;width:35%;background:#f9fafb';
             $sCode = 'background:#e5e7eb;padding:2px 6px;border-radius:3px;font-size:13px';
+            $sPre = 'background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:4px;font-size:13px;overflow-x:auto;white-space:pre;font-family:monospace';
 
             $message = '';
             $message .= '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:860px">';
@@ -54,7 +55,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '<div style="' . $sInfo . '">';
             $message .= '<div style="' . $sStep . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP2_LABEL') . '</div>';
             $message .= '<h3 style="margin-top:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP2_TITLE') . '</h3>';
-            $message .= '<p><span style="' . $sCode . '">System &rarr; Plugins &rarr; Privacy - J2Commerce</span></p>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP2_NAV') . '</p>';
             $message .= '<table style="' . $sTbl . '">';
             $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_RETENTION_YEARS_LABEL') . '</td><td style="' . $sTd . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_RETENTION_HINT') . '</td></tr>';
             $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_LEGAL_BASIS_LABEL') . '</td><td style="' . $sTd . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_LEGAL_BASIS_HINT') . '</td></tr>';
@@ -63,34 +64,52 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '</table>';
             $message .= '</div>';
 
-            // Step 3 — Advans IT Solutions GmbH specific
+            // Step 3 — Advans IT Solutions GmbH Licensing Configuration
             $message .= '<div style="' . $sAdvans . '">';
             $message .= '<div style="' . $sStep . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_LABEL') . '</div>';
             $message .= '<h3 style="margin-top:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_TITLE') . '</h3>';
             $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_DESC') . '</p>';
 
-            $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_CREATE') . ':</strong> ';
-            $message .= '<span style="' . $sCode . '">Components &rarr; J2Store &rarr; Setup &rarr; Custom Fields &rarr; New</span></p>';
-            $message .= '<table style="' . $sTbl . '">';
-            $message .= '<tr><td style="' . $sTdL . '">Field Name</td><td style="' . $sTd . '"><span style="' . $sCode . '">is_lifetime_license</span><br><small>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_NAME_HINT') . '</small></td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">Field Label</td><td style="' . $sTd . '">Lifetime License</td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">Field Type</td><td style="' . $sTd . '">Radio</td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">Field Options</td><td style="' . $sTd . '"><span style="' . $sCode . '">Yes</span> / <span style="' . $sCode . '">No</span><br><small>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_OPTIONS_HINT') . '</small></td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">Default Value</td><td style="' . $sTd . '">No</td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">Display in</td><td style="' . $sTd . '">Product</td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">Required</td><td style="' . $sTd . '">No</td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">Published</td><td style="' . $sTd . '">Yes</td></tr>';
-            $message .= '</table>';
+            // SQL: Create table
+            $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CREATE_TITLE') . '</strong></p>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CREATE_DESC') . '</p>';
+            $message .= '<div style="' . $sPre . '">'
+                . "CREATE TABLE IF NOT EXISTS `#__j2store_product_customfields` (\n"
+                . "  `j2store_customfield_id` int(11) NOT NULL AUTO_INCREMENT,\n"
+                . "  `product_id` int(11) NOT NULL,\n"
+                . "  `field_name` varchar(255) NOT NULL,\n"
+                . "  `field_value` text,\n"
+                . "  PRIMARY KEY (`j2store_customfield_id`)\n"
+                . ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+                . '</div>';
 
-            $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_ASSIGN') . ':</strong> ';
-            $message .= Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_ASSIGN_DESC') . '</p>';
+            // SQL: Assign to product
+            $message .= '<p style="margin-top:16px"><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_ASSIGN_TITLE') . '</strong></p>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_ASSIGN_DESC') . '</p>';
+            $message .= '<div style="' . $sPre . '">'
+                . "INSERT INTO `#__j2store_product_customfields`\n"
+                . "  (`product_id`, `field_name`, `field_value`)\n"
+                . "VALUES\n"
+                . "  (123, 'is_lifetime_license', 'Yes');"
+                . '</div>';
+            $message .= '<p><small>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_ASSIGN_HINT') . '</small></p>';
+
+            // SQL: Query explanation
+            $message .= '<p style="margin-top:16px"><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_QUERY_TITLE') . '</strong></p>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_QUERY_DESC') . '</p>';
+            $message .= '<table style="' . $sTbl . '">';
+            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_TABLE') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">#__j2store_product_customfields</span></td></tr>';
+            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_FIELDNAME') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">is_lifetime_license</span></td></tr>';
+            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_FIELDVALUE') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">Yes</span> ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CASE_INSENSITIVE') . '</td></tr>';
+            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_EFFECT') . '</td><td style="' . $sTd . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_EFFECT_DESC') . '</td></tr>';
+            $message .= '</table>';
             $message .= '</div>';
 
             // Step 4
             $message .= '<div style="' . $sInfo . '">';
             $message .= '<div style="' . $sStep . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP4_LABEL') . '</div>';
             $message .= '<h3 style="margin-top:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP4_TITLE') . '</h3>';
-            $message .= '<p><span style="' . $sCode . '">System &rarr; Scheduled Tasks &rarr; New</span></p>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP4_NAV') . '</p>';
             $message .= '<ol style="line-height:1.8">';
             $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_TYPE') . '</li>';
             $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_SCHEDULE') . '</li>';
@@ -103,12 +122,12 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '<div style="' . $sWarn . '">';
             $message .= '<h3 style="margin-top:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECKLIST_TITLE') . '</h3>';
             $message .= '<ul style="list-style:none;padding-left:0;line-height:1.8">';
-            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_ENABLED') . '</li>';
-            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_EMAIL') . '</li>';
-            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_RETENTION') . '</li>';
-            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_CONSENT') . '</li>';
-            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TASK') . '</li>';
-            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TEST') . '</li>';
+            $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_ENABLED') . '</li>';
+            $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_EMAIL') . '</li>';
+            $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_RETENTION') . '</li>';
+            $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_CONSENT') . '</li>';
+            $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TASK') . '</li>';
+            $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TEST') . '</li>';
             $message .= '</ul>';
             $message .= '</div>';
 
@@ -126,15 +145,12 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
 
     /**
      * Register the update site if not already present.
-     * Handles the case where the plugin was initially installed without
-     * the <updateservers> block in the XML manifest.
      */
     private function ensureUpdateSite(): void
     {
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $updateUrl = 'https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_privacy_j2commerce/updates/update.xml';
 
-        // Find the extension ID
         $element = 'j2commerce';
         $folder = 'privacy';
         $query = $db->getQuery(true)
@@ -152,7 +168,6 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             return;
         }
 
-        // Check if update site already exists for this URL
         $query = $db->getQuery(true)
             ->select($db->quoteName('update_site_id'))
             ->from($db->quoteName('#__update_sites'))
@@ -162,7 +177,6 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         $siteId = (int) $db->loadResult();
 
         if ($siteId) {
-            // Ensure the mapping exists
             $query = $db->getQuery(true)
                 ->select('COUNT(*)')
                 ->from($db->quoteName('#__update_sites_extensions'))
@@ -173,7 +187,6 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $db->setQuery($query);
 
             if (!(int) $db->loadResult()) {
-                $db->getQuery(true);
                 $query = $db->getQuery(true)
                     ->insert($db->quoteName('#__update_sites_extensions'))
                     ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
@@ -186,7 +199,6 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             return;
         }
 
-        // Create update site
         $query = $db->getQuery(true)
             ->insert($db->quoteName('#__update_sites'))
             ->columns([
@@ -203,7 +215,6 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         $db->execute();
         $siteId = (int) $db->insertid();
 
-        // Map update site to extension
         $query = $db->getQuery(true)
             ->insert($db->quoteName('#__update_sites_extensions'))
             ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
