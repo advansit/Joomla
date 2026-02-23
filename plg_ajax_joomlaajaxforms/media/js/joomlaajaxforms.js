@@ -256,10 +256,7 @@ const JoomlaAjaxForms = {
      */
     showMfaForm: function(originalForm, messageContainer, mfaData, tokenName) {
         // Clear any system messages (e.g. "no permission" from brief login/logout)
-        var smc = document.getElementById('system-message-container');
-        if (smc) {
-            smc.querySelectorAll('joomla-alert, .alert').forEach(function(el) { el.remove(); });
-        }
+        JoomlaAjaxForms.clearSystemMessages();
 
         // Hide original form fields
         const formFields = originalForm.querySelectorAll('.control-group, .form-group, .mb-3');
@@ -407,6 +404,8 @@ const JoomlaAjaxForms = {
         .then(response => response.json())
         .then(function(rawData) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
+            // Clear any system messages Joomla may have queued during MFA validation
+            JoomlaAjaxForms.clearSystemMessages();
             const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
             if (data.success) {
@@ -544,8 +543,12 @@ const JoomlaAjaxForms = {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
                 const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
-                if (data.success) {
-                    JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
+                // Empty data[] from com_ajax means plugin was not reached (token/session issue)
+                if (rawData.data && Array.isArray(rawData.data) && rawData.data.length === 0) {
+                    JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred. Please try again.'), 'error');
+                } else if (data.success) {
+                    var msg = data.message || (data.data && data.data.message) || '';
+                    JoomlaAjaxForms.showMessage(messageContainer, msg, 'success');
                     form.reset();
                 } else {
                     const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
@@ -686,6 +689,17 @@ const JoomlaAjaxForms = {
         container.appendChild(closeBtn);
         container.style.display = 'block';
         container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+
+    /**
+     * Clear Joomla system messages from #system-message-container.
+     * Prevents stale joomla-alert elements from showing alongside our AJAX messages.
+     */
+    clearSystemMessages: function() {
+        var smc = document.getElementById('system-message-container');
+        if (smc) {
+            smc.querySelectorAll('joomla-alert, .alert').forEach(function(el) { el.remove(); });
+        }
     },
 
     /**

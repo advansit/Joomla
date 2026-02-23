@@ -561,6 +561,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 'message'  => Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
             ]);
         } catch (\Exception $e) {
+            // Clear any system messages Joomla's MFA plugin may have queued
+            $this->getApplication()->getMessageQueue(true);
+            $session->set('application.queue', []);
+
             return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_INVALID'));
         }
     }
