@@ -9,6 +9,7 @@ defined('_JEXEC') or die;
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\Installer\InstallerScript;
+use Joomla\CMS\Language\Text;
 
 class Plgprivacyj2commerceInstallerScript extends InstallerScript
 {
@@ -19,141 +20,109 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
     {
         if ($type === 'install' || $type === 'update') {
             $app = Factory::getApplication();
-            
-            $message = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">';
-            $message .= '<h2 style="color: #059669; margin-bottom: 20px;">✅ Privacy J2Commerce Plugin erfolgreich installiert!</h2>';
-            
-            // Critical Warning Box
-            $message .= '<div style="background: #fee2e2; border: 2px solid #dc2626; border-radius: 8px; padding: 20px; margin: 20px 0;">';
-            $message .= '<h3 style="color: #991b1b; margin-top: 0;">🚨 KRITISCH: Konfiguration erforderlich!</h3>';
-            $message .= '<p style="font-size: 16px; font-weight: bold; color: #991b1b;">Das Plugin ist NICHT einsatzbereit ohne vollständige Konfiguration!</p>';
-            $message .= '<p style="color: #7f1d1d;">Geschätzte Konfigurationszeit: <strong>20-30 Minuten</strong></p>';
+            $lang = $app->getLanguage();
+            $lang->load('plg_privacy_j2commerce', JPATH_ADMINISTRATOR);
+            $lang->load('plg_privacy_j2commerce', $parent->getParent()->getPath('source'));
+
+            $css = <<<CSS
+<style>
+.pj2c-post { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 860px; }
+.pj2c-post h2 { margin-bottom: 16px; }
+.pj2c-post h3 { margin-top: 0; }
+.pj2c-post code { background: #e5e7eb; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+.pj2c-post table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.pj2c-post td { padding: 8px 10px; border: 1px solid #d1d5db; vertical-align: top; }
+.pj2c-post td:first-child { font-weight: 600; width: 35%; background: #f9fafb; }
+.pj2c-post .pj2c-box { padding: 16px 20px; margin: 16px 0; border-radius: 4px; border-left: 4px solid; }
+.pj2c-post .pj2c-warn { background: #fef3c7; border-color: #d97706; }
+.pj2c-post .pj2c-info { background: #eff6ff; border-color: #2563eb; }
+.pj2c-post .pj2c-advans { background: #f5f3ff; border-color: #7c3aed; }
+.pj2c-post .pj2c-step { color: #374151; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.pj2c-post ol, .pj2c-post ul { line-height: 1.8; }
+</style>
+CSS;
+
+            $message = $css;
+            $message .= '<div class="pj2c-post">';
+            $message .= '<h2>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TITLE') . '</h2>';
+
+            // Step 1
+            $message .= '<div class="pj2c-box pj2c-info">';
+            $message .= '<div class="pj2c-step">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP1_LABEL') . '</div>';
+            $message .= '<h3>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP1_TITLE') . '</h3>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP1_DESC') . '</p>';
             $message .= '</div>';
-            
-            // Step 1: Enable Plugin
-            $message .= '<div style="background: #f0f9ff; border-left: 5px solid #0ea5e9; padding: 20px; margin: 20px 0; border-radius: 4px;">';
-            $message .= '<h3 style="color: #0369a1; margin-top: 0;">📌 SCHRITT 1: Plugin aktivieren</h3>';
-            $message .= '<p style="font-size: 15px;"><strong>Navigation:</strong> <code style="background: #e0f2fe; padding: 4px 8px; border-radius: 4px;">System → Plugins</code></p>';
-            $message .= '<ol style="line-height: 1.8;">';
-            $message .= '<li>Suche nach: <strong>"Privacy - J2Commerce"</strong></li>';
-            $message .= '<li>Status ändern auf: <strong style="color: #059669;">Enabled</strong></li>';
-            $message .= '<li>Speichern</li>';
-            $message .= '</ol>';
-            $message .= '<p style="background: #fef3c7; padding: 10px; border-radius: 4px; margin-top: 10px;">⚠️ <strong>Ohne Aktivierung:</strong> Plugin ist nicht funktionsfähig!</p>';
-            $message .= '</div>';
-            
-            // Step 2: J2Store Custom Field
-            $message .= '<div style="background: #fef3c7; border-left: 5px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 4px;">';
-            $message .= '<h3 style="color: #92400e; margin-top: 0;">🔧 SCHRITT 2: J2Store Custom Field erstellen (PFLICHT!)</h3>';
-            $message .= '<p style="font-size: 15px;"><strong>Navigation:</strong> <code style="background: #fef3c7; padding: 4px 8px; border-radius: 4px;">Components → J2Store → Setup → Custom Fields → New</code></p>';
-            
-            $message .= '<div style="background: white; padding: 15px; border-radius: 4px; margin: 15px 0;">';
-            $message .= '<p style="font-weight: bold; color: #dc2626; margin-bottom: 10px;">⚠️ Diese Einstellungen EXAKT übernehmen:</p>';
-            $message .= '<table style="width: 100%; border-collapse: collapse;">';
-            $message .= '<tr style="background: #f9fafb;"><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Field Name</td><td style="padding: 8px; border: 1px solid #e5e7eb;"><code style="background: #fee2e2; padding: 2px 6px; color: #dc2626; font-weight: bold;">is_lifetime_license</code> (exakt so!)</td></tr>';
-            $message .= '<tr><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Field Label</td><td style="padding: 8px; border: 1px solid #e5e7eb;">Lifetime License</td></tr>';
-            $message .= '<tr style="background: #f9fafb;"><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Field Type</td><td style="padding: 8px; border: 1px solid #e5e7eb;">Radio</td></tr>';
-            $message .= '<tr><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Display in</td><td style="padding: 8px; border: 1px solid #e5e7eb;">Product</td></tr>';
-            $message .= '<tr style="background: #f9fafb;"><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Required</td><td style="padding: 8px; border: 1px solid #e5e7eb;">No</td></tr>';
-            $message .= '<tr><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Published</td><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong style="color: #059669;">Yes</strong></td></tr>';
-            $message .= '<tr style="background: #f9fafb;"><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Options</td><td style="padding: 8px; border: 1px solid #e5e7eb;">Yes / No</td></tr>';
-            $message .= '<tr><td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold;">Default Value</td><td style="padding: 8px; border: 1px solid #e5e7eb;">No</td></tr>';
+
+            // Step 2
+            $message .= '<div class="pj2c-box pj2c-info">';
+            $message .= '<div class="pj2c-step">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP2_LABEL') . '</div>';
+            $message .= '<h3>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP2_TITLE') . '</h3>';
+            $message .= '<p><code>System &rarr; Plugins &rarr; Privacy - J2Commerce</code></p>';
+            $message .= '<table>';
+            $message .= '<tr><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_RETENTION_YEARS_LABEL') . '</td><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_RETENTION_HINT') . '</td></tr>';
+            $message .= '<tr><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_LEGAL_BASIS_LABEL') . '</td><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_LEGAL_BASIS_HINT') . '</td></tr>';
+            $message .= '<tr><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_SUPPORT_EMAIL_LABEL') . '</td><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SUPPORT_EMAIL_HINT') . '</td></tr>';
+            $message .= '<tr><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_SHOW_CONSENT_LABEL') . '</td><td>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CONSENT_HINT') . '</td></tr>';
             $message .= '</table>';
             $message .= '</div>';
-            
-            $message .= '<div style="background: #fee2e2; padding: 15px; border-radius: 4px; margin-top: 15px;">';
-            $message .= '<p style="font-weight: bold; color: #991b1b; margin: 0;">🚨 KRITISCH: Ohne dieses Custom Field werden Lifetime-Lizenzen NICHT erkannt!</p>';
-            $message .= '<p style="color: #7f1d1d; margin: 10px 0 0 0;">Folge: Kundendaten werden nach Retention-Periode gelöscht → Lizenz-Reaktivierung unmöglich!</p>';
-            $message .= '</div>';
-            $message .= '</div>';
-            
-            // Step 3: Classify Products
-            $message .= '<div style="background: #f0fdf4; border-left: 5px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 4px;">';
-            $message .= '<h3 style="color: #065f46; margin-top: 0;">🏷️ SCHRITT 3: Produkte klassifizieren</h3>';
-            $message .= '<p style="font-size: 15px;"><strong>Navigation:</strong> <code style="background: #d1fae5; padding: 4px 8px; border-radius: 4px;">Components → J2Store → Catalog → Products</code></p>';
-            $message .= '<p><strong>Für JEDES Produkt mit Lifetime-Lizenz:</strong></p>';
-            $message .= '<ol style="line-height: 1.8;">';
-            $message .= '<li>Produkt öffnen</li>';
-            $message .= '<li>Zum Abschnitt <strong>"Custom Fields"</strong> scrollen</li>';
-            $message .= '<li>Feld <strong>"Lifetime License"</strong> auf <strong style="color: #059669;">Yes</strong> setzen</li>';
-            $message .= '<li>Speichern</li>';
-            $message .= '</ol>';
-            $message .= '<p style="background: #dbeafe; padding: 10px; border-radius: 4px; margin-top: 10px;">💡 <strong>Tipp:</strong> Für reguläre Produkte auf "No" belassen (Standard)</p>';
-            $message .= '</div>';
-            
-            // Step 4: Configure Plugin
-            $message .= '<div style="background: #fef3c7; border-left: 5px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 4px;">';
-            $message .= '<h3 style="color: #92400e; margin-top: 0;">⚙️ SCHRITT 4: Plugin-Einstellungen konfigurieren</h3>';
-            $message .= '<p style="font-size: 15px;"><strong>Navigation:</strong> <code style="background: #fef3c7; padding: 4px 8px; border-radius: 4px;">System → Plugins → Privacy - J2Commerce</code></p>';
-            
-            $message .= '<div style="background: white; padding: 15px; border-radius: 4px; margin: 15px 0;">';
-            $message .= '<h4 style="margin-top: 0; color: #92400e;">Pflichtfelder:</h4>';
-            $message .= '<table style="width: 100%; border-collapse: collapse;">';
-            $message .= '<tr style="background: #f9fafb;"><td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold; width: 40%;">Retention Period (Years)</td><td style="padding: 10px; border: 1px solid #e5e7eb;"><strong>10</strong> (Schweiz/Deutschland)<br><small>Österreich: 7, UK: 6, Spanien: 6</small></td></tr>';
-            $message .= '<tr><td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Legal Basis</td><td style="padding: 10px; border: 1px solid #e5e7eb;"><code>• Switzerland: OR Art. 958f (10 years)</code><br><small>Ihre rechtliche Grundlage eintragen!</small></td></tr>';
-            $message .= '<tr style="background: #fee2e2;"><td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Support Email</td><td style="padding: 10px; border: 1px solid #e5e7eb;"><strong style="color: #dc2626;">MUSS geändert werden!</strong><br><code>privacy@ihre-firma.ch</code><br><small>Diese Email wird Benutzern angezeigt!</small></td></tr>';
+
+            // Step 3 — Advans IT Solutions GmbH specific
+            $message .= '<div class="pj2c-box pj2c-advans">';
+            $message .= '<div class="pj2c-step">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_LABEL') . '</div>';
+            $message .= '<h3>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_TITLE') . '</h3>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_DESC') . '</p>';
+
+            $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_CREATE') . ':</strong> ';
+            $message .= '<code>Components &rarr; J2Store &rarr; Setup &rarr; Custom Fields &rarr; New</code></p>';
+            $message .= '<table>';
+            $message .= '<tr><td>Field Name</td><td><code>is_lifetime_license</code><br><small>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_NAME_HINT') . '</small></td></tr>';
+            $message .= '<tr><td>Field Label</td><td>Lifetime License</td></tr>';
+            $message .= '<tr><td>Field Type</td><td>Radio</td></tr>';
+            $message .= '<tr><td>Field Options</td><td><code>Yes</code> / <code>No</code><br><small>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_OPTIONS_HINT') . '</small></td></tr>';
+            $message .= '<tr><td>Default Value</td><td>No</td></tr>';
+            $message .= '<tr><td>Display in</td><td>Product</td></tr>';
+            $message .= '<tr><td>Required</td><td>No</td></tr>';
+            $message .= '<tr><td>Published</td><td>Yes</td></tr>';
             $message .= '</table>';
+
+            $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_ASSIGN') . ':</strong> ';
+            $message .= Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CUSTOMFIELD_ASSIGN_DESC') . '</p>';
             $message .= '</div>';
-            
-            $message .= '<div style="background: white; padding: 15px; border-radius: 4px; margin: 15px 0;">';
-            $message .= '<h4 style="margin-top: 0; color: #92400e;">Empfohlene Einstellungen:</h4>';
-            $message .= '<ul style="line-height: 1.8;">';
-            $message .= '<li><strong>Include Joomla Core Data:</strong> Yes (für vollständige Exports)</li>';
-            $message .= '<li><strong>Anonymize Orders:</strong> Yes (empfohlen für Buchhaltung)</li>';
-            $message .= '<li><strong>Delete Addresses:</strong> Yes (GDPR-konform)</li>';
-            $message .= '</ul>';
-            $message .= '</div>';
-            $message .= '</div>';
-            
-            // Step 5: Scheduled Task
-            $message .= '<div style="background: #f0f9ff; border-left: 5px solid #0ea5e9; padding: 20px; margin: 20px 0; border-radius: 4px;">';
-            $message .= '<h3 style="color: #0369a1; margin-top: 0;">⏰ SCHRITT 5: Automatische Bereinigung einrichten (EMPFOHLEN)</h3>';
-            $message .= '<p style="font-size: 15px;"><strong>Navigation:</strong> <code style="background: #e0f2fe; padding: 4px 8px; border-radius: 4px;">System → Scheduled Tasks → New</code></p>';
-            $message .= '<ol style="line-height: 1.8;">';
-            $message .= '<li>Task-Typ wählen: <strong>"J2Commerce - Automatic Data Cleanup"</strong></li>';
-            $message .= '<li>Ausführung: <strong>Daily</strong></li>';
-            $message .= '<li>Zeit: <strong>02:00</strong> (nachts, geringe Last)</li>';
-            $message .= '<li>Status: <strong style="color: #059669;">Enabled</strong></li>';
-            $message .= '<li>Speichern</li>';
+
+            // Step 4
+            $message .= '<div class="pj2c-box pj2c-info">';
+            $message .= '<div class="pj2c-step">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP4_LABEL') . '</div>';
+            $message .= '<h3>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP4_TITLE') . '</h3>';
+            $message .= '<p><code>System &rarr; Scheduled Tasks &rarr; New</code></p>';
+            $message .= '<ol>';
+            $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_TYPE') . '</li>';
+            $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_SCHEDULE') . '</li>';
+            $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_ENABLE') . '</li>';
             $message .= '</ol>';
-            $message .= '<p style="background: #dbeafe; padding: 10px; border-radius: 4px; margin-top: 10px;">💡 <strong>Funktion:</strong> Löscht automatisch abgelaufene Daten nach Retention-Periode</p>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_DESC') . '</p>';
             $message .= '</div>';
-            
-            // Verification Checklist
-            $message .= '<div style="background: #f9fafb; border: 2px solid #6b7280; border-radius: 8px; padding: 20px; margin: 20px 0;">';
-            $message .= '<h3 style="color: #374151; margin-top: 0;">✅ Konfigurations-Checkliste</h3>';
-            $message .= '<p>Vor Produktiv-Einsatz prüfen:</p>';
-            $message .= '<ul style="line-height: 2;">';
-            $message .= '<li>☐ Plugin aktiviert</li>';
-            $message .= '<li>☐ J2Store Custom Field <code>is_lifetime_license</code> erstellt</li>';
-            $message .= '<li>☐ Lifetime-Lizenz-Produkte klassifiziert</li>';
-            $message .= '<li>☐ Retention Period konfiguriert</li>';
-            $message .= '<li>☐ Legal Basis dokumentiert</li>';
-            $message .= '<li>☐ <strong style="color: #dc2626;">Support Email geändert</strong></li>';
-            $message .= '<li>☐ Scheduled Task erstellt und aktiviert</li>';
-            $message .= '<li>☐ Test-Export durchgeführt (optional)</li>';
+
+            // Checklist
+            $message .= '<div class="pj2c-box pj2c-warn">';
+            $message .= '<h3>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECKLIST_TITLE') . '</h3>';
+            $message .= '<ul style="list-style: none; padding-left: 0;">';
+            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_ENABLED') . '</li>';
+            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_EMAIL') . '</li>';
+            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_RETENTION') . '</li>';
+            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_CONSENT') . '</li>';
+            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TASK') . '</li>';
+            $message .= '<li>[ ] ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TEST') . '</li>';
             $message .= '</ul>';
             $message .= '</div>';
-            
-            // Documentation & Support
-            $message .= '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">';
-            $message .= '<h3 style="color: #374151; margin-top: 0;">📚 Dokumentation & Support</h3>';
-            $message .= '<p><strong>📖 Vollständige Dokumentation:</strong> Siehe <code>README.md</code> im Plugin-Ordner</p>';
-            $message .= '<p><strong>🔍 Detaillierte Anleitung:</strong> Alle Schritte mit Screenshots und Beispielen</p>';
-            $message .= '<p><strong>🌐 Support:</strong> <a href="https://advans.ch" target="_blank" style="color: #0ea5e9; text-decoration: none; font-weight: bold;">advans.ch</a></p>';
-            $message .= '<p><strong>📧 Email:</strong> support@advans.ch</p>';
+
+            // Support
+            $message .= '<p style="margin-top: 20px; color: #6b7280; font-size: 13px;">';
+            $message .= Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_DOCS') . ' &middot; ';
+            $message .= Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SUPPORT');
+            $message .= '</p>';
+
             $message .= '</div>';
-            
-            // Final Warning
-            $message .= '<div style="background: #fee2e2; border: 2px solid #dc2626; border-radius: 8px; padding: 20px; margin: 20px 0;">';
-            $message .= '<h3 style="color: #991b1b; margin-top: 0;">⚠️ WICHTIGER HINWEIS</h3>';
-            $message .= '<p style="font-size: 15px; font-weight: bold; color: #991b1b;">Das Plugin ist NICHT GDPR-konform ohne vollständige Konfiguration!</p>';
-            $message .= '<p style="color: #7f1d1d;">Bitte alle 5 Schritte durchführen, bevor Sie das Plugin produktiv einsetzen.</p>';
-            $message .= '<p style="color: #7f1d1d; margin-bottom: 0;"><strong>Geschätzte Zeit:</strong> 20-30 Minuten für vollständige Einrichtung</p>';
-            $message .= '</div>';
-            
-            $message .= '</div>';
-            
+
             $app->enqueueMessage($message, 'message');
         }
     }
