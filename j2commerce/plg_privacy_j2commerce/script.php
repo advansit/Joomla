@@ -10,6 +10,8 @@ defined('_JEXEC') or die;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Installer\InstallerScript;
 use Joomla\CMS\Language\Text;
+use Joomla\Database\DatabaseInterface;
+use Joomla\Database\ParameterType;
 
 class Plgprivacyj2commerceInstallerScript extends InstallerScript
 {
@@ -19,6 +21,8 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
+            $this->ensureUpdateSite();
+
             $app = Factory::getApplication();
             $lang = $app->getLanguage();
             $lang->load('plg_privacy_j2commerce', JPATH_ADMINISTRATOR);
@@ -125,5 +129,95 @@ CSS;
 
             $app->enqueueMessage($message, 'message');
         }
+    }
+
+    /**
+     * Register the update site if not already present.
+     * Handles the case where the plugin was initially installed without
+     * the <updateservers> block in the XML manifest.
+     */
+    private function ensureUpdateSite(): void
+    {
+        $db = Factory::getContainer()->get(DatabaseInterface::class);
+        $updateUrl = 'https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_privacy_j2commerce/updates/update.xml';
+
+        // Find the extension ID
+        $element = 'j2commerce';
+        $folder = 'privacy';
+        $query = $db->getQuery(true)
+            ->select($db->quoteName('extension_id'))
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('element') . ' = :element')
+            ->where($db->quoteName('folder') . ' = :folder')
+            ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
+            ->bind(':element', $element)
+            ->bind(':folder', $folder);
+        $db->setQuery($query);
+        $extensionId = (int) $db->loadResult();
+
+        if (!$extensionId) {
+            return;
+        }
+
+        // Check if update site already exists for this URL
+        $query = $db->getQuery(true)
+            ->select($db->quoteName('update_site_id'))
+            ->from($db->quoteName('#__update_sites'))
+            ->where($db->quoteName('location') . ' = :url')
+            ->bind(':url', $updateUrl);
+        $db->setQuery($query);
+        $siteId = (int) $db->loadResult();
+
+        if ($siteId) {
+            // Ensure the mapping exists
+            $query = $db->getQuery(true)
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__update_sites_extensions'))
+                ->where($db->quoteName('update_site_id') . ' = :siteId')
+                ->where($db->quoteName('extension_id') . ' = :extId')
+                ->bind(':siteId', $siteId, ParameterType::INTEGER)
+                ->bind(':extId', $extensionId, ParameterType::INTEGER);
+            $db->setQuery($query);
+
+            if (!(int) $db->loadResult()) {
+                $db->getQuery(true);
+                $query = $db->getQuery(true)
+                    ->insert($db->quoteName('#__update_sites_extensions'))
+                    ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
+                    ->values(':siteId, :extId')
+                    ->bind(':siteId', $siteId, ParameterType::INTEGER)
+                    ->bind(':extId', $extensionId, ParameterType::INTEGER);
+                $db->setQuery($query);
+                $db->execute();
+            }
+            return;
+        }
+
+        // Create update site
+        $query = $db->getQuery(true)
+            ->insert($db->quoteName('#__update_sites'))
+            ->columns([
+                $db->quoteName('name'),
+                $db->quoteName('type'),
+                $db->quoteName('location'),
+                $db->quoteName('enabled'),
+            ])
+            ->values(':name, :type, :url, 1')
+            ->bind(':name', $name = 'J2Commerce Privacy Plugin')
+            ->bind(':type', $type = 'extension')
+            ->bind(':url', $updateUrl);
+        $db->setQuery($query);
+        $db->execute();
+        $siteId = (int) $db->insertid();
+
+        // Map update site to extension
+        $query = $db->getQuery(true)
+            ->insert($db->quoteName('#__update_sites_extensions'))
+            ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
+            ->values(':siteId, :extId')
+            ->bind(':siteId', $siteId, ParameterType::INTEGER)
+            ->bind(':extId', $extensionId, ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
     }
 }
