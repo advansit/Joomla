@@ -83,6 +83,8 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
                 . ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
                 . '</div>';
 
+            $message .= '<p style="margin-top:8px;padding:8px 12px;background:#1a1a2e;border-left:3px solid #f0ad4e;color:#f0ad4e"><strong>&#9888;</strong> ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CREATE_NOTE') . '</p>';
+
             // SQL: Assign to product
             $message .= '<p style="margin-top:16px"><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_ASSIGN_TITLE') . '</strong></p>';
             $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_ASSIGN_DESC') . '</p>';
