@@ -95,15 +95,27 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
 
     /**
-     * Main AJAX handler
+     * Main AJAX handler.
+     *
+     * Called by com_ajax via AjaxEvent (Joomla 5) or directly from onAfterRoute.
+     * When called via AjaxEvent, the result must be added to the event object
+     * because Joomla 5 ignores return values from SubscriberInterface handlers.
+     *
+     * @param   \Joomla\CMS\Event\Plugin\AjaxEvent|null  $event  The event object (when dispatched by com_ajax)
      *
      * @return  string  JSON response
      */
-    public function onAjaxJoomlaajaxforms(): string
+    public function onAjaxJoomlaajaxforms($event = null): string
     {
         // Validate CSRF token
         if (!Session::checkToken('get') && !Session::checkToken('post') && !Session::checkToken()) {
-            return $this->jsonError(Text::_('JINVALID_TOKEN'));
+            $result = $this->jsonError(Text::_('JINVALID_TOKEN'));
+
+            if ($event) {
+                $event->addResult($result);
+            }
+
+            return $result;
         }
 
         $input = $this->getApplication()->getInput();
@@ -111,26 +123,43 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
         switch ($task) {
             case 'login':
-                return $this->handleLogin();
+                $result = $this->handleLogin();
+                break;
             case 'logout':
-                return $this->handleLogout();
+                $result = $this->handleLogout();
+                break;
             case 'register':
-                return $this->handleRegistration();
+                $result = $this->handleRegistration();
+                break;
             case 'reset':
-                return $this->handleReset();
+                $result = $this->handleReset();
+                break;
             case 'remind':
-                return $this->handleRemind();
+                $result = $this->handleRemind();
+                break;
             case 'mfa_validate':
-                return $this->handleMfaValidate();
+                $result = $this->handleMfaValidate();
+                break;
             case 'removeCartItem':
-                return $this->handleRemoveCartItem();
+                $result = $this->handleRemoveCartItem();
+                break;
             case 'getCartCount':
-                return $this->handleGetCartCount();
+                $result = $this->handleGetCartCount();
+                break;
             case 'saveProfile':
-                return $this->handleSaveProfile();
+                $result = $this->handleSaveProfile();
+                break;
             default:
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_INVALID_TASK'));
+                $result = $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_INVALID_TASK'));
+                break;
         }
+
+        // When dispatched by com_ajax, add result to the event object
+        if ($event) {
+            $event->addResult($result);
+        }
+
+        return $result;
     }
 
     /**
