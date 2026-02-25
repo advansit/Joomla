@@ -259,6 +259,12 @@ const JoomlaAjaxForms = {
     showMfaForm: function(originalForm, messageContainer, mfaData, tokenName) {
         // Clear any system messages (e.g. "no permission" from brief login/logout)
         JoomlaAjaxForms.clearSystemMessages();
+        // Joomla may render messages asynchronously — keep clearing for a short period
+        var clearCount = 0;
+        var clearTimer = setInterval(function() {
+            JoomlaAjaxForms.clearSystemMessages();
+            if (++clearCount >= 10) clearInterval(clearTimer);
+        }, 200);
 
         // Hide original form fields
         const formFields = originalForm.querySelectorAll('.control-group, .form-group, .mb-3');
