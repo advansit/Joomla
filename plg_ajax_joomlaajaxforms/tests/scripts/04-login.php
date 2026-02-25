@@ -24,12 +24,12 @@ class LoginTest
         $allPassed = $this->testLoginFeatureConfig() && $allPassed;
         $allPassed = $this->testHandleLoginMethodExists() && $allPassed;
         $allPassed = $this->testHandleLogoutMethodExists() && $allPassed;
-        $allPassed = $this->testMfaValidateMethodExists() && $allPassed;
+        $allPassed = $this->testMfaCaptiveRedirect() && $allPassed;
         $allPassed = $this->testMfaHelperMethods() && $allPassed;
         $allPassed = $this->testLoginLanguageStrings() && $allPassed;
         $allPassed = $this->testMfaLanguageStrings() && $allPassed;
         $allPassed = $this->testJavaScriptLoginHandler() && $allPassed;
-        $allPassed = $this->testJavaScriptMfaHandler() && $allPassed;
+        $allPassed = $this->testJavaScriptGuestMessageRelocator() && $allPassed;
 
         $this->printSummary();
         return $allPassed;
@@ -125,9 +125,9 @@ class LoginTest
         return false;
     }
 
-    private function testMfaValidateMethodExists(): bool
+    private function testMfaCaptiveRedirect(): bool
     {
-        echo "Test: handleMfaValidate method exists... ";
+        echo "Test: MFA redirects to captive page... ";
         
         $classFile = '/var/www/html/plugins/ajax/joomlaajaxforms/src/Extension/JoomlaAjaxForms.php';
         
@@ -138,12 +138,13 @@ class LoginTest
         
         $content = file_get_contents($classFile);
         
-        if (strpos($content, 'function handleMfaValidate') !== false) {
+        // MFA is handled by redirecting to Joomla's captive page
+        if (strpos($content, 'view=captive') !== false) {
             echo "PASS\n";
             return true;
         }
         
-        echo "FAIL (method not found)\n";
+        echo "FAIL (captive redirect not found)\n";
         return false;
     }
 
@@ -160,20 +161,15 @@ class LoginTest
         
         $content = file_get_contents($classFile);
         
-        // The plugin uses getMfaMethods to query #__user_mfa and handleMfaValidate
-        // for the validation flow (delegating to Joomla's MFA infrastructure)
+        // getMfaMethods is used to detect if MFA is required
         $hasGetMfaMethods = strpos($content, 'function getMfaMethods') !== false;
-        $hasHandleMfaValidate = strpos($content, 'function handleMfaValidate') !== false;
         
-        if ($hasGetMfaMethods && $hasHandleMfaValidate) {
+        if ($hasGetMfaMethods) {
             echo "PASS\n";
             return true;
         }
         
-        $missing = [];
-        if (!$hasGetMfaMethods) $missing[] = 'getMfaMethods';
-        if (!$hasHandleMfaValidate) $missing[] = 'handleMfaValidate';
-        echo "FAIL (missing: " . implode(', ', $missing) . ")\n";
+        echo "FAIL (missing: getMfaMethods)\n";
         return false;
     }
 
@@ -224,9 +220,9 @@ class LoginTest
         return false;
     }
 
-    private function testJavaScriptMfaHandler(): bool
+    private function testJavaScriptGuestMessageRelocator(): bool
     {
-        echo "Test: JavaScript MFA handler exists... ";
+        echo "Test: JavaScript guest message relocator exists... ";
         
         $jsFile = '/var/www/html/media/plg_ajax_joomlaajaxforms/js/joomlaajaxforms.js';
         
@@ -237,14 +233,12 @@ class LoginTest
         
         $content = file_get_contents($jsFile);
         
-        if (strpos($content, 'showMfaForm') !== false && 
-            strpos($content, 'submitMfaCode') !== false &&
-            strpos($content, 'mfa_required') !== false) {
+        if (strpos($content, 'relocateGuestFormMessages') !== false) {
             echo "PASS\n";
             return true;
         }
         
-        echo "FAIL (MFA handler not found)\n";
+        echo "FAIL (relocateGuestFormMessages not found)\n";
         return false;
     }
 
