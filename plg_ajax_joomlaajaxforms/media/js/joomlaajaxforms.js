@@ -211,6 +211,8 @@ const JoomlaAjaxForms = {
             .then(response => response.json())
             .then(function(rawData) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
+                var serverErrorMsg = JoomlaAjaxForms.extractAndClearMessages(rawData);
+                JoomlaAjaxForms.clearSystemMessages();
                 const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
                 if (data.success) {
@@ -234,7 +236,7 @@ const JoomlaAjaxForms = {
                         }
                     }
                 } else {
-                    const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                    var errorMsg = serverErrorMsg || JoomlaAjaxForms.getErrorMessage(data);
                     JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
                 }
             })
@@ -404,7 +406,7 @@ const JoomlaAjaxForms = {
         .then(response => response.json())
         .then(function(rawData) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
-            // Clear any system messages Joomla may have queued during MFA validation
+            var serverErrorMsg = JoomlaAjaxForms.extractAndClearMessages(rawData);
             JoomlaAjaxForms.clearSystemMessages();
             const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
@@ -423,7 +425,7 @@ const JoomlaAjaxForms = {
                     }, 1000);
                 }
             } else {
-                const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                var errorMsg = serverErrorMsg || JoomlaAjaxForms.getErrorMessage(data);
                 JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
                 
                 // Clear code input for retry
@@ -482,13 +484,15 @@ const JoomlaAjaxForms = {
             .then(response => response.json())
             .then(function(rawData) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
+                var serverErrorMsg = JoomlaAjaxForms.extractAndClearMessages(rawData);
+                JoomlaAjaxForms.clearSystemMessages();
                 const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
                 if (data.success) {
                     JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
                     form.reset();
                 } else {
-                    const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                    var errorMsg = serverErrorMsg || JoomlaAjaxForms.getErrorMessage(data);
                     JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
                 }
             })
@@ -541,6 +545,8 @@ const JoomlaAjaxForms = {
             .then(response => response.json())
             .then(function(rawData) {
                 JoomlaAjaxForms.enableSubmit(submitBtn);
+                var serverErrorMsg = JoomlaAjaxForms.extractAndClearMessages(rawData);
+                JoomlaAjaxForms.clearSystemMessages();
                 const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
                 // Empty data[] from com_ajax means plugin was not reached (token/session issue)
@@ -551,7 +557,7 @@ const JoomlaAjaxForms = {
                     JoomlaAjaxForms.showMessage(messageContainer, msg, 'success');
                     form.reset();
                 } else {
-                    const errorMsg = JoomlaAjaxForms.getErrorMessage(data);
+                    var errorMsg = serverErrorMsg || JoomlaAjaxForms.getErrorMessage(data);
                     JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
                 }
             })
@@ -700,6 +706,28 @@ const JoomlaAjaxForms = {
         if (smc) {
             smc.querySelectorAll('joomla-alert, .alert').forEach(function(el) { el.remove(); });
         }
+    },
+
+    /**
+     * Extract error messages from Joomla's messages object and delete it
+     * from the response to prevent Joomla core from rendering them as
+     * joomla-alert elements (which can show the type as text prefix).
+     *
+     * @param {object} rawData - Raw com_ajax response
+     * @returns {string} First error message found, or empty string
+     */
+    extractAndClearMessages: function(rawData) {
+        var msg = '';
+        if (rawData && rawData.messages) {
+            ['danger', 'error', 'warning'].forEach(function(type) {
+                var arr = rawData.messages[type];
+                if (!msg && arr && Array.isArray(arr) && arr.length) {
+                    msg = arr[0];
+                }
+            });
+            delete rawData.messages;
+        }
+        return msg;
     },
 
     /**
@@ -860,6 +888,8 @@ const JoomlaAjaxForms = {
         .then(function(response) { return response.json(); })
         .then(function(rawData) {
             JoomlaAjaxForms.enableSubmit(submitBtn);
+                var serverErrorMsg = JoomlaAjaxForms.extractAndClearMessages(rawData);
+                JoomlaAjaxForms.clearSystemMessages();
             var data = JoomlaAjaxForms.unwrapResponse(rawData);
             if (data.success) {
                 var msg = data.message || getFormsLang('PROFILE_SAVED', 'Profile saved.');
