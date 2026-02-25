@@ -209,9 +209,11 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
                 $db->quoteName('location'),
                 $db->quoteName('enabled'),
             ])
-            ->values(':name, :type, :url, 1')
-            ->bind(':name', $name = 'J2Commerce Privacy Plugin')
-            ->bind(':type', $type = 'extension')
+            ->values(':name, :type, :url, 1');
+        $name = 'J2Commerce Privacy Plugin';
+        $type = 'extension';
+        $query->bind(':name', $name)
+            ->bind(':type', $type)
             ->bind(':url', $updateUrl);
         $db->setQuery($query);
         $db->execute();
