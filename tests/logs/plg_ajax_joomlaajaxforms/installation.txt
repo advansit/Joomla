@@ -1,6 +1,6 @@
 === Installation Tests ===
 
-Test: Package file exists... PASS (Size: 26.26 KB)
+Test: Package file exists... PASS (Size: 26.58 KB)
 Test: Plugin registered in database... PASS (ID: 249, Status: enabled)
 Test: Plugin files installed... PASS
 Test: Plugin class exists... PASS
