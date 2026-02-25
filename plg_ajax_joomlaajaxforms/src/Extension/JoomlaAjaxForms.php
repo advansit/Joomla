@@ -138,7 +138,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $result = $this->handleRemind();
                 break;
             case 'mfa_validate':
-                $result = $this->handleMfaValidate();
+                // MFA validation is now handled by Joomla's captive page
+                $result = $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_INVALID_TASK'));
                 break;
             case 'removeCartItem':
                 $result = $this->handleRemoveCartItem();
@@ -203,28 +204,22 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         if ($result === true) {
             $user = $this->getApplication()->getIdentity();
 
-            // Check if MFA is required
+            // Check if MFA is required — redirect to Joomla's captive page
             $mfaMethods = $this->getMfaMethods($user->id);
             if (!empty($mfaMethods)) {
-                // Store credentials in session for MFA validation
-                $session = $this->getApplication()->getSession();
-                $session->set('mfa_user_id', $user->id);
-                $session->set('mfa_pending', true);
-
-                // Logout user until MFA is validated
-                $this->getApplication()->logout($user->id);
-
-                // Clear any system messages queued during the brief login/logout
-                // (e.g. MFA plugin adding "no permission" messages)
+                // Clear any system messages queued during login
                 $this->getApplication()->getMessageQueue(true);
-
-                // Also clear messages from session storage directly
+                $session = $this->getApplication()->getSession();
                 $session->set('application.queue', []);
 
+                // Redirect to Joomla's built-in MFA captive page.
+                // The user stays logged in; Joomla's MFA plugin will
+                // enforce the captive view until MFA is completed.
+                $captiveUrl = Route::_('index.php?option=com_users&view=captive', false);
+
                 return $this->jsonSuccess([
-                    'mfa_required' => true,
-                    'methods'      => $mfaMethods,
-                    'message'      => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_REQUIRED'),
+                    'redirect' => $captiveUrl,
+                    'message'  => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_REQUIRED'),
                 ]);
             }
 
@@ -512,90 +507,6 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         return $this->jsonSuccess([
             'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_REMIND_SUCCESS'),
         ]);
-    }
-
-    /**
-     * Handle MFA code validation
-     *
-     * @return  string  JSON response
-     */
-    protected function handleMfaValidate(): string
-    {
-        $session = $this->getApplication()->getSession();
-        $userId = $session->get('mfa_user_id', 0);
-        $pending = $session->get('mfa_pending', false);
-
-        if (!$userId || !$pending) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_SESSION_EXPIRED'));
-        }
-
-        $input = $this->getApplication()->getInput();
-        $code = trim($input->post->getString('code', ''));
-        $recordId = $input->post->getInt('record_id', 0);
-
-        if (empty($code)) {
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_REQUIRED'));
-        }
-
-        try {
-            $db = Factory::getContainer()->get(DatabaseInterface::class);
-
-            // Get the MFA record
-            $query = $db->getQuery(true)
-                ->select('*')
-                ->from($db->quoteName('#__user_mfa'))
-                ->where($db->quoteName('id') . ' = :recordId')
-                ->where($db->quoteName('user_id') . ' = :userId')
-                ->bind(':recordId', $recordId, ParameterType::INTEGER)
-                ->bind(':userId', $userId, ParameterType::INTEGER);
-            $db->setQuery($query);
-            $record = $db->loadObject();
-
-            if (!$record) {
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_INVALID_METHOD'));
-            }
-
-            // Validate the code using Joomla's MFA system
-            $user = Factory::getContainer()->get(UserFactoryInterface::class)->loadUserById($userId);
-
-            // Use the MFA plugin to validate
-            $this->getApplication()->getDispatcher()->dispatch('onUserMultifactorValidate', new \Joomla\Event\Event('onUserMultifactorValidate', [$record, $code]));
-
-            // If we get here without exception, the code is valid
-            // Clear MFA session data
-            $session->clear('mfa_user_id');
-            $session->clear('mfa_pending');
-
-            // Log the user in
-            $credentials = ['username' => $user->username];
-            $options = ['action' => 'core.login.site'];
-            $this->getApplication()->login($credentials, $options);
-
-            // Mark MFA as completed so Joomla does not redirect to captive page
-            $session->set('com_users.mfa_checked', 1);
-
-            // Clear any system messages from the login process
-            $this->getApplication()->getMessageQueue(true);
-            $session->set('application.queue', []);
-
-            // Determine redirect: use return URL from session or profile page
-            $returnUrl = $session->get('com_users.return_url', '');
-            if (empty($returnUrl) || !Uri::isInternal($returnUrl)) {
-                $returnUrl = Route::_('index.php?option=com_j2store&view=myprofile', false);
-            }
-            $session->clear('com_users.return_url');
-
-            return $this->jsonSuccess([
-                'redirect' => $returnUrl,
-                'message'  => Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
-            ]);
-        } catch (\Exception $e) {
-            // Clear any system messages Joomla's MFA plugin may have queued
-            $this->getApplication()->getMessageQueue(true);
-            $session->set('application.queue', []);
-
-            return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_CODE_INVALID'));
-        }
     }
 
     /**

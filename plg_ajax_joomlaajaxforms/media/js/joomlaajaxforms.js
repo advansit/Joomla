@@ -93,7 +93,48 @@ const JoomlaAjaxForms = {
             JoomlaAjaxForms.initResetForm();
             JoomlaAjaxForms.initRemindForm();
             JoomlaAjaxForms.initProfileForm();
+            JoomlaAjaxForms.relocateGuestFormMessages();
         });
+    },
+
+    /**
+     * Move system messages into the guest order form's error container.
+     * On the login page the regular login form uses AJAX (no system messages),
+     * so any Joomla system messages must originate from the guest order form.
+     */
+    relocateGuestFormMessages: function() {
+        var guestError = document.getElementById('guest-login-error');
+        if (!guestError) return;
+
+        var smc = document.getElementById('system-message-container');
+        if (!smc) return;
+
+        var alerts = smc.querySelectorAll('joomla-alert, .alert');
+        if (!alerts.length) return;
+
+        var text = '';
+        alerts.forEach(function(el) {
+            var msg = '';
+            el.querySelectorAll('.alert-heading, .alert-message, div, span').forEach(function(child) {
+                if (child.textContent.trim()) msg = child.textContent.trim();
+            });
+            if (!msg) msg = el.textContent.trim();
+            ['danger', 'error', 'warning', 'message', 'notice'].forEach(function(prefix) {
+                if (msg.indexOf(prefix) === 0) msg = msg.substring(prefix.length).trim();
+            });
+            if (msg && !text) text = msg;
+            el.remove();
+        });
+
+        if (text) {
+            var errorSpan = guestError.querySelector('.error-message');
+            if (errorSpan) {
+                errorSpan.textContent = text;
+            } else {
+                guestError.textContent = text;
+            }
+            guestError.style.display = 'block';
+        }
     },
 
     /**
@@ -216,24 +257,18 @@ const JoomlaAjaxForms = {
                 const data = JoomlaAjaxForms.unwrapResponse(rawData);
 
                 if (data.success) {
-                    // Check if MFA is required
-                    var mfaData = (data.data && data.data.mfa_required) ? data.data : (data.mfa_required ? data : null);
-                    if (mfaData && mfaData.mfa_required) {
-                        JoomlaAjaxForms.showMfaForm(form, messageContainer, mfaData, tokenName);
+                    JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
+
+                    // Redirect after successful login (or to MFA captive page)
+                    var redirect = (data.data && data.data.redirect) || data.redirect;
+                    if (redirect) {
+                        setTimeout(function() {
+                            window.location.href = redirect;
+                        }, 1000);
                     } else {
-                        JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
-                        
-                        // Redirect after successful login
-                        var redirect = (data.data && data.data.redirect) || data.redirect;
-                        if (redirect) {
-                            setTimeout(function() {
-                                window.location.href = redirect;
-                            }, 1000);
-                        } else {
-                            setTimeout(function() {
-                                window.location.reload();
-                            }, 1000);
-                        }
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1000);
                     }
                 } else {
                     var errorMsg = serverErrorMsg || JoomlaAjaxForms.getErrorMessage(data);
@@ -245,207 +280,6 @@ const JoomlaAjaxForms = {
                 JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred. Please try again.'), 'error');
                 console.error('JoomlaAjaxForms Error:', error);
             });
-        });
-    },
-
-    /**
-     * Show MFA form after successful credential validation
-     *
-     * @param {HTMLFormElement} originalForm - The original login form
-     * @param {HTMLElement} messageContainer - Message container
-     * @param {object} mfaData - MFA data from server
-     * @param {string} tokenName - CSRF token name
-     */
-    showMfaForm: function(originalForm, messageContainer, mfaData, tokenName) {
-        // Clear any system messages (e.g. "no permission" from brief login/logout)
-        JoomlaAjaxForms.clearSystemMessages();
-        // Joomla may render messages asynchronously — keep clearing for a short period
-        var clearCount = 0;
-        var clearTimer = setInterval(function() {
-            JoomlaAjaxForms.clearSystemMessages();
-            if (++clearCount >= 10) clearInterval(clearTimer);
-        }, 200);
-
-        // Hide original form fields
-        const formFields = originalForm.querySelectorAll('.control-group, .form-group, .mb-3');
-        formFields.forEach(function(field) {
-            field.style.display = 'none';
-        });
-
-        // Create MFA form container
-        let mfaContainer = originalForm.querySelector('.mfa-container');
-        if (!mfaContainer) {
-            mfaContainer = document.createElement('div');
-            mfaContainer.className = 'mfa-container';
-            originalForm.insertBefore(mfaContainer, originalForm.querySelector('button[type="submit"]'));
-        }
-
-        // Build MFA form HTML
-        const defaultMethod = mfaData.methods[0];
-        mfaContainer.innerHTML = `
-            <div class="alert alert-info mb-3">
-                ${mfaData.methods.length > 1 ? getFormsLang('MFA_SELECT_METHOD', 'Please select an authentication method and enter the code.') : getFormsLang('MFA_ENTER_CODE', 'Please enter your authentication code.')}
-            </div>
-            ${mfaData.methods.length > 1 ? `
-            <div class="control-group mb-3">
-                <label for="mfa-method" class="form-label">${getFormsLang('MFA_METHOD', 'Method')}</label>
-                <select id="mfa-method" name="mfa_method" class="form-select">
-                    ${mfaData.methods.map(m => `<option value="${m.id}">${m.title || m.method}</option>`).join('')}
-                </select>
-            </div>
-            ` : `<input type="hidden" id="mfa-method" name="mfa_method" value="${defaultMethod.id}">`}
-            <div class="control-group mb-3">
-                <label for="mfa-code" class="form-label">${getFormsLang('MFA_CODE_LABEL', 'Authentication code')}</label>
-                <input type="text" id="mfa-code" name="mfa_code" class="form-control" 
-                       autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" 
-                       maxlength="6" placeholder="000000" required autofocus>
-            </div>
-            <div class="mfa-actions mb-3">
-                <button type="button" class="btn btn-link" id="mfa-cancel">${getFormsLang('MFA_CANCEL', 'Cancel')}</button>
-            </div>
-        `;
-
-        // Show MFA container
-        mfaContainer.style.display = 'block';
-
-        // Update submit button text
-        const submitBtn = originalForm.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.dataset.originalText = submitBtn.textContent;
-            submitBtn.textContent = getFormsLang('MFA_VERIFY', 'Verify');
-        }
-
-        // Handle cancel
-        const cancelBtn = mfaContainer.querySelector('#mfa-cancel');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function() {
-                JoomlaAjaxForms.hideMfaForm(originalForm, mfaContainer);
-            });
-        }
-
-        // Focus on code input
-        const codeInput = mfaContainer.querySelector('#mfa-code');
-        if (codeInput) {
-            codeInput.focus();
-        }
-
-        // Store MFA state
-        originalForm.dataset.mfaActive = 'true';
-        originalForm.dataset.mfaRecordId = defaultMethod.id;
-
-        // Override form submit for MFA
-        originalForm.removeEventListener('submit', originalForm._ajaxSubmitHandler);
-        originalForm._mfaSubmitHandler = function(e) {
-            e.preventDefault();
-            JoomlaAjaxForms.submitMfaCode(originalForm, messageContainer, tokenName);
-        };
-        originalForm.addEventListener('submit', originalForm._mfaSubmitHandler);
-    },
-
-    /**
-     * Hide MFA form and restore original login form
-     *
-     * @param {HTMLFormElement} form - The form element
-     * @param {HTMLElement} mfaContainer - MFA container element
-     */
-    hideMfaForm: function(form, mfaContainer) {
-        // Show original form fields
-        const formFields = form.querySelectorAll('.control-group, .form-group, .mb-3');
-        formFields.forEach(function(field) {
-            if (!field.classList.contains('mfa-container')) {
-                field.style.display = '';
-            }
-        });
-
-        // Hide MFA container
-        if (mfaContainer) {
-            mfaContainer.style.display = 'none';
-            mfaContainer.innerHTML = '';
-        }
-
-        // Restore submit button text
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn && submitBtn.dataset.originalText) {
-            submitBtn.textContent = submitBtn.dataset.originalText;
-        }
-
-        // Clear MFA state
-        form.dataset.mfaActive = '';
-        form.dataset.mfaRecordId = '';
-
-        // Restore original submit handler
-        if (form._mfaSubmitHandler) {
-            form.removeEventListener('submit', form._mfaSubmitHandler);
-        }
-        JoomlaAjaxForms.convertLoginForm(form);
-    },
-
-    /**
-     * Submit MFA code
-     *
-     * @param {HTMLFormElement} form - The form element
-     * @param {HTMLElement} messageContainer - Message container
-     * @param {string} tokenName - CSRF token name
-     */
-    submitMfaCode: function(form, messageContainer, tokenName) {
-        const code = form.querySelector('#mfa-code').value;
-        const methodSelect = form.querySelector('#mfa-method');
-        const recordId = methodSelect ? methodSelect.value : form.dataset.mfaRecordId;
-
-        if (!code || code.length < 6) {
-            JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('MFA_CODE_INVALID_LENGTH', 'Please enter a valid 6-digit code.'), 'error');
-            return;
-        }
-
-        const body = JoomlaAjaxForms.buildBaseParams('mfa_validate', tokenName);
-        body.append('code', code);
-        body.append('record_id', recordId);
-
-        const submitBtn = JoomlaAjaxForms.disableSubmit(form);
-        messageContainer.style.display = 'none';
-
-        fetch(JoomlaAjaxForms.config.baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body.toString()
-        })
-        .then(response => response.json())
-        .then(function(rawData) {
-            JoomlaAjaxForms.enableSubmit(submitBtn);
-            var serverErrorMsg = JoomlaAjaxForms.extractAndClearMessages(rawData);
-            JoomlaAjaxForms.clearSystemMessages();
-            const data = JoomlaAjaxForms.unwrapResponse(rawData);
-
-            if (data.success) {
-                JoomlaAjaxForms.showMessage(messageContainer, data.message, 'success');
-                
-                // Redirect after successful MFA validation
-                var redirect = (data.data && data.data.redirect) || data.redirect;
-                if (redirect) {
-                    setTimeout(function() {
-                        window.location.href = redirect;
-                    }, 1000);
-                } else {
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1000);
-                }
-            } else {
-                var errorMsg = serverErrorMsg || JoomlaAjaxForms.getErrorMessage(data);
-                JoomlaAjaxForms.showMessage(messageContainer, errorMsg, 'error');
-                
-                // Clear code input for retry
-                const codeInput = form.querySelector('#mfa-code');
-                if (codeInput) {
-                    codeInput.value = '';
-                    codeInput.focus();
-                }
-            }
-        })
-        .catch(function(error) {
-            JoomlaAjaxForms.enableSubmit(submitBtn);
-            JoomlaAjaxForms.showMessage(messageContainer, getFormsLang('ERROR_GENERIC', 'An error occurred. Please try again.'), 'error');
-            console.error('JoomlaAjaxForms Error:', error);
         });
     },
 
