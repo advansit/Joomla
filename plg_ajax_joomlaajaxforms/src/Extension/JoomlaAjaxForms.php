@@ -228,16 +228,19 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $session = $this->getApplication()->getSession();
             $session->set('application.queue', []);
 
-            // Determine redirect: POST return param > session return URL > profile page
+            // Determine redirect: POST return param > J2Store profile page
             $redirect = '';
             if ($returnUrl) {
-                $redirect = base64_decode($returnUrl);
+                $decoded = base64_decode($returnUrl);
+                if (!empty($decoded) && Uri::isInternal($decoded)) {
+                    $redirect = $decoded;
+                }
             }
+            // Always clear the session return URL to prevent Joomla's
+            // login redirect (often Home) from taking precedence later.
+            $session->clear('com_users.return_url');
+
             if (empty($redirect)) {
-                $redirect = $session->get('com_users.return_url', '');
-                $session->clear('com_users.return_url');
-            }
-            if (empty($redirect) || !Uri::isInternal($redirect)) {
                 $redirect = Route::_('index.php?option=com_j2store&view=myprofile', false);
             }
 
