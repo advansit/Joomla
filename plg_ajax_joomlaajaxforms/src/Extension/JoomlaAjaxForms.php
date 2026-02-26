@@ -232,7 +232,14 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 }
                 $session->set('com_users.return_url', $profileUrl);
 
-                $captiveUrl = Route::_('index.php?option=com_users&view=captive', false);
+                // Pass return URL as query parameter so the captive template
+                // can restore it (the session value may be overwritten by
+                // Joomla's MultiFactorAuthenticationHandler before the
+                // template renders).
+                $captiveUrl = Route::_(
+                    'index.php?option=com_users&view=captive&return=' . base64_encode($profileUrl),
+                    false
+                );
 
                 return $this->jsonSuccess([
                     'redirect' => $captiveUrl,
