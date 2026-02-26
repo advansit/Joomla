@@ -117,10 +117,13 @@ const JoomlaAjaxForms = {
             var text = '';
             alerts.forEach(function(el) {
                 if (text) { el.remove(); return; }
-                // Joomla 5 <joomla-alert>: text is direct child content
-                var msg = (el.getAttribute('message') || el.textContent || '').trim();
-                // Strip Joomla type prefixes that may appear at the start
-                msg = msg.replace(/^(danger|error|warning|message|notice|info)\s*/i, '');
+                // Joomla 5 <joomla-alert> renders:
+                //   <div class="alert-heading">info</div>
+                //   <div class="alert-wrapper">actual message</div>
+                var wrapper = el.querySelector('.alert-wrapper, .alert-message');
+                var msg = wrapper
+                    ? wrapper.textContent.trim()
+                    : el.textContent.trim().replace(/^(danger|error|warning|message|notice|info)\s*/i, '');
                 if (msg) text = msg;
                 el.remove();
             });
@@ -129,8 +132,6 @@ const JoomlaAjaxForms = {
                 var errorSpan = guestError.querySelector('.error-message');
                 if (errorSpan) {
                     errorSpan.textContent = text;
-                } else {
-                    guestError.textContent = text;
                 }
                 guestError.style.display = 'block';
             }

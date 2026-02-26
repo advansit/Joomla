@@ -212,9 +212,17 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $session = $this->getApplication()->getSession();
                 $session->set('application.queue', []);
 
-                // Redirect to Joomla's built-in MFA captive page.
-                // The user stays logged in; Joomla's MFA plugin will
-                // enforce the captive view until MFA is completed.
+                // Set return URL so Joomla redirects to the profile page
+                // after successful MFA validation on the captive page.
+                $profileUrl = Route::_('index.php?option=com_j2store&view=myprofile', false);
+                if ($returnUrl) {
+                    $decoded = base64_decode($returnUrl);
+                    if (!empty($decoded) && Uri::isInternal($decoded)) {
+                        $profileUrl = $decoded;
+                    }
+                }
+                $session->set('com_users.return_url', $profileUrl);
+
                 $captiveUrl = Route::_('index.php?option=com_users&view=captive', false);
 
                 return $this->jsonSuccess([
