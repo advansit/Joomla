@@ -221,7 +221,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                         $profileUrl = $decoded;
                     }
                 }
-                $session->set('com_users.return_url', $profileUrl);
+                // setUserState (not $session->set) — Joomla's CaptiveController
+                // reads the return URL via $app->getUserState().
+                $this->getApplication()->setUserState('com_users.return_url', $profileUrl);
 
                 $captiveUrl = Route::_('index.php?option=com_users&view=captive', false);
 
@@ -244,9 +246,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                     $redirect = $decoded;
                 }
             }
-            // Always clear the session return URL to prevent Joomla's
-            // login redirect (often Home) from taking precedence later.
-            $session->clear('com_users.return_url');
+            // Clear the return URL to prevent Joomla's login redirect
+            // (often Home) from taking precedence later.
+            $this->getApplication()->setUserState('com_users.return_url', null);
 
             if (empty($redirect)) {
                 $redirect = Route::_('index.php?option=com_j2store&view=myprofile', false);
