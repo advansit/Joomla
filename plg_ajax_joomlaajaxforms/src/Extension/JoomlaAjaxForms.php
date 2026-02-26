@@ -55,6 +55,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $app = $this->getApplication();
         $input = $app->getInput();
 
+        // Temporary debug logger — writes to administrator/logs/ajaxforms_debug.php
+        Log::addLogger(
+            ['text_file' => 'ajaxforms_debug.php'],
+            Log::ALL,
+            ['plg_ajax_joomlaajaxforms']
+        );
+
         // Restore the post-MFA return URL from the hidden form field.
         // CaptiveController::validate() reads com_users.return_url from
         // the session but does not check POST parameters. We intercept
