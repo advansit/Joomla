@@ -214,16 +214,23 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
                 // Set return URL so Joomla redirects to the profile page
                 // after successful MFA validation on the captive page.
-                $profileUrl = Route::_('index.php?option=com_j2store&view=myprofile', false);
+                // Must be absolute — Uri::isInternal() rejects relative URLs
+                // that don't start with "index.php", and Joomla's
+                // MultiFactorAuthenticationHandler would overwrite it.
+                $profileUrl = rtrim(Uri::base(), '/') . Route::_('index.php?option=com_j2store&view=myprofile', false);
                 if ($returnUrl) {
                     $decoded = base64_decode($returnUrl);
-                    if (!empty($decoded) && Uri::isInternal($decoded)) {
-                        $profileUrl = $decoded;
+                    if (!empty($decoded)) {
+                        // Make absolute if relative
+                        if (strpos($decoded, 'http') !== 0) {
+                            $decoded = rtrim(Uri::base(), '/') . '/' . ltrim($decoded, '/');
+                        }
+                        if (Uri::isInternal($decoded)) {
+                            $profileUrl = $decoded;
+                        }
                     }
                 }
-                // setUserState (not $session->set) — Joomla's CaptiveController
-                // reads the return URL via $app->getUserState().
-                $this->getApplication()->setUserState('com_users.return_url', $profileUrl);
+                $session->set('com_users.return_url', $profileUrl);
 
                 $captiveUrl = Route::_('index.php?option=com_users&view=captive', false);
 
@@ -248,7 +255,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             }
             // Clear the return URL to prevent Joomla's login redirect
             // (often Home) from taking precedence later.
-            $this->getApplication()->setUserState('com_users.return_url', null);
+            $session->set('com_users.return_url', '');
 
             if (empty($redirect)) {
                 $redirect = Route::_('index.php?option=com_j2store&view=myprofile', false);
