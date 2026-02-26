@@ -101,6 +101,7 @@ const JoomlaAjaxForms = {
      * Move system messages into the guest order form's error container.
      * On the login page the regular login form uses AJAX (no system messages),
      * so any Joomla system messages must originate from the guest order form.
+     * Uses a MutationObserver to catch alerts rendered after DOMContentLoaded.
      */
     relocateGuestFormMessages: function() {
         var guestError = document.getElementById('guest-login-error');
@@ -109,32 +110,43 @@ const JoomlaAjaxForms = {
         var smc = document.getElementById('system-message-container');
         if (!smc) return;
 
-        var alerts = smc.querySelectorAll('joomla-alert, .alert');
-        if (!alerts.length) return;
+        function moveAlerts() {
+            var alerts = smc.querySelectorAll('joomla-alert, .alert');
+            if (!alerts.length) return false;
 
-        var text = '';
-        alerts.forEach(function(el) {
-            var msg = '';
-            el.querySelectorAll('.alert-heading, .alert-message, div, span').forEach(function(child) {
-                if (child.textContent.trim()) msg = child.textContent.trim();
+            var text = '';
+            alerts.forEach(function(el) {
+                if (text) { el.remove(); return; }
+                // Joomla 5 <joomla-alert>: text is direct child content
+                var msg = (el.getAttribute('message') || el.textContent || '').trim();
+                // Strip Joomla type prefixes that may appear at the start
+                msg = msg.replace(/^(danger|error|warning|message|notice|info)\s*/i, '');
+                if (msg) text = msg;
+                el.remove();
             });
-            if (!msg) msg = el.textContent.trim();
-            ['danger', 'error', 'warning', 'message', 'notice'].forEach(function(prefix) {
-                if (msg.indexOf(prefix) === 0) msg = msg.substring(prefix.length).trim();
-            });
-            if (msg && !text) text = msg;
-            el.remove();
-        });
 
-        if (text) {
-            var errorSpan = guestError.querySelector('.error-message');
-            if (errorSpan) {
-                errorSpan.textContent = text;
-            } else {
-                guestError.textContent = text;
+            if (text) {
+                var errorSpan = guestError.querySelector('.error-message');
+                if (errorSpan) {
+                    errorSpan.textContent = text;
+                } else {
+                    guestError.textContent = text;
+                }
+                guestError.style.display = 'block';
             }
-            guestError.style.display = 'block';
+            return !!text;
         }
+
+        // Try immediately (server-rendered alerts)
+        if (moveAlerts()) return;
+
+        // Watch for late-arriving alerts (Joomla may insert them asynchronously)
+        var observer = new MutationObserver(function(mutations) {
+            if (moveAlerts()) observer.disconnect();
+        });
+        observer.observe(smc, { childList: true, subtree: true });
+        // Stop watching after 3 seconds
+        setTimeout(function() { observer.disconnect(); }, 3000);
     },
 
     /**
