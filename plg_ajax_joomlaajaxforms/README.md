@@ -13,12 +13,11 @@ A Joomla plugin that provides AJAX handling for user forms, authentication, prof
 
 | Feature | AJAX Task | Description |
 |---------|-----------|-------------|
-| Login | `login` | Authentication with MFA/2FA support |
+| Login | `login` | Authentication with redirect to Joomla's MFA captive page when 2FA is enabled |
 | Logout | `logout` | Session termination with redirect |
 | Registration | `register` | User registration with email verification and admin approval |
 | Password Reset | `reset` | Password reset email request |
 | Username Reminder | `remind` | Username reminder email request |
-| MFA Validation | `mfa_validate` | Multi-factor authentication code verification |
 | Profile Editing | `saveProfile` | Update name, email, password |
 | Cart: Remove Item | `removeCartItem` | Remove item from J2Store/J2Commerce cart |
 | Cart: Get Count | `getCartCount` | Get current cart item count |
@@ -121,7 +120,7 @@ The plugin avoids all APIs deprecated in Joomla 6:
 
 ## Tests
 
-12 test scripts covering installation, configuration, endpoint access, login, registration, reset, remind, security, uninstall, profile, J2Store cart, and .htaccess validation. Run via Docker:
+12 test scripts covering installation, configuration, endpoint access, login/MFA, registration, reset, remind, security, uninstall, profile, J2Store cart, and .htaccess validation. Run via Docker:
 
 ```bash
 cd plg_ajax_joomlaajaxforms/tests
