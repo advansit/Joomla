@@ -229,10 +229,25 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $session = $this->getApplication()->getSession();
                 $session->set('application.queue', []);
 
-                // Always redirect to the profile page after MFA — the
-                // form's return URL typically points back to the login
-                // page which would be a useless destination.
-                $profileUrl = rtrim(Uri::base(), '/') . Route::_('index.php?option=com_j2store&view=myprofile', false);
+                // Use the form's return URL (the login/profile page) as
+                // post-MFA destination. Route::_() generates broken URLs
+                // in the AJAX context because the SEF router lacks the
+                // correct menu item context.
+                $profileUrl = '';
+                if ($returnUrl) {
+                    $decoded = base64_decode($returnUrl);
+                    if (!empty($decoded)) {
+                        if (strpos($decoded, 'http') !== 0) {
+                            $decoded = rtrim(Uri::base(), '/') . '/' . ltrim($decoded, '/');
+                        }
+                        if (Uri::isInternal($decoded)) {
+                            $profileUrl = $decoded;
+                        }
+                    }
+                }
+                if (empty($profileUrl)) {
+                    $profileUrl = $input->server->getString('HTTP_REFERER', Uri::base());
+                }
                 $session->set('com_users.return_url', $profileUrl);
 
                 // Pass return URL as query parameter so the captive template
