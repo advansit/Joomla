@@ -68,6 +68,11 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         header('Content-Type: application/json; charset=utf-8');
         header('Cache-Control: no-cache, no-store, must-revalidate');
         echo json_encode(['data' => [$result]], JSON_UNESCAPED_UNICODE);
+
+        // Flush session data before closing — $app->close() calls exit()
+        // which does not trigger JoomlaStorage::close(), so session
+        // changes (e.g. com_users.return_url) would be lost.
+        $app->getSession()->close();
         $app->close();
     }
 
