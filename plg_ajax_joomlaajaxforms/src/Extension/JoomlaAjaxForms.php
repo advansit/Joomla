@@ -55,6 +55,22 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $app = $this->getApplication();
         $input = $app->getInput();
 
+        // Restore the post-MFA return URL from the hidden form field.
+        // CaptiveController::validate() reads com_users.return_url from
+        // the session but does not check POST parameters. We intercept
+        // here (after routing, before component dispatch) to set it.
+        if ($input->getCmd('option') === 'com_users'
+            && $input->getCmd('task') === 'captive.validate'
+        ) {
+            $return = $input->getBase64('return', '');
+            if ($return) {
+                $decoded = base64_decode($return);
+                if (!empty($decoded) && Uri::isInternal($decoded)) {
+                    $app->getSession()->set('com_users.return_url', $decoded);
+                }
+            }
+        }
+
         if ($input->getCmd('option') !== 'com_ajax'
             || $input->getCmd('plugin') !== 'joomlaajaxforms'
             || $input->getCmd('format', 'html') !== 'json'
@@ -69,10 +85,6 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         header('Cache-Control: no-cache, no-store, must-revalidate');
         echo json_encode(['data' => [$result]], JSON_UNESCAPED_UNICODE);
 
-        // Flush session data before closing — $app->close() calls exit()
-        // which does not trigger JoomlaStorage::close(), so session
-        // changes (e.g. com_users.return_url) would be lost.
-        $app->getSession()->close();
         $app->close();
     }
 
