@@ -55,13 +55,6 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $app = $this->getApplication();
         $input = $app->getInput();
 
-        // Temporary debug logger — writes to administrator/logs/ajaxforms_debug.php
-        Log::addLogger(
-            ['text_file' => 'ajaxforms_debug.php'],
-            Log::ALL,
-            ['plg_ajax_joomlaajaxforms']
-        );
-
         // Restore the post-MFA return URL from the hidden form field.
         // CaptiveController::validate() reads com_users.return_url from
         // the session but does not check POST parameters. We intercept
@@ -70,43 +63,12 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             && $input->getCmd('task') === 'captive.validate'
         ) {
             $return = $input->getBase64('return', '');
-            Log::add(
-                'MFA captive.validate intercepted. return param: '
-                . ($return ? 'present (' . strlen($return) . ' chars)' : 'MISSING')
-                . ' | session return_url before: ' . $app->getSession()->get('com_users.return_url', '(empty)'),
-                Log::DEBUG,
-                'plg_ajax_joomlaajaxforms'
-            );
             if ($return) {
                 $decoded = base64_decode($return);
                 if (!empty($decoded) && Uri::isInternal($decoded)) {
                     $app->getSession()->set('com_users.return_url', $decoded);
-                    Log::add(
-                        'MFA return URL restored from POST: ' . $decoded,
-                        Log::DEBUG,
-                        'plg_ajax_joomlaajaxforms'
-                    );
-                } else {
-                    Log::add(
-                        'MFA return URL decode/isInternal failed. decoded: '
-                        . ($decoded ?: '(empty)') . ' | isInternal: ' . (Uri::isInternal($decoded ?: '') ? 'yes' : 'no'),
-                        Log::WARNING,
-                        'plg_ajax_joomlaajaxforms'
-                    );
                 }
             }
-        }
-
-        // Log all com_users requests for MFA debugging
-        if ($input->getCmd('option') === 'com_users') {
-            Log::add(
-                'com_users request: view=' . $input->getCmd('view', '')
-                . ' task=' . $input->getCmd('task', '')
-                . ' return_url=' . $app->getSession()->get('com_users.return_url', '(empty)')
-                . ' method=' . $input->getMethod(),
-                Log::DEBUG,
-                'plg_ajax_joomlaajaxforms'
-            );
         }
 
         if ($input->getCmd('option') !== 'com_ajax'
@@ -267,24 +229,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $session = $this->getApplication()->getSession();
                 $session->set('application.queue', []);
 
-                // Set return URL so Joomla redirects to the profile page
-                // after successful MFA validation on the captive page.
-                // Must be absolute — Uri::isInternal() rejects relative URLs
-                // that don't start with "index.php", and Joomla's
-                // MultiFactorAuthenticationHandler would overwrite it.
+                // Always redirect to the profile page after MFA — the
+                // form's return URL typically points back to the login
+                // page which would be a useless destination.
                 $profileUrl = rtrim(Uri::base(), '/') . Route::_('index.php?option=com_j2store&view=myprofile', false);
-                if ($returnUrl) {
-                    $decoded = base64_decode($returnUrl);
-                    if (!empty($decoded)) {
-                        // Make absolute if relative
-                        if (strpos($decoded, 'http') !== 0) {
-                            $decoded = rtrim(Uri::base(), '/') . '/' . ltrim($decoded, '/');
-                        }
-                        if (Uri::isInternal($decoded)) {
-                            $profileUrl = $decoded;
-                        }
-                    }
-                }
                 $session->set('com_users.return_url', $profileUrl);
 
                 // Pass return URL as query parameter so the captive template
@@ -294,15 +242,6 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $captiveUrl = Route::_(
                     'index.php?option=com_users&view=captive&return=' . base64_encode($profileUrl),
                     false
-                );
-
-                Log::add(
-                    'MFA login: profileUrl=' . $profileUrl
-                    . ' | captiveUrl=' . $captiveUrl
-                    . ' | session return_url=' . $session->get('com_users.return_url', '(empty)')
-                    . ' | base64(profileUrl)=' . base64_encode($profileUrl),
-                    Log::DEBUG,
-                    'plg_ajax_joomlaajaxforms'
                 );
 
                 return $this->jsonSuccess([
