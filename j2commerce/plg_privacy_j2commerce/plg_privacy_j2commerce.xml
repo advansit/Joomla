@@ -12,8 +12,6 @@
     <authorUrl>https://advans.ch</authorUrl>
     <version>1.2.5</version>
     <description>PLG_PRIVACY_J2COMMERCE_XML_DESCRIPTION</description>
-    
-    <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
 
     <namespace path="src">Advans\Plugin\Privacy\J2Commerce</namespace>
 
