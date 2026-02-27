@@ -213,35 +213,19 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $session = $this->getApplication()->getSession();
                 $session->set('application.queue', []);
 
-                // Find the profile page URL from the menu system.
-                // Route::_() fails in the AJAX context (wrong menu item),
-                // so we look up the menu item for com_j2store myprofile
-                // and build the URL from its SEF route field.
+                // Find the profile page URL via the menu system.
+                // We look up the Itemid and let Route::_() build the
+                // SEF URL with the correct language prefix.
                 $profileUrl = Uri::base();
                 $menu = $this->getApplication()->getMenu();
                 if ($menu) {
                     $items = $menu->getItems(['component', 'link'], ['com_j2store', 'index.php?option=com_j2store&view=myprofile']);
                     if (!empty($items)) {
-                        $item = $items[0];
-                        // Use the menu item's route (SEF alias path)
-                        $profileUrl = rtrim(Uri::base(), '/') . '/' . ltrim($item->route, '/');
+                        $sefPath = Route::_('index.php?Itemid=' . $items[0]->id, false);
+                        $profileUrl = rtrim(Uri::base(), '/') . '/' . ltrim($sefPath, '/');
                     }
                 }
                 $session->set('com_users.return_url', $profileUrl);
-
-                // Temporary debug log
-                $logFile = JPATH_ADMINISTRATOR . '/logs/mfa_debug.log';
-                $menuInfo = $menu ? 'menu_found' : 'no_menu';
-                if ($menu) {
-                    $items2 = $menu->getItems(['component', 'link'], ['com_j2store', 'index.php?option=com_j2store&view=myprofile']);
-                    $menuInfo .= ' items=' . count($items2);
-                    if (!empty($items2)) {
-                        $menuInfo .= ' id=' . $items2[0]->id . ' route=' . $items2[0]->route . ' path=' . ($items2[0]->path ?? 'n/a');
-                    }
-                }
-                file_put_contents($logFile, date('Y-m-d H:i:s') . ' MFA_LOGIN profileUrl=' . $profileUrl
-                    . ' captiveUrl=' . Route::_('index.php?option=com_users&view=captive&return=' . base64_encode($profileUrl), false)
-                    . ' ' . $menuInfo . "\n", FILE_APPEND | LOCK_EX);
 
                 // Pass return URL as query parameter so the captive template
                 // can restore it (the session value may be overwritten by
