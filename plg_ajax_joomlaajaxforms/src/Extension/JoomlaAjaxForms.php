@@ -50,6 +50,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      * query parameters. This handler detects our AJAX requests
      * early and responds directly.
      */
+    private function debugLog(string $msg): void
+    {
+        $logFile = JPATH_ADMINISTRATOR . '/logs/mfa_debug.log';
+        $line = date('Y-m-d H:i:s') . ' ' . $msg . "\n";
+        file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+    }
+
     public function onAfterRoute(): void
     {
         $app = $this->getApplication();
@@ -63,10 +70,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             && $input->getCmd('task') === 'captive.validate'
         ) {
             $return = $input->getBase64('return', '');
+            $this->debugLog('CAPTIVE_VALIDATE return_param=' . ($return ?: 'MISSING')
+                . ' session_before=' . $app->getSession()->get('com_users.return_url', '(empty)'));
             if ($return) {
                 $decoded = base64_decode($return);
                 if (!empty($decoded) && Uri::isInternal($decoded)) {
                     $app->getSession()->set('com_users.return_url', $decoded);
+                    $this->debugLog('CAPTIVE_VALIDATE restored=' . $decoded);
                 }
             }
         }
@@ -258,6 +268,11 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                     'index.php?option=com_users&view=captive&return=' . base64_encode($profileUrl),
                     false
                 );
+
+                $this->debugLog('MFA_LOGIN returnUrl_raw=' . ($returnUrl ?: '(empty)')
+                    . ' profileUrl=' . $profileUrl
+                    . ' captiveUrl=' . $captiveUrl
+                    . ' session_return_url=' . $session->get('com_users.return_url', '(empty)'));
 
                 return $this->jsonSuccess([
                     'redirect' => $captiveUrl,
