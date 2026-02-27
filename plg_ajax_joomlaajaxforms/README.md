@@ -109,6 +109,39 @@ Error responses use J2Commerce-compatible format:
 }
 ```
 
+## Known Pitfalls
+
+### AJAX context differs from normal Joomla requests
+
+The plugin runs inside `com_ajax` with `format=json`. This affects several Joomla APIs:
+
+| Issue | Detail | Solution |
+|---|---|---|
+| `Route::_()` generates wrong URLs | The SEF router uses the active menu item (`com_ajax`), producing URLs like `/component/j2store/?Itemid=240` | Look up the target menu item via `$menu->getItems()` and call `Route::_('index.php?Itemid=' . $id)` with the explicit Itemid |
+| `$menuItem->route` lacks language prefix | The `route` field contains only the alias path (e.g. `benutzerkonto`), not the language segment (`de/benutzerkonto`) | Always use `Route::_()` with Itemid — never use `$item->route` directly as a URL |
+| `onAfterRoute` only fires for `com_ajax` | Joomla dispatches `onAfterRoute` only to `system` plugins. An `ajax` plugin is not loaded for `com_users` or other component requests | Logic that needs to intercept other components must go into a `system` plugin or a template override |
+
+### MFA redirect flow
+
+After AJAX login with MFA enabled, the plugin redirects the browser to Joomla's captive page. The post-MFA redirect destination is controlled by `com_users.return_url` in the session.
+
+**Chain of responsibility:**
+
+1. **Plugin** (`onAjaxJoomlaajaxforms`) — sets `com_users.return_url` and returns the captive URL with a `?return=` query parameter
+2. **`MultiFactorAuthenticationHandler`** — runs on every request; overwrites the URL only if it is empty or fails `Uri::isInternal()`
+3. **Captive template** — reads the `?return=` query parameter and restores the session value
+4. **`CaptiveController::validate()`** — reads `com_users.return_url` from the session (no POST fallback) and redirects
+
+**Key constraints:**
+
+- `Uri::isInternal()` requires absolute URLs (`https://...`) or URLs starting with `index.php`. Relative SEF URLs like `/de/benutzerkonto` are rejected.
+- The handler does nothing when `isMultiFactorAuthenticationPage()` is true (captive view or `captive.validate` task).
+- `CaptiveController::validate()` reads **only** from the session — it does not check POST parameters.
+
+### Session persistence
+
+Joomla registers `JoomlaStorage::close()` as a PHP shutdown function. Session data written via `$session->set()` is automatically serialized into `$_SESSION['joomla']` when `exit()` is called. An explicit `$session->close()` before `$app->close()` is not necessary.
+
 ## Joomla Compatibility
 
 The plugin avoids all APIs deprecated in Joomla 6:
