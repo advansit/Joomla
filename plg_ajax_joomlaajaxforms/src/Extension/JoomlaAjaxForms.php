@@ -50,36 +50,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      * query parameters. This handler detects our AJAX requests
      * early and responds directly.
      */
-    private function debugLog(string $msg): void
-    {
-        $logFile = JPATH_ADMINISTRATOR . '/logs/mfa_debug.log';
-        $line = date('Y-m-d H:i:s') . ' ' . $msg . "\n";
-        file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
-    }
-
     public function onAfterRoute(): void
     {
         $app = $this->getApplication();
         $input = $app->getInput();
-
-        // Restore the post-MFA return URL from the hidden form field.
-        // CaptiveController::validate() reads com_users.return_url from
-        // the session but does not check POST parameters. We intercept
-        // here (after routing, before component dispatch) to set it.
-        if ($input->getCmd('option') === 'com_users'
-            && $input->getCmd('task') === 'captive.validate'
-        ) {
-            $return = $input->getBase64('return', '');
-            $this->debugLog('CAPTIVE_VALIDATE return_param=' . ($return ?: 'MISSING')
-                . ' session_before=' . $app->getSession()->get('com_users.return_url', '(empty)'));
-            if ($return) {
-                $decoded = base64_decode($return);
-                if (!empty($decoded) && Uri::isInternal($decoded)) {
-                    $app->getSession()->set('com_users.return_url', $decoded);
-                    $this->debugLog('CAPTIVE_VALIDATE restored=' . $decoded);
-                }
-            }
-        }
 
         if ($input->getCmd('option') !== 'com_ajax'
             || $input->getCmd('plugin') !== 'joomlaajaxforms'
@@ -239,26 +213,35 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $session = $this->getApplication()->getSession();
                 $session->set('application.queue', []);
 
-                // Use the form's return URL (the login/profile page) as
-                // post-MFA destination. Route::_() generates broken URLs
-                // in the AJAX context because the SEF router lacks the
-                // correct menu item context.
-                $profileUrl = '';
-                if ($returnUrl) {
-                    $decoded = base64_decode($returnUrl);
-                    if (!empty($decoded)) {
-                        if (strpos($decoded, 'http') !== 0) {
-                            $decoded = rtrim(Uri::base(), '/') . '/' . ltrim($decoded, '/');
-                        }
-                        if (Uri::isInternal($decoded)) {
-                            $profileUrl = $decoded;
-                        }
+                // Find the profile page URL from the menu system.
+                // Route::_() fails in the AJAX context (wrong menu item),
+                // so we look up the menu item for com_j2store myprofile
+                // and build the URL from its SEF route field.
+                $profileUrl = Uri::base();
+                $menu = $this->getApplication()->getMenu();
+                if ($menu) {
+                    $items = $menu->getItems(['component', 'link'], ['com_j2store', 'index.php?option=com_j2store&view=myprofile']);
+                    if (!empty($items)) {
+                        $item = $items[0];
+                        // Use the menu item's route (SEF alias path)
+                        $profileUrl = rtrim(Uri::base(), '/') . '/' . ltrim($item->route, '/');
                     }
                 }
-                if (empty($profileUrl)) {
-                    $profileUrl = $input->server->getString('HTTP_REFERER', Uri::base());
-                }
                 $session->set('com_users.return_url', $profileUrl);
+
+                // Temporary debug log
+                $logFile = JPATH_ADMINISTRATOR . '/logs/mfa_debug.log';
+                $menuInfo = $menu ? 'menu_found' : 'no_menu';
+                if ($menu) {
+                    $items2 = $menu->getItems(['component', 'link'], ['com_j2store', 'index.php?option=com_j2store&view=myprofile']);
+                    $menuInfo .= ' items=' . count($items2);
+                    if (!empty($items2)) {
+                        $menuInfo .= ' id=' . $items2[0]->id . ' route=' . $items2[0]->route . ' path=' . ($items2[0]->path ?? 'n/a');
+                    }
+                }
+                file_put_contents($logFile, date('Y-m-d H:i:s') . ' MFA_LOGIN profileUrl=' . $profileUrl
+                    . ' captiveUrl=' . Route::_('index.php?option=com_users&view=captive&return=' . base64_encode($profileUrl), false)
+                    . ' ' . $menuInfo . "\n", FILE_APPEND | LOCK_EX);
 
                 // Pass return URL as query parameter so the captive template
                 // can restore it (the session value may be overwritten by
@@ -268,11 +251,6 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                     'index.php?option=com_users&view=captive&return=' . base64_encode($profileUrl),
                     false
                 );
-
-                $this->debugLog('MFA_LOGIN returnUrl_raw=' . ($returnUrl ?: '(empty)')
-                    . ' profileUrl=' . $profileUrl
-                    . ' captiveUrl=' . $captiveUrl
-                    . ' session_return_url=' . $session->get('com_users.return_url', '(empty)'));
 
                 return $this->jsonSuccess([
                     'redirect' => $captiveUrl,
