@@ -136,7 +136,7 @@
                     label="PLG_PRIVACY_J2COMMERCE_CONSENT_TEXT_LABEL"
                     description="PLG_PRIVACY_J2COMMERCE_CONSENT_TEXT_DESC"
                     rows="2"
-                    default="I have read and agree to the {privacy_policy}."
+                    default=""
                 />
             </fieldset>
 
