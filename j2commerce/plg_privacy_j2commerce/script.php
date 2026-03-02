@@ -21,6 +21,12 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
+            // Remove old manifest filename (renamed to j2commerce.xml in 1.2.8)
+            $oldManifest = JPATH_PLUGINS . '/privacy/j2commerce/plg_privacy_j2commerce.xml';
+            if (file_exists($oldManifest)) {
+                @unlink($oldManifest);
+            }
+
             $this->ensureUpdateSite();
 
             $app = Factory::getApplication();
