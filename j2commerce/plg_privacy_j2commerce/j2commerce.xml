@@ -94,7 +94,7 @@
             </fieldset>
 
             <!-- Checkout Consent Settings -->
-            <fieldset name="checkout" label="PLG_PRIVACY_J2COMMERCE_FIELDSET_CHECKOUT">
+            <fieldset name="checkout" label="PLG_PRIVACY_J2COMMERCE_FIELDSET_CHECKOUT" addfieldprefix="Joomla\Component\Content\Administrator\Field">
                 <field
                     name="show_consent_checkbox"
                     type="radio"
