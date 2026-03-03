@@ -39,7 +39,7 @@ class UninstallTest
             ->select('extension_id')
             ->from($this->db->quoteName('#__extensions'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'));
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('privacy'));
         
         $this->db->setQuery($query);
         $extensionId = $this->db->loadResult();

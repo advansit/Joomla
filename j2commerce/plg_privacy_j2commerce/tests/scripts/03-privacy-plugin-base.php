@@ -38,7 +38,7 @@ class PrivacyPluginBaseTest
             ->select('extension_id, params')
             ->from($this->db->quoteName('#__extensions'))
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'));
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('privacy'));
         
         $this->db->setQuery($query);
         $plugin = $this->db->loadObject();
@@ -64,11 +64,11 @@ class PrivacyPluginBaseTest
         }
         
         $this->test('Plugin class exists', 
-            class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce'));
+            class_exists('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce'));
         
         // Test 3: Plugin implements required methods
-        if (class_exists('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce')) {
-            $reflection = new \ReflectionClass('Advans\\Plugin\\System\\J2Commerce\\Extension\\J2Commerce');
+        if (class_exists('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce')) {
+            $reflection = new \ReflectionClass('Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce');
             
             // Core privacy methods
             $this->test('onPrivacyExportRequest method exists', 
