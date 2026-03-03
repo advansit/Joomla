@@ -85,13 +85,70 @@ Organizations with subscription-based business models should contact Advans IT S
 
 The plugin requires mandatory configuration before operation. A detailed setup wizard is displayed upon installation. The following steps must be completed:
 
-1. Create J2Store Custom Field for license type identification
-2. Configure product-level license classifications
-3. Enable the plugin in Joomla's plugin manager
-4. Configure retention periods and legal compliance parameters
+1. Enable the plugin in Joomla's plugin manager
+2. Configure retention periods and legal compliance parameters
+3. **Create a hidden menu item for Privacy Requests** (see below)
+4. Create J2Store Custom Field for license type identification (optional, for lifetime licenses)
 5. Establish automated cleanup scheduling
 
 Note: Failure to complete the Custom Field configuration will result in incorrect license type detection and potential data retention violations.
+
+### Required: Privacy Request Menu Item
+
+Joomla's `com_privacy` component requires a frontend menu item to generate valid SEF URLs. Without it, privacy request links in the user profile redirect to the home page.
+
+**Create the menu item:**
+
+1. Navigate to **Menus → Main Menu → New**
+2. Set **Menu Item Type** to **Privacy → Create Request**
+3. Set **Title** to e.g. "Datenschutzanfrage" / "Privacy Request"
+4. Set **Access** to **Registered**
+5. Set **Status** to **Published**
+6. Under **Link Type**, set **Display in Menu** to **No** (hidden menu item)
+7. Save
+
+This menu item is required for the "Data Export" and "Data Deletion" buttons in the J2Commerce profile privacy tab to work for logged-in users. Guest users see mailto links instead (see below).
+
+---
+
+## Checkout and Profile Behavior
+
+### Checkout Consent Checkbox
+
+The plugin adds a privacy consent checkbox to the J2Commerce checkout (step 4: Shipping & Payment). The checkbox is rendered in the template override `default_shipping_payment.php`, not by the plugin directly (privacy plugins cannot hook into `onAfterRender`).
+
+**Validation:** Client-side JavaScript validates both the AGB/TOS checkbox (J2Store built-in) and the privacy consent checkbox together. If either is unchecked, both error messages are shown simultaneously. The validation uses capturing-phase event listeners that run before J2Store's jQuery handler.
+
+**Error containers** use class `j2-validation-error` (not `j2error`) so that J2Store's global `$('.j2error').remove()` in the AJAX success handler does not destroy them.
+
+### Consent Recording
+
+| User Type | When | Where | Identifier |
+|-----------|------|-------|------------|
+| Logged-in | Checkout confirm step | `#__privacy_consents` | `user_id` |
+| Guest | First profile view after checkout | `#__privacy_consents` | `user_id=0`, email in `body` field |
+
+**Logged-in users:** Consent is written to `#__privacy_consents` when the user reaches the checkout confirm step (step 5). The plugin params are read directly from `#__extensions` because the privacy plugin group is not imported during checkout AJAX requests.
+
+**Guest users:** At checkout, `Factory::getApplication()->getIdentity()` returns `user_id=0`. The consent entry is created retroactively when the guest views the profile privacy tab (accessed via order token). The guest email is read from the J2Store session (`guest_order_email`), and orders are matched by email address.
+
+### Profile Privacy Tab
+
+The privacy tab in J2Commerce's "My Profile" shows consent status and privacy request buttons.
+
+**Consent status lookup** checks three sources in order:
+1. `#__privacy_consents` table (by `user_id` for logged-in, not available for guests)
+2. `#__j2store_orders` by `user_id` (logged-in users)
+3. `#__j2store_orders` by `user_email` (guest users, email from J2Store session)
+
+If an order is found but no `#__privacy_consents` entry exists, one is auto-created.
+
+**Privacy request buttons** (Data Export, Data Deletion):
+
+| User Type | Button Behavior |
+|-----------|----------------|
+| Logged-in | Links to `com_privacy` request form (requires menu item, see above) |
+| Guest | `mailto:` link to site admin email (guests cannot use `com_privacy` — Joomla's Dispatcher redirects them to login) |
 
 ---
 
