@@ -38,7 +38,7 @@ class InstallationTest
             ->select('extension_id, enabled')
             ->from('#__extensions')
             ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerce'))
-            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('system'));
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('privacy'));
         
         $this->db->setQuery($query);
         $plugin = $this->db->loadObject();
