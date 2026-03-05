@@ -218,14 +218,14 @@ class AutoCleanupTask implements SubscriberInterface
         
         if ($this->params->get('anonymize_orders', 1)) {
             // Anonymize orders table (keep user_email for license activation)
+            $safeUserId = (int) $userId;
             $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orders'))
                 ->set([
                     $db->quoteName('customer_note') . ' = ' . $db->quote(''),
                     $db->quoteName('ip_address') . ' = ' . $db->quote(''),
                 ])
-                ->where($db->quoteName('user_id') . ' = :userid')
-                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
             
             $db->setQuery($query);
             $db->execute();
@@ -234,8 +234,7 @@ class AutoCleanupTask implements SubscriberInterface
             $subQuery = $this->createDbQuery()
                 ->select($db->quoteName('order_id'))
                 ->from($db->quoteName('#__j2store_orders'))
-                ->where($db->quoteName('user_id') . ' = :userid2')
-                ->bind(':userid2', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
 
             $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orderinfos'))
@@ -269,8 +268,7 @@ class AutoCleanupTask implements SubscriberInterface
         if ($this->params->get('delete_addresses', 1)) {
             $query = $this->createDbQuery()
                 ->delete($db->quoteName('#__j2store_addresses'))
-                ->where($db->quoteName('user_id') . ' = :userid')
-                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('user_id') . ' = ' . (int) $userId);
             
             $db->setQuery($query);
             $db->execute();
@@ -292,6 +290,7 @@ class AutoCleanupTask implements SubscriberInterface
         
         if ($this->params->get('anonymize_orders', 1)) {
             // Anonymize orders table (user_email, customer_note, ip_address)
+            $safeUserId = (int) $userId;
             $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orders'))
                 ->set([
@@ -299,8 +298,7 @@ class AutoCleanupTask implements SubscriberInterface
                     $db->quoteName('customer_note') . ' = ' . $db->quote(''),
                     $db->quoteName('ip_address') . ' = ' . $db->quote(''),
                 ])
-                ->where($db->quoteName('user_id') . ' = :userid')
-                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
             
             $db->setQuery($query);
             $db->execute();
@@ -309,8 +307,7 @@ class AutoCleanupTask implements SubscriberInterface
             $subQuery = $this->createDbQuery()
                 ->select($db->quoteName('order_id'))
                 ->from($db->quoteName('#__j2store_orders'))
-                ->where($db->quoteName('user_id') . ' = :userid2')
-                ->bind(':userid2', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
 
             $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orderinfos'))
@@ -344,8 +341,7 @@ class AutoCleanupTask implements SubscriberInterface
         if ($this->params->get('delete_addresses', 1)) {
             $query = $this->createDbQuery()
                 ->delete($db->quoteName('#__j2store_addresses'))
-                ->where($db->quoteName('user_id') . ' = :userid')
-                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('user_id') . ' = ' . (int) $userId);
             
             $db->setQuery($query);
             $db->execute();

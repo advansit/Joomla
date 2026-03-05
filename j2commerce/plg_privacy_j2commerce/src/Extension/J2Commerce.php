@@ -581,6 +581,8 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$retentionYears} years"));
 
         // Anonymize personal data in orders table (user_email, customer_note, ip_address)
+        $safeUserId = (int) $userId;
+        $safeCutoff = $db->quote($cutoffDate);
         $query = $this->createDbQuery()
             ->update($db->quoteName('#__j2store_orders'))
             ->set([
@@ -588,10 +590,8 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 $db->quoteName('customer_note') . ' = ' . $db->quote(''),
                 $db->quoteName('ip_address') . ' = ' . $db->quote(''),
             ])
-            ->where($db->quoteName('user_id') . ' = :userid')
-            ->where($db->quoteName('created_on') . ' < :cutoff')
-            ->bind(':userid', $userId, ParameterType::INTEGER)
-            ->bind(':cutoff', $cutoffDate, ParameterType::STRING);
+            ->where($db->quoteName('user_id') . ' = ' . $safeUserId)
+            ->where($db->quoteName('created_on') . ' < ' . $safeCutoff);
 
         $db->setQuery($query);
         $db->execute();
@@ -600,10 +600,8 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $subQuery = $this->createDbQuery()
             ->select($db->quoteName('order_id'))
             ->from($db->quoteName('#__j2store_orders'))
-            ->where($db->quoteName('user_id') . ' = :userid2')
-            ->where($db->quoteName('created_on') . ' < :cutoff2')
-            ->bind(':userid2', $userId, ParameterType::INTEGER)
-            ->bind(':cutoff2', $cutoffDate, ParameterType::STRING);
+            ->where($db->quoteName('user_id') . ' = ' . $safeUserId)
+            ->where($db->quoteName('created_on') . ' < ' . $safeCutoff);
 
         $query = $this->createDbQuery()
             ->update($db->quoteName('#__j2store_orderinfos'))
@@ -639,8 +637,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
 
         $query = $this->createDbQuery()
             ->delete($db->quoteName('#__j2store_addresses'))
-            ->where($db->quoteName('user_id') . ' = :userid')
-            ->bind(':userid', $userId, ParameterType::INTEGER);
+            ->where($db->quoteName('user_id') . ' = ' . (int) $userId);
 
         $db->setQuery($query);
         $db->execute();
