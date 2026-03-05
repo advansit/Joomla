@@ -158,9 +158,11 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $db = $this->getDatabase();
 
         $query = $this->createDbQuery()
-            ->select(['o.*', 'oi.orderitem_name', 'oi.orderitem_sku', 'oi.orderitem_quantity', 'oi.orderitem_price', 'oi.orderitem_final_price'])
+            ->select(['o.*', 'oi.orderitem_name', 'oi.orderitem_sku', 'oi.orderitem_quantity', 'oi.orderitem_price', 'oi.orderitem_finalprice',
+                'inf.billing_first_name', 'inf.billing_last_name', 'inf.billing_email'])
             ->from($db->quoteName('#__j2store_orders', 'o'))
             ->leftJoin($db->quoteName('#__j2store_orderitems', 'oi') . ' ON o.j2store_order_id = oi.order_id')
+            ->leftJoin($db->quoteName('#__j2store_orderinfos', 'inf') . ' ON o.order_id = inf.order_id')
             ->where($db->quoteName('o.user_id') . ' = :userid')
             ->bind(':userid', $user->id, ParameterType::INTEGER);
 
@@ -188,7 +190,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                     'name' => $row['orderitem_name'],
                     'sku' => $row['orderitem_sku'],
                     'quantity' => $row['orderitem_quantity'],
-                    'price' => $row['orderitem_final_price']
+                    'price' => $row['orderitem_finalprice']
                 ];
             }
         }
@@ -434,7 +436,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $db = $this->getDatabase();
 
         $query = $this->createDbQuery()
-            ->select(['o.j2store_order_id', 'o.order_number', 'o.created_on', 'o.order_total', 'o.currency_code', 'oi.product_id'])
+            ->select(['o.j2store_order_id', 'o.order_id AS order_number', 'o.created_on', 'o.order_total', 'o.currency_code', 'oi.product_id'])
             ->from($db->quoteName('#__j2store_orders', 'o'))
             ->leftJoin($db->quoteName('#__j2store_orderitems', 'oi') . ' ON o.j2store_order_id = oi.order_id')
             ->where($db->quoteName('o.user_id') . ' = :userid')
