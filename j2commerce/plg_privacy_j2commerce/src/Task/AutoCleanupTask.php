@@ -162,14 +162,21 @@ class AutoCleanupTask implements SubscriberInterface
     protected function hasLifetimeLicense(int $userId): bool
     {
         $db = $this->getDatabase();
-        
+
+        // product_customfields is an optional table created manually (see post-install step 3)
+        $tables = $db->getTableList();
+        $prefix = $db->getPrefix();
+        if (!in_array($prefix . 'j2store_product_customfields', $tables)) {
+            return false;
+        }
+
         // Get all product IDs from user's orders
         $query = $this->createDbQuery()
             ->select('DISTINCT oi.product_id')
             ->from($db->quoteName('#__j2store_orders', 'o'))
             ->leftJoin(
                 $db->quoteName('#__j2store_orderitems', 'oi') . 
-                ' ON ' . $db->quoteName('o.j2store_order_id') . ' = ' . $db->quoteName('oi.order_id')
+                ' ON ' . $db->quoteName('o.order_id') . ' = ' . $db->quoteName('oi.order_id')
             )
             ->where($db->quoteName('o.user_id') . ' = :userid')
             ->where($db->quoteName('oi.product_id') . ' IS NOT NULL')
@@ -209,32 +216,50 @@ class AutoCleanupTask implements SubscriberInterface
     {
         $db = $this->getDatabase();
         
-        // Anonymize orders but KEEP email for license activation
         if ($this->params->get('anonymize_orders', 1)) {
+            // Anonymize orders table (keep user_email for license activation)
             $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orders'))
                 ->set([
-                    // Keep billing_email for license activation
+                    $db->quoteName('customer_note') . ' = ' . $db->quote(''),
+                    $db->quoteName('ip_address') . ' = ' . $db->quote(''),
+                ])
+                ->where($db->quoteName('user_id') . ' = :userid')
+                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+            
+            $db->setQuery($query);
+            $db->execute();
+
+            // Anonymize billing/shipping in orderinfos (keep no email here)
+            $subQuery = $this->createDbQuery()
+                ->select($db->quoteName('order_id'))
+                ->from($db->quoteName('#__j2store_orders'))
+                ->where($db->quoteName('user_id') . ' = :userid2')
+                ->bind(':userid2', $userId, \Joomla\Database\ParameterType::INTEGER);
+
+            $query = $this->createDbQuery()
+                ->update($db->quoteName('#__j2store_orderinfos'))
+                ->set([
                     $db->quoteName('billing_first_name') . ' = ' . $db->quote('Anonymized'),
                     $db->quoteName('billing_last_name') . ' = ' . $db->quote('User'),
-                    $db->quoteName('billing_phone_1') . ' = ' . $db->quote('000-000-0000'),
+                    $db->quoteName('billing_phone_1') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_phone_2') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_address_1') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_address_2') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_city') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_zip') . ' = ' . $db->quote(''),
-                    $db->quoteName('shipping_email') . ' = ' . $db->quote(''),
+                    $db->quoteName('billing_company') . ' = ' . $db->quote(''),
+                    $db->quoteName('billing_tax_number') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_first_name') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_last_name') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_phone_1') . ' = ' . $db->quote(''),
-                    $db->quoteName('shipping_phone_2') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_address_1') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_address_2') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_city') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_zip') . ' = ' . $db->quote(''),
+                    $db->quoteName('shipping_company') . ' = ' . $db->quote(''),
                 ])
-                ->where($db->quoteName('user_id') . ' = :userid')
-                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('order_id') . ' IN (' . $subQuery . ')');
             
             $db->setQuery($query);
             $db->execute();
@@ -265,32 +290,51 @@ class AutoCleanupTask implements SubscriberInterface
     {
         $db = $this->getDatabase();
         
-        // Anonymize orders
         if ($this->params->get('anonymize_orders', 1)) {
+            // Anonymize orders table (user_email, customer_note, ip_address)
             $query = $this->createDbQuery()
                 ->update($db->quoteName('#__j2store_orders'))
                 ->set([
-                    $db->quoteName('billing_email') . ' = ' . $db->quote('anonymized@example.com'),
+                    $db->quoteName('user_email') . ' = ' . $db->quote('anonymized@example.com'),
+                    $db->quoteName('customer_note') . ' = ' . $db->quote(''),
+                    $db->quoteName('ip_address') . ' = ' . $db->quote(''),
+                ])
+                ->where($db->quoteName('user_id') . ' = :userid')
+                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+            
+            $db->setQuery($query);
+            $db->execute();
+
+            // Anonymize billing/shipping in orderinfos
+            $subQuery = $this->createDbQuery()
+                ->select($db->quoteName('order_id'))
+                ->from($db->quoteName('#__j2store_orders'))
+                ->where($db->quoteName('user_id') . ' = :userid2')
+                ->bind(':userid2', $userId, \Joomla\Database\ParameterType::INTEGER);
+
+            $query = $this->createDbQuery()
+                ->update($db->quoteName('#__j2store_orderinfos'))
+                ->set([
                     $db->quoteName('billing_first_name') . ' = ' . $db->quote('Anonymized'),
                     $db->quoteName('billing_last_name') . ' = ' . $db->quote('User'),
-                    $db->quoteName('billing_phone_1') . ' = ' . $db->quote('000-000-0000'),
+                    $db->quoteName('billing_phone_1') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_phone_2') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_address_1') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_address_2') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_city') . ' = ' . $db->quote(''),
                     $db->quoteName('billing_zip') . ' = ' . $db->quote(''),
-                    $db->quoteName('shipping_email') . ' = ' . $db->quote('anonymized@example.com'),
-                    $db->quoteName('shipping_first_name') . ' = ' . $db->quote('Anonymized'),
-                    $db->quoteName('shipping_last_name') . ' = ' . $db->quote('User'),
-                    $db->quoteName('shipping_phone_1') . ' = ' . $db->quote('000-000-0000'),
-                    $db->quoteName('shipping_phone_2') . ' = ' . $db->quote(''),
+                    $db->quoteName('billing_company') . ' = ' . $db->quote(''),
+                    $db->quoteName('billing_tax_number') . ' = ' . $db->quote(''),
+                    $db->quoteName('shipping_first_name') . ' = ' . $db->quote(''),
+                    $db->quoteName('shipping_last_name') . ' = ' . $db->quote(''),
+                    $db->quoteName('shipping_phone_1') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_address_1') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_address_2') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_city') . ' = ' . $db->quote(''),
                     $db->quoteName('shipping_zip') . ' = ' . $db->quote(''),
+                    $db->quoteName('shipping_company') . ' = ' . $db->quote(''),
                 ])
-                ->where($db->quoteName('user_id') . ' = :userid')
-                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+                ->where($db->quoteName('order_id') . ' IN (' . $subQuery . ')');
             
             $db->setQuery($query);
             $db->execute();
