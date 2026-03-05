@@ -75,7 +75,9 @@ jobs:
         run: |
           cd j2commerce/plg_privacy_j2commerce/tests
           docker compose up -d
-          sleep 90
+          echo "Waiting for container to be ready..."
+          timeout 300 bash -c 'until docker exec plg_privacy_j2commerce_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+          echo "Container ready"
       - name: Show container logs
         if: always()
         run: |

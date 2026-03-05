@@ -119,24 +119,22 @@ class PrivacyPluginBaseTest
             }
         }
         
-        // Test 5: Required J2Commerce database tables exist
+        // Test 5: Required J2Commerce database tables exist (real installation)
         $tables = $this->db->getTableList();
         $prefix = $this->db->getPrefix();
         
-        $hasOrders = in_array($prefix . 'j2store_orders', $tables);
-        $hasAddresses = in_array($prefix . 'j2store_addresses', $tables);
-        $hasItems = in_array($prefix . 'j2store_orderitems', $tables);
-        $hasCarts = in_array($prefix . 'j2store_carts', $tables);
-        $hasCartItems = in_array($prefix . 'j2store_cartitems', $tables);
-        $hasCustomFields = in_array($prefix . 'j2store_product_customfields', $tables);
-        
-        // These tables should exist from mock-tables.sql
-        $this->test('J2Commerce orders table exists', $hasOrders);
-        $this->test('J2Commerce addresses table exists', $hasAddresses);
-        $this->test('J2Commerce order items table exists', $hasItems);
-        $this->test('J2Commerce carts table exists', $hasCarts);
-        $this->test('J2Commerce cart items table exists', $hasCartItems);
-        $this->test('J2Commerce custom fields table exists', $hasCustomFields);
+        $this->test('J2Commerce orders table exists',
+            in_array($prefix . 'j2store_orders', $tables));
+        $this->test('J2Commerce order infos table exists',
+            in_array($prefix . 'j2store_orderinfos', $tables));
+        $this->test('J2Commerce addresses table exists',
+            in_array($prefix . 'j2store_addresses', $tables));
+        $this->test('J2Commerce order items table exists',
+            in_array($prefix . 'j2store_orderitems', $tables));
+        $this->test('J2Commerce carts table exists',
+            in_array($prefix . 'j2store_carts', $tables));
+        $this->test('J2Commerce cart items table exists',
+            in_array($prefix . 'j2store_cartitems', $tables));
         
         echo "\n=== Privacy Plugin Base Test Summary ===\n";
         echo "Passed: {$this->passed}\n";

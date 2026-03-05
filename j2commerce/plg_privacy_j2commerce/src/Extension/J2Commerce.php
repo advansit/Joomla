@@ -159,9 +159,9 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
 
         $query = $this->createDbQuery()
             ->select(['o.*', 'oi.orderitem_name', 'oi.orderitem_sku', 'oi.orderitem_quantity', 'oi.orderitem_price', 'oi.orderitem_finalprice',
-                'inf.billing_first_name', 'inf.billing_last_name', 'inf.billing_email'])
+                'inf.billing_first_name', 'inf.billing_last_name'])
             ->from($db->quoteName('#__j2store_orders', 'o'))
-            ->leftJoin($db->quoteName('#__j2store_orderitems', 'oi') . ' ON o.j2store_order_id = oi.order_id')
+            ->leftJoin($db->quoteName('#__j2store_orderitems', 'oi') . ' ON o.order_id = oi.order_id')
             ->leftJoin($db->quoteName('#__j2store_orderinfos', 'inf') . ' ON o.order_id = inf.order_id')
             ->where($db->quoteName('o.user_id') . ' = :userid')
             ->bind(':userid', $user->id, ParameterType::INTEGER);
@@ -181,7 +181,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                     'created_on' => $row['created_on'],
                     'billing_first_name' => $row['billing_first_name'],
                     'billing_last_name' => $row['billing_last_name'],
-                    'billing_email' => $row['billing_email'],
+                    'user_email' => $row['user_email'],
                     'items' => []
                 ];
             }
@@ -438,7 +438,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $query = $this->createDbQuery()
             ->select(['o.j2store_order_id', 'o.order_id AS order_number', 'o.created_on', 'o.order_total', 'o.currency_code', 'oi.product_id'])
             ->from($db->quoteName('#__j2store_orders', 'o'))
-            ->leftJoin($db->quoteName('#__j2store_orderitems', 'oi') . ' ON o.j2store_order_id = oi.order_id')
+            ->leftJoin($db->quoteName('#__j2store_orderitems', 'oi') . ' ON o.order_id = oi.order_id')
             ->where($db->quoteName('o.user_id') . ' = :userid')
             ->bind(':userid', $userId, ParameterType::INTEGER);
 
@@ -572,29 +572,54 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         // Calculate cutoff date - only anonymize orders OLDER than retention period
         $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$retentionYears} years"));
 
+        // Anonymize personal data in orders table (user_email, customer_note, ip_address)
         $query = $this->createDbQuery()
             ->update($db->quoteName('#__j2store_orders'))
             ->set([
+                $db->quoteName('user_email') . ' = ' . $db->quote('anonymized@example.com'),
+                $db->quoteName('customer_note') . ' = ' . $db->quote(''),
+                $db->quoteName('ip_address') . ' = ' . $db->quote(''),
+            ])
+            ->where($db->quoteName('user_id') . ' = :userid')
+            ->where($db->quoteName('created_on') . ' < :cutoff')
+            ->bind(':userid', $userId, ParameterType::INTEGER)
+            ->bind(':cutoff', $cutoffDate, ParameterType::STRING);
+
+        $db->setQuery($query);
+        $db->execute();
+
+        // Anonymize billing/shipping data in orderinfos (joined via order_id)
+        $subQuery = $this->createDbQuery()
+            ->select($db->quoteName('order_id'))
+            ->from($db->quoteName('#__j2store_orders'))
+            ->where($db->quoteName('user_id') . ' = :userid2')
+            ->where($db->quoteName('created_on') . ' < :cutoff2')
+            ->bind(':userid2', $userId, ParameterType::INTEGER)
+            ->bind(':cutoff2', $cutoffDate, ParameterType::STRING);
+
+        $query = $this->createDbQuery()
+            ->update($db->quoteName('#__j2store_orderinfos'))
+            ->set([
                 $db->quoteName('billing_first_name') . ' = ' . $db->quote('Anonymized'),
                 $db->quoteName('billing_last_name') . ' = ' . $db->quote('User'),
-                $db->quoteName('billing_email') . ' = ' . $db->quote('anonymized@example.com'),
                 $db->quoteName('billing_phone_1') . ' = ' . $db->quote(''),
                 $db->quoteName('billing_phone_2') . ' = ' . $db->quote(''),
                 $db->quoteName('billing_address_1') . ' = ' . $db->quote(''),
                 $db->quoteName('billing_address_2') . ' = ' . $db->quote(''),
                 $db->quoteName('billing_city') . ' = ' . $db->quote(''),
                 $db->quoteName('billing_zip') . ' = ' . $db->quote(''),
+                $db->quoteName('billing_company') . ' = ' . $db->quote(''),
+                $db->quoteName('billing_tax_number') . ' = ' . $db->quote(''),
                 $db->quoteName('shipping_first_name') . ' = ' . $db->quote(''),
                 $db->quoteName('shipping_last_name') . ' = ' . $db->quote(''),
                 $db->quoteName('shipping_phone_1') . ' = ' . $db->quote(''),
                 $db->quoteName('shipping_address_1') . ' = ' . $db->quote(''),
+                $db->quoteName('shipping_address_2') . ' = ' . $db->quote(''),
                 $db->quoteName('shipping_city') . ' = ' . $db->quote(''),
                 $db->quoteName('shipping_zip') . ' = ' . $db->quote(''),
+                $db->quoteName('shipping_company') . ' = ' . $db->quote(''),
             ])
-            ->where($db->quoteName('user_id') . ' = :userid')
-            ->where($db->quoteName('created_on') . ' < :cutoff')
-            ->bind(':userid', $userId, ParameterType::INTEGER)
-            ->bind(':cutoff', $cutoffDate, ParameterType::STRING);
+            ->where($db->quoteName('order_id') . ' IN (' . $subQuery . ')');
 
         $db->setQuery($query);
         $db->execute();
