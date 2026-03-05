@@ -510,6 +510,14 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         }
 
         $db = $this->getDatabase();
+
+        // product_customfields is an optional table created manually (see post-install step 3)
+        $tables = $db->getTableList();
+        $prefix = $db->getPrefix();
+        if (!in_array($prefix . 'j2store_product_customfields', $tables)) {
+            return false;
+        }
+
         $query = $this->createDbQuery()
             ->select($db->quoteName('field_value'))
             ->from($db->quoteName('#__j2store_product_customfields'))

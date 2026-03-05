@@ -162,7 +162,14 @@ class AutoCleanupTask implements SubscriberInterface
     protected function hasLifetimeLicense(int $userId): bool
     {
         $db = $this->getDatabase();
-        
+
+        // product_customfields is an optional table created manually (see post-install step 3)
+        $tables = $db->getTableList();
+        $prefix = $db->getPrefix();
+        if (!in_array($prefix . 'j2store_product_customfields', $tables)) {
+            return false;
+        }
+
         // Get all product IDs from user's orders
         $query = $this->createDbQuery()
             ->select('DISTINCT oi.product_id')
