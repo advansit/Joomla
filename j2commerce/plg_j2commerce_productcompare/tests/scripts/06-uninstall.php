@@ -32,7 +32,7 @@ class UninstallTest
         $query = $this->db->getQuery(true)
             ->select($this->db->quoteName('extension_id'))
             ->from($this->db->quoteName('#__extensions'))
-            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('plg_j2commerce_productcompare'))
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'))
             ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'));
         $this->db->setQuery($query);
         $extensionId = (int) $this->db->loadResult();
@@ -56,13 +56,13 @@ class UninstallTest
             $query = $this->db->getQuery(true)
                 ->select('COUNT(*)')
                 ->from($this->db->quoteName('#__extensions'))
-                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('plg_j2commerce_productcompare'));
+                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'));
             $this->db->setQuery($query);
             return (int) $this->db->loadResult() === 0;
         });
 
         $this->test('Plugin files removed', function () {
-            return !file_exists(JPATH_PLUGINS . '/j2commerce/plg_j2commerce_productcompare/src/Extension/ProductCompare.php');
+            return !file_exists(JPATH_PLUGINS . '/j2store/productcompare/src/Extension/ProductCompare.php');
         });
 
         echo "\n=== Uninstall Test Summary ===\n";

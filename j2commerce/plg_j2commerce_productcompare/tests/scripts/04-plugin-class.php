@@ -12,7 +12,7 @@ class PluginClassTest
 
     public function __construct()
     {
-        $this->classFile = '/var/www/html/plugins/j2commerce/plg_j2commerce_productcompare/src/Extension/ProductCompare.php';
+        $this->classFile = '/var/www/html/plugins/j2store/productcompare/src/Extension/ProductCompare.php';
     }
 
     public function run(): bool

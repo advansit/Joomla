@@ -30,8 +30,9 @@ class InstallationTest
             $query = $this->db->getQuery(true)
                 ->select('COUNT(*)')
                 ->from($this->db->quoteName('#__extensions'))
-                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('plg_j2commerce_productcompare'))
-                ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'));
+                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'))
+                ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
+                ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('j2store'));
             $this->db->setQuery($query);
             return (int) $this->db->loadResult() === 1;
         });
@@ -40,27 +41,28 @@ class InstallationTest
             $query = $this->db->getQuery(true)
                 ->select($this->db->quoteName('enabled'))
                 ->from($this->db->quoteName('#__extensions'))
-                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('plg_j2commerce_productcompare'))
-                ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'));
+                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'))
+                ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
+                ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('j2store'));
             $this->db->setQuery($query);
             return (int) $this->db->loadResult() === 1;
         });
 
-        $this->test('Plugin folder is j2commerce', function () {
+        $this->test('Plugin folder is j2store', function () {
             $query = $this->db->getQuery(true)
                 ->select($this->db->quoteName('folder'))
                 ->from($this->db->quoteName('#__extensions'))
-                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('plg_j2commerce_productcompare'));
+                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'));
             $this->db->setQuery($query);
-            return $this->db->loadResult() === 'j2commerce';
+            return $this->db->loadResult() === 'j2store';
         });
 
         $this->test('Plugin class file deployed', function () {
-            return file_exists(JPATH_PLUGINS . '/j2commerce/plg_j2commerce_productcompare/src/Extension/ProductCompare.php');
+            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/src/Extension/ProductCompare.php');
         });
 
         $this->test('Services provider deployed', function () {
-            return file_exists(JPATH_PLUGINS . '/j2commerce/plg_j2commerce_productcompare/services/provider.php');
+            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/services/provider.php');
         });
 
         echo "\n=== Installation Test Summary ===\n";

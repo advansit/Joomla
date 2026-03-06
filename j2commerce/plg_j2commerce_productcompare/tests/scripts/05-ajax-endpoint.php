@@ -15,7 +15,7 @@ class AjaxEndpointTest
         echo "=== AJAX Endpoint Tests ===\n\n";
 
         $this->test('AJAX endpoint responds (com_ajax)', function () {
-            $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json';
+            $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json';
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -30,7 +30,7 @@ class AjaxEndpointTest
         });
 
         $this->test('AJAX endpoint returns JSON', function () {
-            $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json';
+            $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json';
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -45,7 +45,7 @@ class AjaxEndpointTest
         });
 
         $this->test('AJAX with action=compare returns response', function () {
-            $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json&action=compare&product_ids=1,2';
+            $url = $this->baseUrl . '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json&action=compare&product_ids=1,2';
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,

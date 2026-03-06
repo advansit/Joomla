@@ -40,15 +40,15 @@ class ConfigurationTest
         });
 
         $this->test('Language file en-GB exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2commerce/plg_j2commerce_productcompare/language/en-GB/plg_j2commerce_productcompare.ini');
+            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/language/en-GB/plg_j2store_productcompare.ini');
         });
 
-        $this->test('Language file de-DE exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2commerce/plg_j2commerce_productcompare/language/de-DE/plg_j2commerce_productcompare.ini');
+        $this->test('Language file de-CH exists', function () {
+            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/language/de-CH/plg_j2store_productcompare.ini');
         });
 
         $this->test('XML manifest exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2commerce/plg_j2commerce_productcompare/plg_j2commerce_productcompare.xml');
+            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/productcompare.xml');
         });
 
         echo "\n=== Configuration Test Summary ===\n";
@@ -61,7 +61,7 @@ class ConfigurationTest
         $query = $this->db->getQuery(true)
             ->select($this->db->quoteName('params'))
             ->from($this->db->quoteName('#__extensions'))
-            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('plg_j2commerce_productcompare'))
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'))
             ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'));
         $this->db->setQuery($query);
         return new Registry($this->db->loadResult() ?: '{}');
