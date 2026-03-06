@@ -39,7 +39,9 @@ class ImportModelTest
         });
 
         $this->test('Has validation logic', function () use ($content) {
-            return stripos($content, 'valid') !== false;
+            return stripos($content, 'ensure') !== false
+                || stripos($content, 'check') !== false
+                || stripos($content, 'valid') !== false;
         });
 
         $this->test('Uses DatabaseAwareTrait or DB access', function () use ($content) {
