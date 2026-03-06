@@ -1,25 +1,66 @@
 <?php
-define('_JEXEC', 1);
-define('JPATH_BASE', '/var/www/html');
-require_once JPATH_BASE . '/includes/defines.php';
-// Set CLI environment for Joomla URI
-$_SERVER['HTTP_HOST'] = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
-require_once JPATH_BASE . '/includes/framework.php';
-use Joomla\CMS\Factory;
+/**
+ * Installation Tests for J2Store Cleanup Component
+ */
 
 class InstallationTest
 {
     private $db;
-    public function __construct() { $this->db = Factory::getDbo(); }
-    
+    private $passed = 0;
+    private $failed = 0;
+    private $dbPrefix;
+
+    public function __construct()
+    {
+        require '/var/www/html/configuration.php';
+        $config = new JConfig();
+        $this->dbPrefix = $config->dbprefix;
+        $this->db = new mysqli($config->host, $config->user, $config->password, $config->db);
+    }
+
     public function run(): bool
     {
         echo "=== Installation Tests ===\n\n";
-        echo "Test: Basic check... PASS\n";
+
+        $this->test('Component registered in extensions table', function () {
+            $result = $this->db->query("SELECT extension_id FROM {$this->dbPrefix}extensions WHERE element = 'com_j2store_cleanup' AND type = 'component'");
+            return $result && $result->num_rows > 0;
+        });
+
+        $this->test('Component is enabled', function () {
+            $result = $this->db->query("SELECT enabled FROM {$this->dbPrefix}extensions WHERE element = 'com_j2store_cleanup'");
+            $row = $result ? $result->fetch_assoc() : null;
+            return $row && $row['enabled'] == 1;
+        });
+
+        $this->test('Admin menu entry exists', function () {
+            $result = $this->db->query("SELECT id FROM {$this->dbPrefix}menu WHERE link LIKE '%com_j2store_cleanup%' AND client_id = 1");
+            return $result && $result->num_rows > 0;
+        });
+
+        $this->test('Main component file exists', function () {
+            return file_exists('/var/www/html/administrator/components/com_j2store_cleanup/j2store_cleanup.php');
+        });
+
+        $this->test('Language file en-GB exists', function () {
+            return file_exists('/var/www/html/administrator/language/en-GB/com_j2store_cleanup.ini')
+                || file_exists('/var/www/html/administrator/components/com_j2store_cleanup/language/en-GB/com_j2store_cleanup.ini');
+        });
+
         echo "\n=== Installation Test Summary ===\n";
-        echo "All tests completed.\n";
-        return true;
+        echo "Passed: {$this->passed}, Failed: {$this->failed}\n";
+        return $this->failed === 0;
+    }
+
+    private function test(string $name, callable $fn): void
+    {
+        try {
+            if ($fn()) { echo "✓ {$name}\n"; $this->passed++; }
+            else { echo "✗ {$name}\n"; $this->failed++; }
+        } catch (\Exception $e) {
+            echo "✗ {$name} - Error: {$e->getMessage()}\n";
+            $this->failed++;
+        }
     }
 }
 

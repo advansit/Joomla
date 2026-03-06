@@ -39,13 +39,11 @@ jobs:
             script: 'configuration'
           - name: '03 - Media Files'
             script: 'media'
-          - name: '04 - Database Structure'
-            script: 'database'
+          - name: '04 - Plugin Class'
+            script: 'plugin-class'
           - name: '05 - AJAX Endpoint'
             script: 'ajax'
-          - name: '06 - JavaScript Functionality'
-            script: 'javascript'
-          - name: '07 - Uninstall'
+          - name: '06 - Uninstall'
             script: 'uninstall'
     steps:
       - uses: actions/checkout@v6
