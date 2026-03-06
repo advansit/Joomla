@@ -1,6 +1,9 @@
 === Uninstall Tests ===
 
-Test: Basic check... PASS
+✓ Extension ID found before uninstall
+✓ Uninstall command executed
+✓ Component removed from #__extensions
+✓ Component files removed
 
 === Uninstall Test Summary ===
-All tests completed.
+Passed: 4, Failed: 0
