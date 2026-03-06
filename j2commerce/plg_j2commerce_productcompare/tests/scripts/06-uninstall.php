@@ -3,25 +3,23 @@
  * Uninstall Tests for J2Commerce Product Compare Plugin
  * Verifies clean removal of the plugin.
  */
-define('_JEXEC', 1);
-define('JPATH_BASE', '/var/www/html');
-require_once JPATH_BASE . '/includes/defines.php';
-$_SERVER['HTTP_HOST'] = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
-require_once JPATH_BASE . '/includes/framework.php';
-
-use Joomla\CMS\Factory;
-use Joomla\CMS\Installer\Installer;
 
 class UninstallTest
 {
     private $db;
     private $passed = 0;
     private $failed = 0;
+    private $dbPrefix;
 
     public function __construct()
     {
-        $this->db = Factory::getDbo();
+        require '/var/www/html/configuration.php';
+        $config = new JConfig();
+        $this->dbPrefix = $config->dbprefix;
+        $this->db = new mysqli($config->host, $config->user, $config->password, $config->db);
+        if ($this->db->connect_error) {
+            die("DB connection failed: " . $this->db->connect_error . "\n");
+        }
     }
 
     public function run(): bool
@@ -29,40 +27,33 @@ class UninstallTest
         echo "=== Uninstall Tests ===\n\n";
 
         // Get extension ID before uninstall
-        $query = $this->db->getQuery(true)
-            ->select($this->db->quoteName('extension_id'))
-            ->from($this->db->quoteName('#__extensions'))
-            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'))
-            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'));
-        $this->db->setQuery($query);
-        $extensionId = (int) $this->db->loadResult();
+        $result = $this->db->query("SELECT extension_id FROM {$this->dbPrefix}extensions WHERE element = 'productcompare' AND type = 'plugin' AND folder = 'j2store'");
+        $row = $result ? $result->fetch_assoc() : null;
+        $extensionId = $row ? (int) $row['extension_id'] : 0;
 
         $this->test('Extension ID found before uninstall', function () use ($extensionId) {
             return $extensionId > 0;
         });
 
-        // Perform uninstall
-        $installer = Installer::getInstance();
-        $uninstalled = false;
-        if ($extensionId > 0) {
-            $uninstalled = $installer->uninstall('plugin', $extensionId);
-        }
+        // Uninstall via Joomla CLI
+        $output = [];
+        $exitCode = 0;
+        exec("php /var/www/html/cli/joomla.php extension:remove $extensionId --no-interaction 2>&1", $output, $exitCode);
+        $outputStr = implode("\n", $output);
 
-        $this->test('Uninstall completed without errors', function () use ($uninstalled) {
-            return $uninstalled === true;
+        $this->test('Uninstall command executed', function () use ($exitCode, $outputStr) {
+            echo "  Output: $outputStr\n";
+            return $exitCode === 0;
         });
 
         $this->test('Plugin removed from #__extensions', function () {
-            $query = $this->db->getQuery(true)
-                ->select('COUNT(*)')
-                ->from($this->db->quoteName('#__extensions'))
-                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'));
-            $this->db->setQuery($query);
-            return (int) $this->db->loadResult() === 0;
+            $result = $this->db->query("SELECT COUNT(*) as cnt FROM {$this->dbPrefix}extensions WHERE element = 'productcompare' AND folder = 'j2store'");
+            $row = $result ? $result->fetch_assoc() : null;
+            return $row && (int) $row['cnt'] === 0;
         });
 
         $this->test('Plugin files removed', function () {
-            return !file_exists(JPATH_PLUGINS . '/j2store/productcompare/src/Extension/ProductCompare.php');
+            return !file_exists('/var/www/html/plugins/j2store/productcompare/src/Extension/ProductCompare.php');
         });
 
         echo "\n=== Uninstall Test Summary ===\n";
