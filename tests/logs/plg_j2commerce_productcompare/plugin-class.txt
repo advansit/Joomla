@@ -1,0 +1,16 @@
+=== Plugin Class Tests ===
+
+[06-Mar-2026 12:36:56 UTC] PHP Warning:  file_get_contents(/var/www/html/plugins/j2commerce/plg_j2commerce_productcompare/src/Extension/ProductCompare.php): Failed to open stream: No such file or directory in /var/www/html/tests/scripts/04-plugin-class.php on line 22
+✗ Class file is readable
+✗ Has onAfterDispatch method
+✗ Has onJ2StoreAfterDisplayProduct method
+✗ Has onJ2StoreAfterDisplayProductList method
+✗ Has onAjaxProductcompare method
+✗ Has getCompareButton method
+✗ Has getProductsData method
+✗ Has generateComparisonTable method
+✗ Uses Joomla CMSPlugin or extends correct base
+✗ Uses DatabaseAwareTrait or gets DB
+
+=== Plugin Class Test Summary ===
+Passed: 0, Failed: 10

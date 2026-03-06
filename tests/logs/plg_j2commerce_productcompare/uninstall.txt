@@ -1,6 +1,24 @@
 === Uninstall Tests ===
 
-Test: Basic check... PASS
-
-=== Uninstall Test Summary ===
-All tests completed.
+✗ Extension ID found before uninstall
+Exception {#198
+  #message: "Failed to start application"
+  #code: 500
+  #file: "/var/www/html/libraries/src/Factory.php"
+  #line: 158
+  trace: {
+    /var/www/html/libraries/src/Factory.php:158 {
+      Joomla\CMS\Factory::getApplication()
+      › if (!self::$application) {
+      ›     throw new \Exception('Failed to start application', 500);
+      › }
+    }
+    /var/www/html/libraries/src/Table/Table.php:222 { …}
+    /var/www/html/libraries/src/Table/Extension.php:61 { …}
+    /var/www/html/libraries/src/Table/Table.php:352 { …}
+    /var/www/html/libraries/src/Installer/Installer.php:181 { …}
+    /var/www/html/libraries/src/Installer/Installer.php:198 { …}
+    /var/www/html/tests/scripts/06-uninstall.php:45 { …}
+    /var/www/html/tests/scripts/06-uninstall.php:86 { …}
+  }
+}

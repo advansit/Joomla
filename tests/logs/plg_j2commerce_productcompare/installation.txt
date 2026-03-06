@@ -1,6 +1,10 @@
 === Installation Tests ===
 
-Test: Basic check... PASS
+✗ Plugin exists in #__extensions
+✗ Plugin is enabled
+✗ Plugin folder is j2commerce
+✗ Plugin class file deployed
+✗ Services provider deployed
 
 === Installation Test Summary ===
-All tests completed.
+Passed: 0, Failed: 5

@@ -1,6 +1,8 @@
 === AJAX Endpoint Tests ===
 
-Test: Basic check... PASS
+✓ AJAX endpoint responds (com_ajax)
+✓ AJAX endpoint returns JSON
+✓ AJAX with action=compare returns response
 
 === AJAX Endpoint Test Summary ===
-All tests completed.
+Passed: 3, Failed: 0
