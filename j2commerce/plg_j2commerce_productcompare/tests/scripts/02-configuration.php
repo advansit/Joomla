@@ -48,7 +48,8 @@ class ConfigurationTest
         });
 
         $this->test('XML manifest exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/productcompare.xml');
+            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/plg_j2commerce_productcompare.xml')
+                || file_exists(JPATH_PLUGINS . '/j2store/productcompare/productcompare.xml');
         });
 
         echo "\n=== Configuration Test Summary ===\n";
