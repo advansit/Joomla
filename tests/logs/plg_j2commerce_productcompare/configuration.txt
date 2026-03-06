@@ -2,9 +2,9 @@
 
 ✓ Plugin params are valid JSON
 ✓ max_compare param exists
-✗ Language file en-GB exists
-✗ Language file de-DE exists
-✗ XML manifest exists
+✓ Language file en-GB exists
+✓ Language file de-CH exists
+✓ XML manifest exists
 
 === Configuration Test Summary ===
-Passed: 2, Failed: 3
+Passed: 5, Failed: 0

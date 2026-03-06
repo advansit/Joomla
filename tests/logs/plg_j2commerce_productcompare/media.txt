@@ -1,14 +1,12 @@
 === Media Files Tests ===
 
-✗ Media directory exists
-✗ CSS file deployed
-✗ JS file deployed
-✗ CSS file is not empty
-✗ JS file is not empty
-✗ JS contains compare functionality
-[06-Mar-2026 12:34:54 UTC] PHP Warning:  file_get_contents(/var/www/html/media/plg_j2commerce_productcompare/js/productcompare.js): Failed to open stream: No such file or directory in /var/www/html/tests/scripts/03-media-files.php on line 39
-[06-Mar-2026 12:34:54 UTC] PHP Warning:  file_get_contents(/var/www/html/media/plg_j2commerce_productcompare/css/productcompare.css): Failed to open stream: No such file or directory in /var/www/html/tests/scripts/03-media-files.php on line 44
-✗ CSS contains compare styles
+✓ Media directory exists
+✓ CSS file deployed
+✓ JS file deployed
+✓ CSS file is not empty
+✓ JS file is not empty
+✓ JS contains compare functionality
+✓ CSS contains compare styles
 
 === Media Files Test Summary ===
-Passed: 0, Failed: 7
+Passed: 7, Failed: 0
