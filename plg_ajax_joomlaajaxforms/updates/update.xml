@@ -6,6 +6,7 @@
         <element>joomlaajaxforms</element>
         <type>plugin</type>
         <folder>ajax</folder>
+        <client>site</client>
         <version>1.5.20</version>
         <infourl>https://github.com/advansit/Joomla/tree/main/plg_ajax_joomlaajaxforms</infourl>
         <downloads>
