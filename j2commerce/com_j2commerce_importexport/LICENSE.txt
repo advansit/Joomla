@@ -1,6 +1,6 @@
 PROPRIETARY LICENSE
 
-Copyright (c) 2025 Advans IT Solutions GmbH
+Copyright (c) 2026 Advans IT Solutions GmbH
 All rights reserved.
 
 ================================================================================

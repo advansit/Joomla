@@ -77,7 +77,7 @@ Commits without a conventional prefix are ignored — no release is created.
 | `release-productcompare.yml` | `productcompare-v*` |
 | `release-privacy.yml` | `privacy-v*` |
 
-Each release workflow deletes the previous release and tag for the same extension before creating the new one. This ensures there is always exactly one release per extension.
+All releases and tags are preserved, so users can track changes between versions.
 
 View all releases: https://github.com/advansit/Joomla/releases
 
@@ -192,4 +192,4 @@ CHE-316.407.165
 
 https://advans.ch
 
-Copyright (C) 2025-2026 Advans IT Solutions GmbH. All rights reserved.
+Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.

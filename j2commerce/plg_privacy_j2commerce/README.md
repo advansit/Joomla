@@ -76,7 +76,7 @@ Organizations with subscription-based business models should contact Advans IT S
 
 ### Install Steps
 
-1. Download `plg_system_j2commerce_privacy.zip`
+1. Download `plg_privacy_j2commerce.zip`
 2. **System → Extensions → Install**
 3. Upload and install
 4. **Enable via System → Plugins → System - J2Commerce Privacy**
@@ -1001,17 +1001,26 @@ Lists: Test Lifetime Product
 
 ### Automated Testing
 
-**Run integration tests:**
-```bash
-cd tests/integration
-./run-tests.sh
-```
+Tests run on every push via GitHub Actions.
 
 **Test suites:**
-1. Installation - Plugin registration
-2. Uninstall - Clean removal
+1. **Installation** - Plugin registration, file deployment
+2. **Configuration** - Plugin params, language files
+3. **Privacy Plugin Base** - Privacy API method validation
+4. **Data Integration** - J2Commerce data access
+5. **Data Export** - Privacy export functionality
+6. **Data Anonymization** - Anonymization logic
+7. **GDPR Compliance** - Retention period enforcement
+8. **Uninstall** - Clean removal
 
-**Port:** 8082
+**Running tests locally:**
+```bash
+cd tests
+docker compose up -d
+sleep 120
+./run-tests.sh all
+docker compose down -v
+```
 
 ---
 
@@ -1108,7 +1117,7 @@ CHE-316.407.165
 
 ## License
 
-Proprietary software. Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.
 
 ---
 

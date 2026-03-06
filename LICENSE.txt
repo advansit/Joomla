@@ -1,6 +1,6 @@
 PROPRIETARY LICENSE
 
-Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.
 
 This software and associated documentation files (the "Software") are proprietary 
 and confidential to Advans IT Solutions GmbH.

@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     J2Store Cleanup Tests
- * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH
+ * @copyright   Copyright (C) 2026 Advans IT Solutions GmbH
  * @license     Proprietary
  */
 

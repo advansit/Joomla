@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     J2Commerce Privacy System Plugin
- * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH
+ * @copyright   Copyright (C) 2026 Advans IT Solutions GmbH
  * @license     Proprietary
  */
 

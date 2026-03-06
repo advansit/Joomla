@@ -153,11 +153,14 @@ The plugin avoids all APIs deprecated in Joomla 6:
 
 ## Tests
 
-12 test scripts covering installation, configuration, endpoint access, login/MFA, registration, reset, remind, security, uninstall, profile, J2Store cart, and .htaccess validation. Run via Docker:
+12 test scripts run on every push via GitHub Actions: installation, configuration, endpoint access, login/MFA, registration, reset, remind, security, profile, J2Store cart, .htaccess validation, and uninstall.
 
 ```bash
 cd plg_ajax_joomlaajaxforms/tests
-docker compose up --build --abort-on-container-exit
+docker compose up -d
+sleep 120
+./run-tests.sh all
+docker compose down -v
 ```
 
 ## Translations
@@ -169,6 +172,6 @@ docker compose up --build --abort-on-container-exit
 
 ## License
 
-Proprietary License — Copyright (C) 2025-2026 Advans IT Solutions GmbH
+Proprietary License — Copyright (C) 2026 Advans IT Solutions GmbH
 
 See [LICENSE.txt](../LICENSE.txt) for details.

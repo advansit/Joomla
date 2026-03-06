@@ -2,7 +2,7 @@
 /**
  * J2Commerce Product Compare Plugin
  * @subpackage  Services
- * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+ * @copyright   Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.
  * @license     Proprietary
  */
 

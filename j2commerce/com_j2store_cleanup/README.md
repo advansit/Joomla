@@ -87,15 +87,12 @@ This component has automated tests that run on every push via GitHub Actions.
 
 ### Test Suites
 
-1. **Installation** - Component registration, file verification
+1. **Installation** - Component registration, file deployment
 2. **Scanning** - Version detection, authorUrl/authorEmail checks, protected extensions
 3. **Cleanup** - Extension removal, batch removal, isolation tests
-4. **UI Elements** - Interface rendering
-5. **Security** - CSRF protection, SQL injection prevention
-6. **Display Functionality** - Table rendering, badges
-7. **Safety Checks** - Protected extensions list, edge cases
-8. **Language Support** - Multi-language strings
-9. **Uninstall** - Component removal, verification
+4. **Component Functions** - Main file function validation
+5. **Safety Checks** - Protected extensions list, edge cases
+6. **Uninstall** - Component removal, verification
 
 ### Running Tests Locally
 
@@ -296,4 +293,4 @@ https://advans.ch
 
 ## License
 
-Proprietary software. Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.

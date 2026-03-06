@@ -11,16 +11,6 @@ GDPR/DSGVO compliance solution with automated data retention management and life
 
 [Documentation](plg_privacy_j2commerce/README.md)
 
-#### System - J2Commerce 2FA (`plg_system_j2commerce_2fa`)
-Two-Factor Authentication integration for J2Commerce.
-
-[Documentation](plg_system_j2commerce_2fa/README.md)
-
-#### J2Commerce - AcyMailing (`plg_j2commerce_acymailing`)
-Integration between J2Commerce and AcyMailing newsletter system.
-
-[Documentation](plg_j2commerce_acymailing/README.md)
-
 #### J2Commerce - Product Compare (`plg_j2commerce_productcompare`)
 Product comparison functionality for J2Commerce stores.
 
@@ -49,4 +39,4 @@ View test results: https://github.com/advansit/Joomla/actions
 **Advans IT Solutions GmbH**  
 https://advans.ch
 
-Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.

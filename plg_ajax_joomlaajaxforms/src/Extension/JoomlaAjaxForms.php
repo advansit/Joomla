@@ -4,7 +4,7 @@
  * @package     Joomla.Plugin
  * @subpackage  Ajax.JoomlaAjaxForms
  *
- * @copyright   Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+ * @copyright   Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.
  * @license     Proprietary License
  */
 

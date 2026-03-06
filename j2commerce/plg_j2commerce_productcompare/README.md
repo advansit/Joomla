@@ -46,16 +46,6 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 4. Click "View Comparison" to see modal
 5. Compare attributes side-by-side
 
-## Testing
-
-```bash
-cd tests/integration
-cp ../../plg_j2commerce_productcompare.zip test-package.zip
-./run-tests.sh
-```
-
-Port: 8081
-
 ## Development
 
 ### Structure
@@ -64,19 +54,20 @@ plg_j2commerce_productcompare/
 ├── README.md
 ├── VERSION
 ├── LICENSE.txt
-├── productcompare.xml
+├── plg_j2commerce_productcompare.xml   # Joomla manifest (group="j2store", element="productcompare")
 ├── build.sh
 ├── services/provider.php
 ├── src/Extension/ProductCompare.php
 ├── language/ (en-GB, de-CH, fr-FR)
-├── media/ (js, css)
+├── media/ (js, css)                    # Installed to media/plg_j2store_productcompare/
 └── tests/
 ```
+
+Installed path: `plugins/j2store/productcompare/`
 
 ### Building
 ```bash
 ./build.sh
-../update-version.sh plg_j2commerce_productcompare 1.0.1
 ```
 
 ## Automated Testing
@@ -85,8 +76,12 @@ This plugin has automated tests that run on every push via GitHub Actions.
 
 ### Test Suites
 
-1. **Installation** - Plugin registration, file verification
-2. **Uninstall** - Clean removal from database
+1. **Installation** - Plugin registration in DB, file deployment
+2. **Configuration** - Plugin params, language files, XML manifest
+3. **Media Files** - CSS/JS deployment and content validation
+4. **Plugin Class** - Method existence and class structure
+5. **AJAX Endpoint** - HTTP tests against com_ajax
+6. **Uninstall** - Clean removal from database and filesystem
 
 ### Running Tests Locally
 
@@ -97,8 +92,6 @@ sleep 120  # Wait for Joomla initialization
 ./run-tests.sh all
 docker compose down -v
 ```
-
-Test results are saved in `tests/test-results/`.
 
 ## Troubleshooting
 
@@ -275,8 +268,8 @@ This extension supports the following languages:
 
 Users can add additional language files by creating new language folders following Joomla's language structure:
 ```
-language/{language-tag}/plg_j2commerce_productcompare.ini
-language/{language-tag}/plg_j2commerce_productcompare.sys.ini
+language/{language-tag}/plg_j2store_productcompare.ini
+language/{language-tag}/plg_j2store_productcompare.sys.ini
 ```
 
 ## Accessibility
@@ -299,4 +292,4 @@ https://advans.ch
 
 ## License
 
-Proprietary software. Copyright (C) 2025 Advans IT Solutions GmbH. All rights reserved.
+Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.

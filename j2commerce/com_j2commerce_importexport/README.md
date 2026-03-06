@@ -232,7 +232,7 @@ docker compose down -v
 
 ## License
 
-Proprietary. Copyright (C) 2025 Advans IT Solutions GmbH.
+Proprietary. Copyright (C) 2026 Advans IT Solutions GmbH.
 
 ## Support
 
