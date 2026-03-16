@@ -22,6 +22,7 @@ GDPR/DSGVO compliance solution for J2Commerce. Features:
 1. [Installation](#installation)
 2. [Quick Setup Guide](#quick-setup-guide)
 3. [Configuration](#configuration)
+4. [Joomla Privacy Framework](#joomla-privacy-framework)
 
 ### Core Features
 4. [Features Overview](#features-overview)
@@ -109,6 +110,30 @@ Joomla's `com_privacy` component requires a frontend menu item to generate valid
 7. Save
 
 This menu item is required for the "Data Export" and "Data Deletion" buttons in the J2Commerce profile privacy tab to work for logged-in users. Guest users see mailto links instead (see below).
+
+---
+
+## Joomla Privacy Framework
+
+This plugin is a **privacy group plugin** that extends Joomla's built-in Privacy Suite (`com_privacy`). It does not replace or duplicate the core privacy system — it adds J2Commerce-specific data handling on top of it.
+
+**What Joomla's Privacy Suite provides (core):**
+- Privacy request management UI (`Users → Privacy → Requests`)
+- Export and deletion request workflow
+- Consent tracking (`#__privacy_consents`)
+- Action logging (`#__action_logs`)
+- Scheduled task infrastructure
+
+**What this plugin adds:**
+- J2Commerce order, address, and cart data in exports (`onPrivacyExportRequest`)
+- Retention period enforcement before deletion (`onPrivacyCanRemoveData`)
+- Order anonymization with configurable retention (`onPrivacyRemoveData`)
+- Lifetime license detection to preserve email after retention expires
+- Checkout consent checkbox
+- Self-service privacy tab in the J2Commerce MyProfile page
+- Scheduled automatic cleanup task
+
+For a full overview of how Joomla's Privacy Suite works, see the [Joomla Privacy Suite Guide](https://docs.joomla.org/Privacy_Suite_Guide).
 
 ---
 
@@ -312,12 +337,12 @@ See [Legal Basis Examples](#legal-basis-examples) for more countries.
 privacy@example.com
 ```
 
-⚠️ **WICHTIG:** Ändern Sie diese Email-Adresse zu Ihrer tatsächlichen Privacy-Kontakt-Email. Diese Adresse wird in allen Retention-Nachrichten an Benutzer angezeigt.
+⚠️ **Important:** Replace this with your actual privacy contact email. This address is shown to users in all retention messages.
 
-**Wo ändern:**
+**Where to change:**
 - `System → Plugins → Privacy - J2Commerce`
-- Feld: "Support Email"
-- Beispiel: `privacy@ihre-firma.ch` oder `datenschutz@ihre-firma.de`
+- Field: "Support Email"
+- Example: `privacy@your-company.com`
 
 Persist configuration changes.
 
@@ -512,18 +537,9 @@ AND field_name = 'is_lifetime_license'
 
 ### Data Export
 
-**User Action:**
-```
-Users → Privacy → Requests → New Request
-Type: Export
-Email: user@example.com
-```
+The export request flow is handled by Joomla's core Privacy component. See the [Joomla Privacy Suite Guide](https://docs.joomla.org/Privacy_Suite_Guide) for how users submit export requests and how administrators process them.
 
-**Result:**
-- XML file with all user data
-- Includes J2Store orders, addresses
-- Optional: Joomla user account data
-- Download link sent via email
+This plugin extends the export with J2Commerce-specific data: orders, order items, addresses, and (if configured) cart data.
 
 ---
 
@@ -560,23 +576,23 @@ Deletion blocked with message
 **Error Message:**
 ```
 ═══════════════════════════════════════════════════════
-DATENLÖSCHUNG DERZEIT NICHT MÖGLICH
+DATA DELETION CURRENTLY NOT POSSIBLE
 ═══════════════════════════════════════════════════════
 
-Ihre Daten können derzeit nicht gelöscht werden, da Sie
-Bestellungen getätigt haben, für die eine gesetzliche
-Aufbewahrungspflicht besteht.
+Your data cannot be deleted at this time because you
+have placed orders subject to a statutory retention
+obligation.
 
-IHRE BESTELLUNGEN:
-1. Bestellung #123
-   Datum: 15.03.2020
-   Betrag: 99.00 CHF
-   Aufbewahrung bis: 15.03.2030
-   Verbleibend: 7.0 Jahre
+YOUR ORDERS:
+1. Order #123
+   Date: 15.03.2020
+   Amount: 99.00 CHF
+   Retained until: 15.03.2030
+   Remaining: 7.0 years
 
-AUTOMATISCHE LÖSCHUNG:
-• Ihre Daten werden AUTOMATISCH gelöscht ab: 15.03.2030
-• Sie müssen NICHTS weiter tun
+AUTOMATIC DELETION:
+• Your data will be AUTOMATICALLY deleted from: 15.03.2030
+• You do NOT need to take any further action
 ```
 
 ---
@@ -619,20 +635,20 @@ Partial anonymization:
 **Error Message:**
 ```
 ═══════════════════════════════════════════════════════
-LIFETIME-LIZENZEN (Buchhaltungsfrist abgelaufen)
+LIFETIME LICENSES (accounting retention expired)
 ═══════════════════════════════════════════════════════
 
-WAS WIRD GESPEICHERT?
+WHAT IS RETAINED?
 
-Für die Lizenzaktivierung notwendig:
-• E-Mail-Adresse (für Aktivierung)
-• Lizenzschlüssel
-• Kaufdatum
+Required for license activation:
+• Email address (for activation)
+• License key
+• Purchase date
 
-Bereits gelöscht/anonymisiert:
-• Vollständiger Name
-• Rechnungsadresse
-• Telefonnummer
+Already deleted/anonymized:
+• Full name
+• Billing address
+• Phone number
 ```
 
 ---
@@ -659,18 +675,9 @@ Bereits gelöscht/anonymisiert:
 
 ### Managing Requests
 
-**View all requests:**
-```
-Users → Privacy → Requests
-```
+Request management (viewing, confirming, completing export and deletion requests) is handled by Joomla's core Privacy component. See the [Joomla Privacy Suite Guide](https://docs.joomla.org/Privacy_Suite_Guide) for the full workflow.
 
-**Process a request:**
-1. Click on request
-2. Review user information
-3. Click "Complete Request"
-4. Choose action:
-   - Export Data → Generates XML
-   - Delete Data → Checks retention, then deletes/blocks
+This plugin intercepts the deletion step to apply retention logic before any data is removed. If retention blocks deletion, the request stays in "Confirmed" status and the user receives a retention message.
 
 ---
 
@@ -712,7 +719,7 @@ System → Scheduled Tasks → [Task] → View Logs
 **System Response:**
 ```
 • Deletion blocked
-Message: "Automatische Löschung ab: 15.03.2030"
+Message: "Automatic deletion from: 15.03.2030"
 Status: Confirmed (not Complete)
 ```
 
@@ -735,7 +742,7 @@ Status: Confirmed (not Complete)
 **System Response:**
 ```
 • Deletion blocked (partial)
-Message: "Email wird für Lizenzaktivierung benötigt"
+Message: "Email required for license activation"
 Status: Confirmed
 ```
 
