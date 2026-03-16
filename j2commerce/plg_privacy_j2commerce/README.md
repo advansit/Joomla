@@ -1237,7 +1237,7 @@ Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights re
 
 ## Changelog
 
-### Version 1.5.0
+### Version 1.5.0 (next release)
 
 **Fixes and documentation:**
 - Fix: `script.php` minimum requirements raised to Joomla 5.0 / PHP 8.1 (were incorrectly set to 4.0 / 7.4)
