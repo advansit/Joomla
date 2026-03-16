@@ -136,6 +136,8 @@ The plugin adds a privacy consent checkbox to the J2Commerce checkout (step 4: S
 
 The privacy tab in J2Commerce's "My Profile" shows consent status and privacy request buttons.
 
+> **Template override required.** The privacy tab is only rendered when a compatible MyProfile template override is in place. See [Template Integration](#template-integration) below.
+
 **Consent status lookup** checks three sources in order:
 1. `#__privacy_consents` table (by `user_id` for logged-in, not available for guests)
 2. `#__j2store_orders` by `user_id` (logged-in users)
@@ -149,6 +151,69 @@ If an order is found but no `#__privacy_consents` entry exists, one is auto-crea
 |-----------|----------------|
 | Logged-in | Links to `com_privacy` request form (requires menu item, see above) |
 | Guest | `mailto:` link to site admin email (guests cannot use `com_privacy` — Joomla's Dispatcher redirects them to login) |
+
+---
+
+## Template Integration
+
+The plugin provides two mechanisms for rendering the privacy tab and the checkout consent checkbox. The **template override approach is strongly recommended** — it is explicit, Bootstrap 5 compatible, and not dependent on fragile HTML injection.
+
+### How the two mechanisms differ
+
+| Mechanism | How it works | When to use |
+|-----------|-------------|-------------|
+| **Template override** (recommended) | `default.php` checks for the plugin via `PluginHelper` and renders `default_privacy.php` directly | Custom Joomla templates based on Bootstrap 5 |
+| **`onAfterRender` injection** (fallback) | Plugin injects HTML by searching the rendered output for CSS selectors | Only if you cannot use template overrides |
+
+The `onAfterRender` fallback searches for selectors like `.j2store-myprofile-orders` to find an insertion point. If your template uses different markup, the privacy section will silently not appear.
+
+### Requirements
+
+- Joomla template based on **Bootstrap 5** (`default.php` uses BS5 tab markup)
+- J2Commerce MyProfile view enabled
+
+### Files to copy
+
+Copy the following files from this repository into your template:
+
+**MyProfile tab:**
+
+```
+templates/{your-template}/html/com_j2store/myprofile/default.php
+templates/{your-template}/html/com_j2store/myprofile/default_privacy.php
+templates/{your-template}/html/com_j2store/myprofile/orderitems.php
+```
+
+**Checkout consent checkbox:**
+
+```
+templates/{your-template}/html/com_j2store/checkout/default_shipping_payment.php
+```
+
+Source files are in the `advans.ch` repository under `src/template/html/com_j2store/`.
+
+### How `default.php` activates the privacy tab
+
+`default.php` checks for the plugin at runtime:
+
+```php
+$privacyPlugin = PluginHelper::getPlugin('privacy', 'j2commerce');
+if ($privacyPlugin) {
+    $privacyParams = new \Joomla\Registry\Registry($privacyPlugin->params);
+    $showPrivacyTab = (bool) $privacyParams->get('show_privacy_section', 1);
+    Factory::getLanguage()->load('plg_privacy_j2commerce', JPATH_PLUGINS . '/privacy/j2commerce');
+}
+```
+
+If the plugin is not installed or disabled, `$showPrivacyTab` stays `false` and the tab is not rendered — no errors.
+
+### Language file must be loaded manually
+
+The `privacy` plugin group is **not** auto-imported by Joomla in the frontend. Without the explicit `Factory::getLanguage()->load(...)` call above, all `PLG_PRIVACY_J2COMMERCE_*` language keys render as raw strings in the tab. This call is already included in the provided `default.php` — do not remove it.
+
+### Licenses tab (optional)
+
+`default.php` also conditionally renders a **Licenses** tab if the `#__license_keys` table exists and contains rows for the current user. This tab is unrelated to the privacy plugin — it is part of the Advans IT Solutions licensing system. If you do not use that system, the tab simply does not appear (the query is wrapped in a `try/catch`).
 
 ---
 
@@ -723,21 +788,47 @@ This plugin does not store or have access to complete payment details. Users mus
 
 **Access:** `System → Plugins → Privacy - J2Commerce`
 
-#### Basic Settings
+#### Privacy Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Include Joomla Core Data | Yes | Include user account, profile, logs in export |
-| Anonymize Orders | Yes | Anonymize instead of delete orders |
-| Delete Addresses | Yes | Delete saved addresses on removal |
+| Include Joomla Core Data | Yes | Include user account, profile, and activity logs in privacy exports |
+| Anonymize Orders | Yes | Anonymize order data instead of deleting on removal requests (recommended for accounting compliance) |
+| Delete Addresses | Yes | Delete saved addresses on removal requests |
 
-#### Retention Settings
+#### Data Retention
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Retention Period (Years) | 10 | Legal retention requirement (1-30 years) |
-| Legal Basis | (empty) | Legal grounds shown in error messages |
-| Support Email | support@example.com | Contact for data deletion inquiries |
+| Retention Period (Years) | 10 | Legal retention period. Switzerland: 10 (OR Art. 958f), Germany: 10 (AO §147), Austria: 7, UK/Spain: 6 |
+| Legal Basis | (empty) | Legal grounds shown in retention error messages to users |
+| Support Email | support@example.com | Contact address shown to users for privacy inquiries. **Must be changed before going live.** |
+
+#### Checkout Consent
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Show Consent Checkbox | Yes | Display privacy consent checkbox in checkout step 4 |
+| Consent Required | Yes | Make consent mandatory — blocks checkout if unchecked |
+| Privacy Policy Article | (none) | Joomla article containing your privacy policy — linked in the consent text |
+| Consent Text | (default) | Checkbox label text. Use `{privacy_policy}` as placeholder for the policy link |
+
+#### Frontend Self-Service
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Show Privacy Section | Yes | Render the Privacy tab in the J2Commerce MyProfile page |
+| Show Delete Address Buttons | Yes | Show per-address delete buttons in the Addresses tab |
+| Show Delete All Data | Yes | Show data deletion request button in the Privacy tab |
+| Show Export Data | Yes | Show data export request button in the Privacy tab |
+
+#### Notifications & Logging
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Admin Notifications | No | Send email to admin when users perform privacy actions (address deletion, export/deletion requests) |
+| Admin Email | (empty) | Recipient for admin notifications. Leave empty to use the site admin email |
+| Activity Logging | No | Write all privacy actions to Joomla's action log (`#__action_logs`) for audit purposes |
 
 ---
 
