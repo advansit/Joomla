@@ -1,8 +1,8 @@
 # System - J2Commerce Privacy Plugin
 **Author:** Advans IT Solutions GmbH  
 **License:** Proprietary  
-**Joomla:** 5.x, 6.x, 7.x  
-**PHP:** 8.0+
+**Joomla:** 5.x+  
+**PHP:** 8.1+
 
 GDPR/DSGVO compliance solution for J2Commerce. Features:
 - **Checkout Consent Checkbox** - Privacy consent during checkout
@@ -27,21 +27,22 @@ GDPR/DSGVO compliance solution for J2Commerce. Features:
 4. [Features Overview](#features-overview)
 5. [How It Works](#how-it-works)
 6. [Lifetime License Detection](#lifetime-license-detection)
+7. [Template Integration](#template-integration)
 
 ### User Guides
-7. [Usage Guide](#usage-guide)
-8. [Administrator Guide](#administrator-guide)
-9. [Workflow Examples](#workflow-examples)
+8. [Usage Guide](#usage-guide)
+9. [Administrator Guide](#administrator-guide)
+10. [Workflow Examples](#workflow-examples)
 
 ### Configuration
-10. [Legal Basis Examples](#legal-basis-examples)
-11. [Multi-Language Support](#multi-language-support)
-12. [J2Store Custom Fields](#j2store-custom-fields)
+11. [Legal Basis Examples](#legal-basis-examples)
+12. [Multi-Language Support](#multi-language-support)
+13. [J2Store Custom Fields](#j2store-custom-fields)
 
 ### Technical
-13. [Testing](#testing)
-14. [Development](#development)
-15. [Support](#support)
+14. [Testing](#testing)
+15. [Development](#development)
+16. [Support](#support)
 
 ---
 
@@ -49,9 +50,9 @@ GDPR/DSGVO compliance solution for J2Commerce. Features:
 
 ### Requirements
 
-- Joomla 5.x, 6.x or 7.x
-- PHP 8.0 or higher
-- J2Store 3.3.0 or higher
+- Joomla 5.0 or higher
+- PHP 8.1 or higher
+- J2Commerce 4.0 or higher
 - Joomla Privacy Component enabled
 
 ### Scope and Limitations
@@ -115,7 +116,7 @@ This menu item is required for the "Data Export" and "Data Deletion" buttons in 
 
 ### Checkout Consent Checkbox
 
-The plugin adds a privacy consent checkbox to the J2Commerce checkout (step 4: Shipping & Payment). The checkbox is rendered in the template override `default_shipping_payment.php`, not by the plugin directly (privacy plugins cannot hook into `onAfterRender`).
+The plugin adds a privacy consent checkbox to the J2Commerce checkout (step 4: Shipping & Payment). The checkbox can be rendered in two ways: via the template override `default_shipping_payment.php` (recommended), or injected by the plugin's `onAfterRender` handler as a fallback. See [Template Integration](#template-integration) for details.
 
 **Validation:** Client-side JavaScript validates both the AGB/TOS checkbox (J2Store built-in) and the privacy consent checkbox together. If either is unchecked, both error messages are shown simultaneously. The validation uses capturing-phase event listeners that run before J2Store's jQuery handler.
 
@@ -221,14 +222,23 @@ The `privacy` plugin group is **not** auto-imported by Joomla in the frontend. W
 
 ### Estimated Implementation Time: 20-30 minutes
 
-### Step 1: Configure J2Store Custom Field (Required)
+### Step 1: Configure J2Store Custom Field (Optional — Lifetime License Detection Only)
 
-**Navigate to:**
+This step is only required if your shop sells products with perpetual (lifetime) licenses. The plugin functions fully without it — lifetime license detection is simply skipped.
+
+**Two separate tables are involved:**
+
+| Table | Purpose | How to populate |
+|-------|---------|-----------------|
+| `#__j2store_product_customfields` | Marks which products are lifetime licenses | J2Store Custom Fields UI |
+| `#__license_keys` | Stores issued license keys per user | Separate SQL — see Post-Install Message |
+
+**To mark products as lifetime licenses, navigate to:**
 ```
 Components → J2Store → Setup → Custom Fields → New
 ```
 
-**Configure EXACTLY as follows:**
+**Configure as follows:**
 
 | Setting | Value |
 |---------|-------|
@@ -242,6 +252,8 @@ Components → J2Store → Setup → Custom Fields → New
 | **Default Value** | No |
 
 Click **Save & Close** to persist the configuration.
+
+> **Note:** The `#__license_keys` table (for issued license keys) is a separate table not visible in the J2Commerce Custom Fields UI. See the Post-Install Message for the SQL to create it.
 
 ---
 
@@ -348,7 +360,7 @@ Successful display of the retention notification confirms correct implementation
 - **Flexible Retention Frameworks:** Configurable retention periods (1-30 years) supporting multiple jurisdictions
 - **Multi-Jurisdictional Support:** Configurable legal basis documentation for international operations
 - **Automated Compliance Processing:** Scheduled task execution for expired data handling
-- **Internationalization:** Multi-language interface support (German-CH, English-GB, French-CH)
+- **Internationalization:** Multi-language interface support (German-CH, German-DE, English-GB, French-FR)
 - **Platform Integration:** Optional Joomla core user data inclusion in privacy exports
 
 ### Limitations
@@ -371,9 +383,12 @@ Payment data (credit card details, bank information) is stored by payment servic
 
 **What gets anonymized (only for orders OUTSIDE retention period):**
 - Email address → `anonymized@example.com`
-- Name → `Anonymized User`
+- Billing first/last name → `Anonymized` / `User`
+- Shipping first/last name → (cleared)
 - Phone → (cleared)
 - Addresses → (cleared)
+- Customer note → (cleared)
+- IP address → (cleared)
 
 **What stays intact (for orders WITHIN retention period):**
 - Complete order data including addresses
@@ -954,8 +969,9 @@ This plugin does not store or have access to complete payment details. Users mus
 ### Supported Languages
 
 - • **German (Switzerland)** - `de-CH`
+- • **German (Germany)** - `de-DE` (identical to `de-CH`)
 - • **English (UK)** - `en-GB`
-- • **French (France)** - `fr-FR`
+- • **French (France)** - `fr-FR` (standard French; no separate `fr-CH` variant)
 
 ### Adding New Languages
 
@@ -1043,13 +1059,12 @@ AND field_name = 'is_lifetime_license';
 **Test Coverage:** ~10% (installation verification only)
 
 **Recommended Approach:**
-1. Use manual testing checklist: `tests/MANUAL_TESTING.md`
-2. test implementation planned: `tests/TODO_TESTS.md`
-3. Estimated effort for full test suite: 24-32 hours
+1. Use the manual testing steps below
+2. Estimated effort for full automated test suite: 24-32 hours
 
 ### Manual Testing
 
-Complete manual testing checklist available in `tests/MANUAL_TESTING.md`.
+Manual testing steps:
 
 **Quick Manual Test:**
 
@@ -1135,6 +1150,7 @@ plg_privacy_j2commerce/
 │       └── AutoCleanupTask.php # Scheduled task
 ├── language/
 │   ├── de-CH/                  # German (Switzerland)
+│   ├── de-DE/                  # German (Germany) — identical to de-CH
 │   ├── en-GB/                  # English (UK)
 │   └── fr-FR/                  # French (France)
 └── tests/                      # Integration tests
@@ -1154,7 +1170,7 @@ Creates: `plg_privacy_j2commerce.zip`
 - `onPrivacyExportRequest()` - Export user data
 - `onPrivacyCanRemoveData()` - Check if deletion allowed
 - `onPrivacyRemoveData()` - Perform deletion/anonymization
-- `checkOrderRetention()` - Check retention periods
+- `checkRetentionPeriod()` - Check retention periods
 - `isLifetimeLicense()` - Check custom field
 - `formatRetentionMessage()` - Generate error message
 
@@ -1214,6 +1230,21 @@ Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights re
 
 ## Changelog
 
+### Version 1.5.0
+
+**Fixes and documentation:**
+- Fix: `script.php` minimum requirements raised to Joomla 5.0 / PHP 8.1 (were incorrectly set to 4.0 / 7.4)
+- Fix: README corrected false statement that privacy plugins cannot hook into `onAfterRender`
+- Fix: Implementation Guide Step 1 clarified as optional; two separate tables (`#__j2store_product_customfields` vs `#__license_keys`) now documented
+- Fix: `checkRetentionPeriod()` method name corrected (was `checkOrderRetention()`)
+- Fix: Minimum requirements updated to Joomla 5.0, PHP 8.1, J2Commerce 4.0
+- Fix: "French (CH)" corrected to "French (France)" (`fr-FR`)
+- Fix: References to non-existent `MANUAL_TESTING.md` and `TODO_TESTS.md` removed
+- Fix: Anonymization documentation now includes `customer_note` and `ip_address` fields
+- Docs: `de-DE` language (identical to `de-CH`) added to Multi-Language section and Structure overview
+- Docs: Template Integration section added to Table of Contents
+- Docs: All plugin parameters documented (Checkout Consent, Frontend Self-Service, Notifications & Logging fieldsets were missing)
+
 ### Version 1.0.0 (2025-01-11)
 
 **Initial Release:**
@@ -1224,7 +1255,7 @@ Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights re
 - Configurable retention periods
 - Multi-country legal basis support
 - Scheduled automatic cleanup
-- Multi-language support (de-CH, en-GB, fr-FR)
+- Multi-language support (de-CH, de-DE, en-GB, fr-FR)
 - documentation
 
 **Known Limitations:**
