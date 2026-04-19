@@ -1,10 +1,18 @@
-# Uses the pre-built base image (Joomla + OSMap + J2Commerce already installed).
-# Only adds the plugin under test and the custom entrypoint.
-FROM ghcr.io/advansit/joomla-osmap-j2commerce-base:latest
+FROM joomla:5-php8.2-apache
 
-# Copy extension package (built by CI before docker build)
+RUN apt-get update && apt-get install -y \
+    unzip curl default-mysql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN echo "[client]\nskip-ssl" > /etc/mysql/conf.d/no-ssl.cnf
+
+# Download OSMap and J2Commerce at build time
+RUN curl -sL "https://github.com/joomlashack/OSMap/releases/download/v5.1.3/com_osmap_free_5.1.3.zip" \
+        -o /tmp/com_osmap.zip \
+    && curl -sL "https://github.com/J2Store4/j2store4/releases/download/v4.0.5/com_j2store_v4-4.0.5-pro.zip" \
+        -o /tmp/com_j2store.zip
+
 COPY extension.zip /tmp/plg_osmap_j2commerce.zip
-
 COPY scripts/docker-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
 RUN chmod +x /usr/local/bin/custom-entrypoint.sh
 

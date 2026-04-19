@@ -2,69 +2,70 @@
 set -e
 
 echo "=== OSMap J2Commerce Test Setup ==="
-echo "Base image: Joomla + OSMap + J2Commerce already installed"
-echo "==================================="
-
-# Start Apache in background
-apache2-foreground &
-APACHE_PID=$!
 
 DB_HOST="${JOOMLA_DB_HOST:-mysql}"
 DB_USER="${JOOMLA_DB_USER:-joomla}"
 DB_PASS="${JOOMLA_DB_PASSWORD:-joomla_pass}"
 DB_NAME="${JOOMLA_DB_NAME:-joomla_db}"
 
-# Wait for MySQL (base image has Joomla files but DB is fresh per test run)
+# 1. Start Apache in background
+apache2-foreground &
+APACHE_PID=$!
+echo "Apache started (PID $APACHE_PID)"
+
+# 2. Wait for MySQL
 echo "Waiting for MySQL..."
-timeout 60 bash -c "until mysqladmin ping -h '$DB_HOST' -u '$DB_USER' -p'$DB_PASS' --silent 2>/dev/null; do sleep 2; done"
+until mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" --silent 2>/dev/null; do
+    sleep 2
+done
 echo "✅ MySQL ready"
 
-# Restore Joomla DB from base snapshot if available, else run installer
-if [ -f /var/www/html/configuration.php ]; then
-    echo "✅ Joomla already configured"
-else
-    echo "Running Joomla CLI installer..."
-    php /var/www/html/cli/joomla.php installation:install \
-        --site-name="Test Site" \
-        --admin-user="admin" \
-        --admin-username="admin" \
-        --admin-password="Admin1234!" \
-        --admin-email="admin@test.local" \
-        --db-type="mysqli" \
-        --db-host="$DB_HOST" \
-        --db-user="$DB_USER" \
-        --db-pass="$DB_PASS" \
-        --db-name="$DB_NAME" \
-        --db-prefix="j_" 2>&1
-    echo "✅ Joomla installed"
+# 3. Install Joomla via CLI
+echo "Installing Joomla via CLI..."
+php /var/www/html/cli/joomla.php installation:install \
+    --site-name="Test Site" \
+    --admin-user="admin" \
+    --admin-username="admin" \
+    --admin-password="Admin1234!" \
+    --admin-email="admin@test.local" \
+    --db-type="mysqli" \
+    --db-host="$DB_HOST" \
+    --db-user="$DB_USER" \
+    --db-pass="$DB_PASS" \
+    --db-name="$DB_NAME" \
+    --db-prefix="j_" \
+    2>&1
+echo "✅ Joomla installed"
 
-    echo "Installing OSMap..."
-    cp /tmp/com_osmap.zip /var/www/html/tmp/
-    php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/com_osmap.zip 2>&1
-    echo "✅ OSMap installed"
+# 4. Install OSMap
+echo "Installing OSMap..."
+cp /tmp/com_osmap.zip /var/www/html/tmp/
+php /var/www/html/cli/joomla.php extension:install \
+    --path=/var/www/html/tmp/com_osmap.zip 2>&1
+echo "✅ OSMap installed"
 
-    echo "Installing J2Commerce..."
-    cp /tmp/com_j2store.zip /var/www/html/tmp/
-    php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/com_j2store.zip 2>&1
-    echo "✅ J2Commerce installed"
-fi
+# 5. Install J2Commerce
+echo "Installing J2Commerce..."
+cp /tmp/com_j2store.zip /var/www/html/tmp/
+php /var/www/html/cli/joomla.php extension:install \
+    --path=/var/www/html/tmp/com_j2store.zip 2>&1
+echo "✅ J2Commerce installed"
 
-# Install the plugin under test
-echo ""
-echo "--- Installing plg_osmap_j2commerce ---"
+# 6. Install plugin under test
+echo "Installing plg_osmap_j2commerce..."
 cp /tmp/plg_osmap_j2commerce.zip /var/www/html/tmp/
-php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/plg_osmap_j2commerce.zip 2>&1
+php /var/www/html/cli/joomla.php extension:install \
+    --path=/var/www/html/tmp/plg_osmap_j2commerce.zip 2>&1
 echo "✅ plg_osmap_j2commerce installed"
 
-# Enable all plugins
+# 7. Enable all plugins
 DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; echo (new JConfig)->dbprefix;" 2>/dev/null || echo "j_")
 mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" \
     -e "UPDATE ${DB_PREFIX}extensions SET enabled=1 WHERE type='plugin' AND enabled=0;" 2>/dev/null
 echo "✅ Plugins enabled"
 
-# Insert test fixtures
-echo ""
-echo "--- Inserting test fixtures ---"
+# 8. Insert test fixtures
+echo "Inserting test fixtures..."
 ROOT_ID=$(mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" \
     -se "SELECT id FROM ${DB_PREFIX}menu WHERE menutype='mainmenu' AND parent_id=1 AND client_id=0 LIMIT 1;" 2>/dev/null || echo "1")
 COM_CONTENT_ID=$(mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" \
@@ -97,10 +98,9 @@ ON DUPLICATE KEY UPDATE enabled=1;
 SQL
 echo "✅ Test fixtures inserted"
 
-# Signal readiness
+# 9. Signal readiness
 echo "READY" > /var/www/html/ready.txt
 chown www-data:www-data /var/www/html/ready.txt 2>/dev/null || true
-echo ""
 echo "✅ Test environment ready"
 
 wait $APACHE_PID
