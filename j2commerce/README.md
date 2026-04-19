@@ -6,6 +6,10 @@ Extensions for [J2Commerce](https://github.com/joomla-projects/j2commerce) e-com
 
 ### Plugins
 
+#### OSMap J2Commerce (`plg_osmap_j2commerce`)
+
+Adds all enabled J2Commerce products to the OSMap sitemap. Bridges the gap between OSMap's menu-based indexing and J2Commerce's `published=-2` routing pattern. [→ Details](plg_osmap_j2commerce/README.md)
+
 #### Privacy - J2Commerce (`plg_privacy_j2commerce`)
 GDPR/DSGVO compliance solution with automated data retention management and lifetime license handling.
 
