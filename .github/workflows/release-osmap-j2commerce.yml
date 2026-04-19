@@ -1,0 +1,211 @@
+name: Release - OSMap J2Commerce
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Force version bump (leave empty for auto-detect from commits)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version bump
+        id: version
+        run: |
+          TAG_PREFIX="osmap-j2commerce-v"
+          XML_FILE="j2commerce/plg_osmap_j2commerce/plg_osmap_j2commerce.xml"
+          EXT_PATH="j2commerce/plg_osmap_j2commerce/"
+
+          CURRENT=$(grep -oP '(?<=<version>)[^<]+' "$XML_FILE")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          BUMP="${{ inputs.bump }}"
+
+          if [ -z "$BUMP" ]; then
+            LAST_TAG=$(git tag -l "${TAG_PREFIX}*" --sort=-v:refname | head -1)
+
+            if [ -n "$LAST_TAG" ]; then
+              COMMITS=$(git log "$LAST_TAG"..HEAD --pretty=format:"%s" --no-merges -- "$EXT_PATH")
+            else
+              COMMITS=$(git log --pretty=format:"%s" --no-merges -20 -- "$EXT_PATH")
+            fi
+
+            if [ -z "$COMMITS" ]; then
+              echo "No commits for this extension since last tag — skipping"
+              echo "bump=none" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if echo "$COMMITS" | grep -qiE '^[a-z]+(\(.+\))?!:|BREAKING CHANGE:'; then
+              BUMP="major"
+            elif echo "$COMMITS" | grep -qiE '^feat(\(.+\))?:'; then
+              BUMP="minor"
+            elif echo "$COMMITS" | grep -qiE '^fix(\(.+\))?:'; then
+              BUMP="patch"
+            else
+              echo "No conventional commit found — skipping"
+              echo "bump=none" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW="$MAJOR.$MINOR.$PATCH"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Version: $CURRENT → $NEW ($BUMP)"
+
+      - name: Update version in files
+        if: steps.version.outputs.bump != 'none'
+        run: |
+          VERSION="${{ steps.version.outputs.new }}"
+          DATE=$(date +%Y-%m)
+          cd j2commerce/plg_osmap_j2commerce
+          echo "$VERSION" > VERSION
+          sed -i "s/VERSION=\".*\"/VERSION=\"$VERSION\"/" build.env
+          sed -i \
+            -e "s/<version>[^<]*<\/version>/<version>$VERSION<\/version>/" \
+            -e "s/<creationDate>[^<]*<\/creationDate>/<creationDate>$DATE<\/creationDate>/" \
+            plg_osmap_j2commerce.xml
+
+      - name: Build extension
+        if: steps.version.outputs.bump != 'none'
+        run: |
+          cd j2commerce/plg_osmap_j2commerce
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Find package file
+        if: steps.version.outputs.bump != 'none'
+        id: package
+        run: |
+          cd j2commerce/plg_osmap_j2commerce
+          PACKAGE=$(ls -1 plg_osmap_j2commerce_*.zip | head -1)
+          echo "file=$PACKAGE" >> $GITHUB_OUTPUT
+
+      - name: Update update.xml
+        if: steps.version.outputs.bump != 'none'
+        run: |
+          VERSION="${{ steps.version.outputs.new }}"
+          PACKAGE="${{ steps.package.outputs.file }}"
+          cat > j2commerce/plg_osmap_j2commerce/updates/update.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <updates>
+              <update>
+                  <name>OSMap J2Commerce Plugin</name>
+                  <description>OSMap sitemap plugin for J2Commerce products</description>
+                  <element>j2commerce</element>
+                  <type>plugin</type>
+                  <folder>osmap</folder>
+                  <client>site</client>
+                  <version>$VERSION</version>
+                  <infourl>https://github.com/advansit/Joomla/tree/main/j2commerce/plg_osmap_j2commerce</infourl>
+                  <downloads>
+                      <downloadurl type="full" format="zip">https://github.com/advansit/Joomla/releases/download/osmap-j2commerce-v$VERSION/$PACKAGE</downloadurl>
+                  </downloads>
+                  <tags>
+                      <tag>stable</tag>
+                  </tags>
+                  <targetplatform name="joomla" version="(5\.[0-9]|6\.[0-9])" />
+                  <php_minimum>8.1</php_minimum>
+              </update>
+          </updates>
+          EOF
+
+      - name: Commit, tag and push
+        if: steps.version.outputs.bump != 'none'
+        run: |
+          VERSION="${{ steps.version.outputs.new }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add j2commerce/plg_osmap_j2commerce/
+          git diff --staged --quiet || {
+            git commit -m "release: osmap-j2commerce v${VERSION} [skip ci]"
+            git tag -fa "osmap-j2commerce-v${VERSION}" -m "Release osmap-j2commerce v${VERSION}"
+            for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main --follow-tags && break; sleep 5; done
+          }
+
+      - name: Generate changelog
+        if: steps.version.outputs.bump != 'none'
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag -l "osmap-j2commerce-v*" --sort=-v:refname | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            echo "changelog=Initial release" >> $GITHUB_OUTPUT
+          else
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges -- j2commerce/plg_osmap_j2commerce/ | grep -v '\[skip ci\]' | head -20)
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="- Bug fixes and improvements"
+            fi
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        if: steps.version.outputs.bump != 'none'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: osmap-j2commerce-v${{ steps.version.outputs.new }}
+          make_latest: true
+          name: OSMap J2Commerce v${{ steps.version.outputs.new }}
+          body: |
+            ## OSMap J2Commerce Plugin v${{ steps.version.outputs.new }}
+
+            Adds all enabled J2Commerce products to the OSMap sitemap automatically.
+
+            ### Changes
+            ${{ steps.changelog.outputs.changelog }}
+
+            ### Installation
+            1. Download `${{ steps.package.outputs.file }}`
+            2. Install via Joomla Extension Manager
+            3. Enable plugin: Extensions → Plugins → OSMap J2Commerce
+            4. In OSMap, ensure the menu containing your shop item is selected
+
+            ### Requirements
+            - Joomla 5.x or 6.x
+            - PHP 8.1 or higher
+            - J2Commerce 4.x or later
+            - OSMap Free 5.x or later
+          files: |
+            j2commerce/plg_osmap_j2commerce/${{ steps.package.outputs.file }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance
+        if: steps.version.outputs.bump != 'none'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: j2commerce/plg_osmap_j2commerce/${{ steps.package.outputs.file }}

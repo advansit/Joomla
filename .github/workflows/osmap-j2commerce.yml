@@ -1,0 +1,101 @@
+name: Build & Test - OSMap J2Commerce
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['j2commerce/plg_osmap_j2commerce/**']
+
+jobs:
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build
+        run: |
+          cd j2commerce/plg_osmap_j2commerce
+          chmod +x build.sh
+          ./build.sh
+          cp *.zip tests/extension.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: extension-package
+          path: j2commerce/plg_osmap_j2commerce/tests/extension.zip
+          retention-days: 1
+
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Configuration'
+            script: 'configuration'
+          - name: '03 - Plugin Class'
+            script: 'plugin-class'
+          - name: '04 - Sitemap Output'
+            script: 'sitemap'
+          - name: '05 - Uninstall'
+            script: 'uninstall'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: extension-package
+          path: j2commerce/plg_osmap_j2commerce/tests/
+      - name: Start environment
+        run: |
+          cd j2commerce/plg_osmap_j2commerce/tests
+          docker compose up -d
+          sleep 60
+      - name: Run tests
+        run: |
+          cd j2commerce/plg_osmap_j2commerce/tests
+          chmod +x run-tests.sh
+          ./run-tests.sh ${{ matrix.script }}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ${{ matrix.script }}-logs
+          path: j2commerce/plg_osmap_j2commerce/tests/test-results/*.txt
+      - name: Cleanup
+        if: always()
+        run: |
+          cd j2commerce/plg_osmap_j2commerce/tests
+          docker compose down -v
+
+  collect-results:
+    name: Collect Results
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v8
+        with:
+          path: test-artifacts/
+      - name: Collect logs
+        run: |
+          mkdir -p tests/logs/plg_osmap_j2commerce
+          find test-artifacts/ -name "*.txt" -exec cp {} tests/logs/plg_osmap_j2commerce/ \; 2>/dev/null || true
+      - name: Commit logs
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -f tests/logs/plg_osmap_j2commerce/*.txt
+          git diff --staged --quiet || git commit -m "Add test logs [skip ci]"
+          git push || true
