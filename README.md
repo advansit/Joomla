@@ -10,6 +10,7 @@ Joomla/
 ├── j2commerce/               # J2Commerce Extensions
 │   ├── com_j2commerce_importexport/
 │   ├── com_j2store_cleanup/
+│   ├── plg_osmap_j2commerce/
 │   ├── plg_j2commerce_productcompare/
 │   └── plg_privacy_j2commerce/
 ├── shared/                   # Shared build and test scripts
@@ -30,6 +31,7 @@ Joomla/
 |-----------|-------------|
 | [Import/Export](j2commerce/com_j2commerce_importexport/) | Bulk data import/export for J2Commerce |
 | [J2Store Cleanup](j2commerce/com_j2store_cleanup/) | Detect incompatible extensions after J2Store-to-J2Commerce migration |
+| [OSMap J2Commerce](j2commerce/plg_osmap_j2commerce/) | Adds J2Commerce products to the OSMap sitemap automatically |
 | [Product Compare](j2commerce/plg_j2commerce_productcompare/) | Compare products side-by-side |
 | [Privacy](j2commerce/plg_privacy_j2commerce/) | GDPR compliance for J2Commerce |
 
@@ -42,6 +44,7 @@ Each extension has automated tests that run via GitHub Actions when files in the
 | `joomla-ajax-forms.yml` | Joomla AJAX Forms | `plg_ajax_joomlaajaxforms/**` |
 | `j2commerce-import-export.yml` | Import/Export | `j2commerce/com_j2commerce_importexport/**` |
 | `j2store-cleanup.yml` | J2Store Cleanup | `j2commerce/com_j2store_cleanup/**` |
+| `osmap-j2commerce.yml` | OSMap J2Commerce | `j2commerce/plg_osmap_j2commerce/**` |
 | `j2commerce-product-compare.yml` | Product Compare | `j2commerce/plg_j2commerce_productcompare/**` |
 | `j2commerce-privacy.yml` | Privacy | `j2commerce/plg_privacy_j2commerce/**` |
 
