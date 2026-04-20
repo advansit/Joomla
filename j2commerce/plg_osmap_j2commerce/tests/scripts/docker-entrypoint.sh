@@ -60,19 +60,30 @@ file_put_contents(\$f, \$c);
 
 echo "Inserting fixtures..."
 COM_CONTENT_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_content' LIMIT 1;" 2>/dev/null || echo "0")
+    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_content' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
 COM_J2STORE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2store' LIMIT 1;" 2>/dev/null || echo "0")
+    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2store' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
 echo "com_content=${COM_CONTENT_ID}, com_j2store=${COM_J2STORE_ID}"
 
+# Abort if com_j2store is not found
+if [ "$COM_J2STORE_ID" = "0" ]; then
+    echo "ERROR: com_j2store not found in extensions table"
+    exit 1
+fi
+
+# Get the root menu item ID for mainmenu (parent_id for top-level items)
+MAINMENU_ROOT_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+    -e "SELECT id FROM ${DB_PREFIX}menu WHERE menutype='mainmenu' AND parent_id=0 LIMIT 1;" 2>/dev/null || echo "1")
+echo "mainmenu root item id: ${MAINMENU_ROOT_ID}"
+
 mysql -h mysql -u joomla -pjoomla_pass joomla_db << EOSQL
--- Shop page menu item (parent, published=1) — ID 9001
+-- Shop page menu item (top-level, published=1) — ID 9001
 INSERT IGNORE INTO ${DB_PREFIX}menu
     (id, menutype, title, alias, path, link, type, published, parent_id, level, component_id, language, access, params)
 VALUES (
     9001, 'mainmenu', 'Shop', 'shop', 'shop',
     'index.php?option=com_j2store&view=products',
-    'component', 1, 1, 1, ${COM_J2STORE_ID}, '*', 1, '{}'
+    'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_J2STORE_ID}, '*', 1, '{}'
 );
 
 -- Product articles
@@ -109,10 +120,10 @@ INSERT IGNORE INTO ${DB_PREFIX}menu
     (id, menutype, title, alias, path, link, type, published, parent_id, level, component_id, language, access, params)
 VALUES
     (9002, 'mainmenu', 'Test Product Alpha', 'test-product-alpha', 'shop/test-product-alpha',
-     'index.php?option=com_content&view=article&id=9001',
+     'index.php?option=com_content&view=article&id=9001&Itemid=9002',
      'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, '{}'),
     (9003, 'mainmenu', 'Test Product Beta', 'test-product-beta', 'shop/test-product-beta',
-     'index.php?option=com_content&view=article&id=9002',
+     'index.php?option=com_content&view=article&id=9002&Itemid=9003',
      'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, '{}');
 EOSQL
 
@@ -133,6 +144,14 @@ INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemap_menus (sitemap_id, menutype_id, cha
 VALUES (1, ${MAINMENU_ID}, 'weekly', 0.5, 1);
 EOSQL
 echo "OSMap sitemap created"
+
+# Verify fixtures are correct
+echo "Verifying fixtures..."
+mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
+    SELECT id, title, published, component_id FROM ${DB_PREFIX}menu WHERE id IN (9001,9002,9003);
+    SELECT j2store_product_id, product_source_id, enabled FROM ${DB_PREFIX}j2store_products WHERE j2store_product_id IN (9001,9002,9003);
+    SELECT sitemap_id, menutype_id FROM ${DB_PREFIX}osmap_sitemap_menus;
+" 2>/dev/null || echo "WARNING: fixture verification failed"
 
 echo "OK" > /var/www/html/health.txt
 echo "=== Container ready ==="
