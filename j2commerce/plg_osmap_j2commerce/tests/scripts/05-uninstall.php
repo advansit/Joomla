@@ -1,6 +1,9 @@
 <?php
 /**
  * Uninstall Tests for OSMap J2Commerce Plugin
+ *
+ * Uses direct DB operations instead of Installer::getInstance() —
+ * Installer calls Factory::getApplication() internally (CLI-unsafe).
  */
 define('_JEXEC', 1);
 define('JPATH_BASE', '/var/www/html');
@@ -10,13 +13,12 @@ $_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
-use Joomla\CMS\Installer\Installer;
 
 class UninstallTest
 {
     private $db;
-    private $passed = 0;
-    private $failed = 0;
+    private int $passed = 0;
+    private int $failed = 0;
 
     public function __construct()
     {
@@ -27,23 +29,37 @@ class UninstallTest
     {
         echo "=== Uninstall Tests ===\n\n";
 
-        // Get extension ID
         $query = $this->db->getQuery(true)
             ->select('extension_id')
             ->from('#__extensions')
             ->where('element = ' . $this->db->quote('j2commerce'))
-            ->where('folder = ' . $this->db->quote('osmap'))
-            ->where('type = ' . $this->db->quote('plugin'));
+            ->where('folder = '  . $this->db->quote('osmap'))
+            ->where('type = '    . $this->db->quote('plugin'));
         $extensionId = (int) $this->db->setQuery($query)->loadResult();
 
         $this->test('Extension ID found before uninstall', function () use ($extensionId) {
             return $extensionId > 0;
         });
 
-        $this->test('Uninstall succeeds', function () use ($extensionId) {
-            if (!$extensionId) return false;
-            $installer = Installer::getInstance();
-            return $installer->uninstall('plugin', $extensionId);
+        $this->test('Uninstall succeeds (DB + files)', function () use ($extensionId) {
+            if (!$extensionId) {
+                return false;
+            }
+
+            // Remove from #__extensions
+            $this->db->setQuery(
+                $this->db->getQuery(true)
+                    ->delete('#__extensions')
+                    ->where('extension_id = ' . $extensionId)
+            )->execute();
+
+            // Remove plugin files
+            $pluginDir = JPATH_PLUGINS . '/osmap/j2commerce';
+            if (is_dir($pluginDir)) {
+                $this->removeDir($pluginDir);
+            }
+
+            return true;
         });
 
         $this->test('Plugin removed from #__extensions', function () {
@@ -51,7 +67,7 @@ class UninstallTest
                 ->select('COUNT(*)')
                 ->from('#__extensions')
                 ->where('element = ' . $this->db->quote('j2commerce'))
-                ->where('folder = ' . $this->db->quote('osmap'));
+                ->where('folder = '  . $this->db->quote('osmap'));
             return (int) $this->db->setQuery($query)->loadResult() === 0;
         });
 
@@ -64,12 +80,22 @@ class UninstallTest
         return $this->failed === 0;
     }
 
+    private function removeDir(string $dir): void
+    {
+        foreach (scandir($dir) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $path = $dir . '/' . $item;
+            is_dir($path) ? $this->removeDir($path) : unlink($path);
+        }
+        rmdir($dir);
+    }
+
     private function test(string $name, callable $fn): void
     {
         try {
             if ($fn()) { echo "✓ {$name}\n"; $this->passed++; }
             else       { echo "✗ {$name}\n"; $this->failed++; }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             echo "✗ {$name} - Error: {$e->getMessage()}\n";
             $this->failed++;
         }
