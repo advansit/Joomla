@@ -42,7 +42,7 @@ VALUES (
     'component', 1, 1, 1, ${COM_J2STORE_ID}, '*', 1, '{}'
 );
 
--- Product articles — IDs 9001, 9002, 9003 (9003 = disabled product, 9004 = no menu item)
+-- Product articles
 INSERT IGNORE INTO ${DB_PREFIX}content
     (id, title, alias, introtext, \`fulltext\`, state, catid, created, modified, publish_up, language, access)
 VALUES
@@ -51,26 +51,27 @@ VALUES
     (9003, 'Test Product Disabled', 'test-product-disabled', 'Disabled', '', 1, 2, NOW(), NOW(), NOW(), '*', 1),
     (9004, 'Test Product NoMenu',   'test-product-nomenu',   'NoMenu',   '', 1, 2, NOW(), NOW(), NOW(), '*', 1);
 
--- J2Commerce products (9003 = disabled, 9004 = enabled but no menu item)
+-- J2Commerce products (real schema: visibility, no product_sku/product_price)
+-- 9003 = disabled (enabled=0), 9004 = enabled but no SEF menu item
 INSERT IGNORE INTO ${DB_PREFIX}j2store_products
-    (j2store_product_id, product_source_id, product_source, product_sku, product_price, product_visibility, enabled)
+    (j2store_product_id, product_source_id, product_source, visibility, enabled)
 VALUES
-    (9001, 9001, 'com_content', 'ALPHA-001',    49.00, 1, 1),
-    (9002, 9002, 'com_content', 'BETA-001',     79.00, 1, 1),
-    (9003, 9003, 'com_content', 'DISABLED-001', 19.00, 1, 0),
-    (9004, 9004, 'com_content', 'NOMENU-001',   29.00, 1, 1);
+    (9001, 9001, 'com_content', 1, 1),
+    (9002, 9002, 'com_content', 1, 1),
+    (9003, 9003, 'com_content', 1, 0),
+    (9004, 9004, 'com_content', 1, 1);
 
--- J2Commerce variants
+-- J2Commerce variants (real schema: product_id, sku — not j2store_product_id, variant_sku)
 INSERT IGNORE INTO ${DB_PREFIX}j2store_variants
-    (j2store_variant_id, j2store_product_id, variant_sku, price, is_master)
+    (j2store_variant_id, product_id, sku, price, is_master)
 VALUES
-    (9001, 9001, 'ALPHA-001',    49.00, 1),
-    (9002, 9002, 'BETA-001',     79.00, 1),
-    (9003, 9003, 'DISABLED-001', 19.00, 1),
-    (9004, 9004, 'NOMENU-001',   29.00, 1);
+    (9001, 9001, 'ALPHA-001', 49.00, 1),
+    (9002, 9002, 'BETA-001',  79.00, 1),
+    (9003, 9003, 'DISABLED',  19.00, 1),
+    (9004, 9004, 'NOMENU',    29.00, 1);
 
 -- SEF menu items (published=-2, children of shop 9001)
--- Only Alpha (9002) and Beta (9003) — disabled product has no menu item, nomenu has no menu item
+-- Only Alpha (9002) and Beta (9003) — disabled and nomenu have no SEF item
 INSERT IGNORE INTO ${DB_PREFIX}menu
     (id, menutype, title, alias, path, link, type, published, parent_id, level, component_id, language, access, params)
 VALUES
