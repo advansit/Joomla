@@ -55,14 +55,19 @@ class SitemapHttpTest
             return str_contains($xml, '<urlset') && str_contains($xml, 'sitemaps.org');
         });
 
-        // With SEF disabled, product URLs are com_content article URLs with view=article.
-        // URLs in the sitemap XML are CDATA-encoded so & becomes &amp;.
-        // We identify product URLs by: com_content + view=article + id=NNNN.
-        // Note: id=9001 also appears in Itemid=9001 (shop menu), so we require view=article.
-        $isProductUrl = function (string $u, int $articleId): bool {
-            return (str_contains($u, 'com_content') || str_contains($u, 'test-product-'))
-                && (str_contains($u, 'view=article') || str_contains($u, 'test-product-'))
-                && (str_contains($u, 'id=' . $articleId) || str_contains($u, 'test-product-'));
+        // With SEF disabled, product URLs look like:
+        //   .../index.php?option=com_content&view=article&id=9001:test-product-alpha&Itemid=9002&...
+        // We match article IDs using the pattern "&id=NNNN" or "&id=NNNN:" to avoid
+        // false positives from Itemid=NNNN (e.g. Itemid=9003 contains "id=9003").
+        $hasArticleId = function (string $u, int $articleId): bool {
+            // Match &id=9001 or &id=9001: (Joomla appends :alias after the numeric id)
+            return preg_match('/[?&]id=' . $articleId . '(?:[^0-9]|$)/', $u) === 1;
+        };
+
+        $isProductUrl = function (string $u, int $articleId) use ($hasArticleId): bool {
+            return str_contains($u, 'com_content')
+                && str_contains($u, 'view=article')
+                && $hasArticleId($u, $articleId);
         };
 
         $this->test('Sitemap contains product Alpha URL (article id=9001)', function () use ($urls, $isProductUrl) {
@@ -80,7 +85,7 @@ class SitemapHttpTest
         });
 
         $this->test('Disabled product not in sitemap', function () use ($urls, $isProductUrl) {
-            // product_source_id=9003 has enabled=0
+            // product_source_id=9003 has enabled=0, so article id=9003 must not appear
             foreach ($urls as $u) {
                 if ($isProductUrl($u, 9003) || str_contains($u, 'test-product-disabled')) return false;
             }
@@ -88,7 +93,7 @@ class SitemapHttpTest
         });
 
         $this->test('Product without menu item not in sitemap', function () use ($urls, $isProductUrl) {
-            // product_source_id=9004 has no SEF menu item
+            // product_source_id=9004 has no SEF menu item, so article id=9004 must not appear
             foreach ($urls as $u) {
                 if ($isProductUrl($u, 9004) || str_contains($u, 'test-product-nomenu')) return false;
             }
