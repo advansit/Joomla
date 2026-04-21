@@ -81,7 +81,7 @@ class J2Commerce extends Base implements SubscriberInterface
                 'browserNav' => $parent->browserNav,
                 'priority'   => $params->get('priority', '0.8'),
                 'changefreq' => $params->get('changefreq', 'weekly'),
-                'link'       => $product->path,
+                'link'       => '/' . $product->path,
                 'expandible' => false,
             ];
 
