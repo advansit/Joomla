@@ -90,6 +90,7 @@ jobs:
           VERSION="${{ steps.version.outputs.new }}"
           DATE=$(date +%Y-%m)
           cd plg_ajax_joomlaajaxforms
+          echo "$VERSION" > VERSION
           sed -i \
             -e "s/<version>[^<]*<\/version>/<version>$VERSION<\/version>/" \
             -e "s/<creationDate>[^<]*<\/creationDate>/<creationDate>$DATE<\/creationDate>/" \
@@ -147,8 +148,7 @@ jobs:
           VERSION="${{ steps.version.outputs.new }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add plg_ajax_joomlaajaxforms/joomlaajaxforms.xml
-          git add plg_ajax_joomlaajaxforms/updates/update.xml
+          git add plg_ajax_joomlaajaxforms/
           git diff --staged --quiet || {
             git commit -m "release: ajaxforms v${VERSION} [skip ci]"
             git tag -fa "ajaxforms-v${VERSION}" -m "Release ajaxforms v${VERSION}"
