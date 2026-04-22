@@ -61,7 +61,8 @@ class J2Commerce extends Base implements SubscriberInterface
             ->join('INNER', $db->quoteName('#__content', 'a')
                 . ' ON (m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id, ' . $db->quote('&%') . ')'
                 . '  OR m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id))'
-                . ' AND m.link LIKE ' . $db->quote('%com_content%view=article%'))
+                . ' AND m.link LIKE ' . $db->quote('%com_content%view=article%')
+                . ' AND a.state = 1')
             ->join('INNER', $db->quoteName('#__j2store_products', 'p')
                 . ' ON p.product_source_id = a.id'
                 . ' AND p.product_source = ' . $db->quote('com_content')
