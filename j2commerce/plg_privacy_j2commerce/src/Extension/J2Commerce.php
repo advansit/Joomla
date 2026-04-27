@@ -16,6 +16,7 @@ use Joomla\CMS\Event\Privacy\RemoveDataEvent;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Log\Log;
+use Joomla\CMS\Session\Session;
 use Joomla\CMS\Mail\MailerFactoryInterface;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Router\Route;
@@ -1051,6 +1052,11 @@ HTML;
     public function onAjaxJ2commercePrivacy(): array
     {
         $app = $this->getApplication();
+
+        if (!Session::checkToken('get') && !Session::checkToken()) {
+            return ['success' => false, 'message' => Text::_('JINVALID_TOKEN')];
+        }
+
         $task = $app->input->get('task', '');
         $user = $app->getIdentity();
 
