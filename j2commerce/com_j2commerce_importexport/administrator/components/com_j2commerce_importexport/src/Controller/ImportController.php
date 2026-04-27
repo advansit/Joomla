@@ -32,8 +32,28 @@ class ImportController extends BaseController
             $app->close();
         }
 
+        // Only allow CSV, XML and JSON import files
+        $allowedExtensions = ['csv', 'xml', 'json'];
+        $allowedMimeTypes  = [
+            'text/csv',
+            'text/plain',
+            'application/csv',
+            'application/xml',
+            'text/xml',
+            'application/json',
+        ];
+
+        $originalName  = $file['name'] ?? '';
+        $fileExtension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $detectedMime  = mime_content_type($file['tmp_name']);
+
+        if (!in_array($fileExtension, $allowedExtensions, true) || !in_array($detectedMime, $allowedMimeTypes, true)) {
+            echo new JsonResponse(['error' => Text::_('COM_J2COMMERCE_IMPORTEXPORT_ERROR_INVALID_FILE_TYPE')], '', true);
+            $app->close();
+        }
+
         $session = $app->getSession();
-        $tmpPath = JPATH_ROOT . '/tmp/j2commerce_import_' . uniqid() . '_' . $file['name'];
+        $tmpPath = JPATH_ROOT . '/tmp/j2commerce_import_' . uniqid() . '_' . basename($originalName);
         
         if (move_uploaded_file($file['tmp_name'], $tmpPath)) {
             $session->set('import_file', $tmpPath, 'j2commerce_import');
