@@ -7,6 +7,11 @@ on:
     paths: 
       - 'j2commerce/plg_privacy_j2commerce/**'
       - 'shared/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'j2commerce/plg_privacy_j2commerce/**'
+      - 'shared/**'
 
 jobs:
   build:
