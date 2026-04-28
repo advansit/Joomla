@@ -18,6 +18,12 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
     protected $minimumJoomla = '5.0';
     protected $minimumPhp = '8.1';
 
+    /** @var string[] Files copied to template overrides on first install */
+    private array $_overridesCopied = [];
+
+    /** @var string[] Files skipped because they already existed */
+    private array $_overridesSkipped = [];
+
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
@@ -28,6 +34,11 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             }
 
             $this->ensureUpdateSite();
+
+            // Deploy template overrides on first install only (never overwrite)
+            if ($type === 'install') {
+                $this->copyTemplateOverrides($parent);
+            }
 
             $app = Factory::getApplication();
             $lang = $app->getLanguage();
@@ -140,6 +151,39 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '<p><small>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP5_NOTE') . '</small></p>';
             $message .= '</div>';
 
+            // Template overrides deployment result (first install only)
+            if ($type === 'install' && (!empty($this->_overridesCopied) || !empty($this->_overridesSkipped))) {
+                $sOverride = $sBox . ';background:#f0fdf4;border-color:#16a34a';
+                $message .= '<div style="' . $sOverride . '">';
+                $message .= '<div style="' . $sStep . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_OVERRIDES_LABEL') . '</div>';
+                $message .= '<h3 style="margin-top:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_OVERRIDES_TITLE') . '</h3>';
+                $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_OVERRIDES_DESC') . '</p>';
+
+                if (!empty($this->_overridesCopied)) {
+                    $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_OVERRIDES_COPIED') . '</strong></p>';
+                    $message .= '<ul style="font-family:monospace;font-size:13px">';
+                    foreach ($this->_overridesCopied as $f) {
+                        $message .= '<li>templates/' . htmlspecialchars($f) . '</li>';
+                    }
+                    $message .= '</ul>';
+                }
+
+                if (!empty($this->_overridesSkipped)) {
+                    $sSkipWarn = $sBox . ';background:#fef3c7;border-color:#d97706;margin-top:12px';
+                    $message .= '<div style="' . $sSkipWarn . '">';
+                    $message .= '<p style="margin:0 0 8px"><strong>&#9888; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_OVERRIDES_SKIPPED') . '</strong></p>';
+                    $message .= '<ul style="font-family:monospace;font-size:13px;margin:0 0 8px">';
+                    foreach ($this->_overridesSkipped as $f) {
+                        $message .= '<li>templates/' . htmlspecialchars($f) . '</li>';
+                    }
+                    $message .= '</ul>';
+                    $message .= '<p style="margin:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_OVERRIDES_SKIPPED_NOTE') . '</p>';
+                    $message .= '</div>';
+                }
+
+                $message .= '</div>';
+            }
+
             // Checklist
             $message .= '<div style="' . $sWarn . '">';
             $message .= '<h3 style="margin-top:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECKLIST_TITLE') . '</h3>';
@@ -148,6 +192,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_EMAIL') . '</li>';
             $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_RETENTION') . '</li>';
             $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_CONSENT') . '</li>';
+            $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_OVERRIDES') . '</li>';
             $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_MENUITEM') . '</li>';
             $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TASK') . '</li>';
             $message .= '<li>&#9744; ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_CHECK_TEST') . '</li>';
@@ -164,6 +209,79 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
 
             $app->enqueueMessage($message, 'message');
         }
+    }
+
+    /**
+     * Copy template overrides to all active frontend templates on first install.
+     *
+     * Only copies files that do not already exist — never overwrites customisations.
+     * Overrides are sourced from overrides/com_j2store/ inside the plugin package.
+     *
+     * WHY OVERRIDES ARE NEEDED
+     * J2Commerce's eventWithHtml() only imports plugins in the 'j2store' group.
+     * This plugin is in the 'privacy' group (required for Joomla's native
+     * com_privacy integration). There is no hook available to a privacy-group
+     * plugin inside J2Commerce's checkout or MyProfile views. Template overrides
+     * are the only way to integrate without patching rendered HTML.
+     */
+    private function copyTemplateOverrides($parent): void
+    {
+        $sourcePath = $parent->getParent()->getPath('source') . '/overrides/com_j2store';
+
+        if (!is_dir($sourcePath)) {
+            return;
+        }
+
+        $db    = Factory::getContainer()->get(DatabaseInterface::class);
+        $query = $db->getQuery(true)
+            ->select([$db->quoteName('element')])
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('template'))
+            ->where($db->quoteName('client_id') . ' = 0')
+            ->where($db->quoteName('enabled') . ' = 1');
+
+        $db->setQuery($query);
+        $templates = $db->loadColumn() ?: [];
+
+        $overrideFiles = [
+            'checkout/default_shipping_payment.php',
+            'myprofile/default.php',
+            'myprofile/default_addresses.php',
+        ];
+
+        $copied  = [];
+        $skipped = [];
+
+        foreach ($templates as $template) {
+            $templateHtmlPath = JPATH_SITE . '/templates/' . $template . '/html/com_j2store';
+
+            foreach ($overrideFiles as $file) {
+                $dest = $templateHtmlPath . '/' . $file;
+                $src  = $sourcePath . '/' . $file;
+
+                if (!file_exists($src)) {
+                    continue;
+                }
+
+                if (file_exists($dest)) {
+                    $skipped[] = $template . '/html/com_j2store/' . $file;
+                    continue;
+                }
+
+                $destDir = dirname($dest);
+                if (!is_dir($destDir)) {
+                    mkdir($destDir, 0755, true);
+                }
+
+                if (copy($src, $dest)) {
+                    $copied[] = $template . '/html/com_j2store/' . $file;
+                }
+            }
+        }
+
+        // Store results for display in postflight message
+        $this->_overridesCopied  = $copied;
+        $this->_overridesSkipped = $skipped;
     }
 
     /**

@@ -63,7 +63,9 @@ jobs:
             script: 'anonymization'
           - name: '07 - GDPR Compliance'
             script: 'gdpr'
-          - name: '08 - Uninstall'
+          - name: '08 - Template Overrides'
+            script: 'template_overrides'
+          - name: '09 - Uninstall'
             script: 'uninstall'
     steps:
       - uses: actions/checkout@v6

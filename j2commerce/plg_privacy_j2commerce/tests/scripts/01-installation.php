@@ -65,7 +65,41 @@ class InstallationTest
         
         $this->test('English language file exists', 
             file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/language/en-GB/plg_privacy_j2commerce.ini'));
-        
+
+        // Test 4: Bundled override source files exist in plugin directory
+        $overrideSrc = JPATH_BASE . '/plugins/privacy/j2commerce/overrides/com_j2store';
+        $this->test('Override source directory exists',
+            is_dir($overrideSrc));
+        $this->test('Override: checkout/default_shipping_payment.php',
+            file_exists($overrideSrc . '/checkout/default_shipping_payment.php'));
+        $this->test('Override: myprofile/default.php',
+            file_exists($overrideSrc . '/myprofile/default.php'));
+        $this->test('Override: myprofile/default_addresses.php',
+            file_exists($overrideSrc . '/myprofile/default_addresses.php'));
+
+        // Test 5: Overrides deployed to at least one active frontend template
+        $query = $this->db->getQuery(true)
+            ->select($this->db->quoteName('element'))
+            ->from($this->db->quoteName('#__extensions'))
+            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('template'))
+            ->where($this->db->quoteName('client_id') . ' = 0')
+            ->where($this->db->quoteName('enabled') . ' = 1');
+        $this->db->setQuery($query);
+        $templates = $this->db->loadColumn() ?: [];
+
+        $deployedCount = 0;
+        foreach ($templates as $tpl) {
+            $dest = JPATH_BASE . '/templates/' . $tpl . '/html/com_j2store/myprofile/default.php';
+            if (file_exists($dest)) {
+                $deployedCount++;
+            }
+        }
+        $this->test(
+            'Overrides deployed to at least one template',
+            $deployedCount > 0,
+            'No active template has the MyProfile override. Check postflight output.'
+        );
+
         echo "\n=== Installation Test Summary ===\n";
         echo "Passed: {$this->passed}\n";
         echo "Failed: {$this->failed}\n";

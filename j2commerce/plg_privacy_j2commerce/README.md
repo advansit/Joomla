@@ -91,9 +91,10 @@ The plugin requires mandatory configuration before operation. A detailed setup w
 
 1. Enable the plugin in Joomla's plugin manager
 2. Configure retention periods and legal compliance parameters
-3. **Create a hidden menu item for Privacy Requests** (see below)
-4. Create J2Store Custom Field for license type identification (optional, for lifetime licenses)
-5. Establish automated cleanup scheduling
+3. **Verify template overrides** — deployed automatically on first install; check the postflight message for which files were copied or skipped (see [Template Integration](#template-integration))
+4. **Create a hidden menu item for Privacy Requests** (see below)
+5. Create J2Store Custom Field for license type identification (optional, for lifetime licenses)
+6. Establish automated cleanup scheduling
 
 Note: Failure to complete the Custom Field configuration will result in incorrect license type detection and potential data retention violations.
 
@@ -143,7 +144,7 @@ For a full overview of how Joomla's Privacy Suite works, see the [Joomla Privacy
 
 ### Checkout Consent Checkbox
 
-The plugin adds a privacy consent checkbox to the J2Commerce checkout (step 4: Shipping & Payment). The checkbox can be rendered in two ways: via the template override `default_shipping_payment.php` (recommended), or injected by the plugin's `onAfterRender` handler as a fallback. See [Template Integration](#template-integration) for details.
+The plugin adds a privacy consent checkbox to the J2Commerce checkout (step 4: Shipping & Payment) via the template override `default_shipping_payment.php`. See [Template Integration](#template-integration) for deployment details.
 
 **Validation:** Client-side JavaScript validates both the AGB/TOS checkbox (J2Store built-in) and the privacy consent checkbox together. If either is unchecked, both error messages are shown simultaneously. The validation uses capturing-phase event listeners that run before J2Store's jQuery handler.
 
@@ -164,7 +165,7 @@ The plugin adds a privacy consent checkbox to the J2Commerce checkout (step 4: S
 
 The privacy tab in J2Commerce's "My Profile" shows consent status and privacy request buttons.
 
-> **Template override required.** The privacy tab is only rendered when a compatible MyProfile template override is in place. See [Template Integration](#template-integration) below.
+> **Template override required.** The privacy tab is only rendered when the MyProfile template override (`default.php`) is in place. The override is deployed automatically on first install. See [Template Integration](#template-integration) for details.
 
 **Consent status lookup** checks three sources in order:
 1. `#__privacy_consents` table (by `user_id` for logged-in, not available for guests)
@@ -184,41 +185,43 @@ If an order is found but no `#__privacy_consents` entry exists, one is auto-crea
 
 ## Template Integration
 
-The plugin provides two mechanisms for rendering the privacy tab and the checkout consent checkbox. The **template override approach is strongly recommended** — it is explicit, Bootstrap 5 compatible, and not dependent on fragile HTML injection.
+This plugin is a **native Joomla privacy plugin**, not a J2Commerce plugin. It is registered under Joomla's `privacy` plugin group, which is what allows it to participate in Joomla's built-in Privacy Suite (`com_privacy`): handling data export requests, deletion requests, consent tracking, and the scheduled cleanup task.
 
-### How the two mechanisms differ
+The trade-off is that J2Commerce does not know about it. J2Commerce's `eventWithHtml()` — the mechanism J2Commerce uses to let plugins inject content into its views — only loads plugins from its own `j2store` group. Plugins in the `privacy` group are invisible to it. This means there is no event hook available inside J2Commerce's checkout or MyProfile views that this plugin can use.
 
-| Mechanism | How it works | When to use |
-|-----------|-------------|-------------|
-| **Template override** (recommended) | `default.php` checks for the plugin via `PluginHelper` and renders `default_privacy.php` directly | Custom Joomla templates based on Bootstrap 5 |
-| **`onAfterRender` injection** (fallback) | Plugin injects HTML by searching the rendered output for CSS selectors | Only if you cannot use template overrides |
+Template overrides are the solution: by placing PHP files in `templates/{active-template}/html/com_j2store/`, the overrides run as part of J2Commerce's own rendering and can check for this plugin via `PluginHelper` to conditionally add the consent checkbox and Privacy tab.
 
-The `onAfterRender` fallback searches for selectors like `.j2store-myprofile-orders` to find an insertion point. If your template uses different markup, the privacy section will silently not appear.
+### Automatic deployment on first install
+
+On first install, `script.php` copies the bundled overrides into every active frontend template:
+
+```
+templates/{template}/html/com_j2store/checkout/default_shipping_payment.php
+templates/{template}/html/com_j2store/myprofile/default.php
+templates/{template}/html/com_j2store/myprofile/default_addresses.php
+```
+
+Rules:
+- Files are **only copied if they do not already exist** — existing customisations are never overwritten.
+- On **updates**, no files are copied. Manage overrides manually after updating.
+- The postflight message lists which files were copied and which were skipped.
+
+### Manual deployment
+
+If the automatic copy was skipped (file already existed, or you are installing on a non-standard template path), copy the source files manually:
+
+```
+# Source (inside the installed plugin)
+JPATH_PLUGINS/privacy/j2commerce/overrides/com_j2store/
+
+# Destination (repeat for each active template)
+templates/{your-template}/html/com_j2store/
+```
 
 ### Requirements
 
 - Joomla template based on **Bootstrap 5** (`default.php` uses BS5 tab markup)
 - J2Commerce MyProfile view enabled
-
-### Files to copy
-
-Copy the following files from this repository into your template:
-
-**MyProfile tab:**
-
-```
-templates/{your-template}/html/com_j2store/myprofile/default.php
-templates/{your-template}/html/com_j2store/myprofile/default_privacy.php
-templates/{your-template}/html/com_j2store/myprofile/orderitems.php
-```
-
-**Checkout consent checkbox:**
-
-```
-templates/{your-template}/html/com_j2store/checkout/default_shipping_payment.php
-```
-
-Source files are in the `advans.ch` repository under `src/template/html/com_j2store/`.
 
 ### How `default.php` activates the privacy tab
 
@@ -237,7 +240,15 @@ If the plugin is not installed or disabled, `$showPrivacyTab` stays `false` and 
 
 ### Language file must be loaded manually
 
-The `privacy` plugin group is **not** auto-imported by Joomla in the frontend. Without the explicit `Factory::getLanguage()->load(...)` call above, all `PLG_PRIVACY_J2COMMERCE_*` language keys render as raw strings in the tab. This call is already included in the provided `default.php` — do not remove it.
+Because this is a native Joomla privacy plugin and not a J2Commerce plugin, Joomla does not auto-import it in the frontend. Its language file is therefore not loaded automatically either. Without the explicit `Factory::getLanguage()->load(...)` call in `default.php`, all `PLG_PRIVACY_J2COMMERCE_*` keys render as raw strings in the tab. This call is already included in the provided `default.php` — do not remove it.
+
+### Updating overrides after plugin updates
+
+When the plugin is updated, the override files in `JPATH_PLUGINS/privacy/j2commerce/overrides/` are updated but the deployed copies in `templates/` are **not** touched. After a plugin update:
+
+1. Compare your deployed override with the new source file.
+2. Merge any changes relevant to your customisation.
+3. The postflight message on update will remind you of this.
 
 ### Licenses tab (optional)
 
