@@ -19,6 +19,7 @@
         <folder plugin="j2commerce">services</folder>
         <folder>src</folder>
         <folder>language</folder>
+        <folder>overrides</folder>
     </files>
 
     <config>

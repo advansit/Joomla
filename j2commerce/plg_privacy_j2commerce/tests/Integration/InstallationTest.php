@@ -71,6 +71,51 @@ class InstallationTest extends TestCase
         $zip->close();
     }
 
+    public function testTemplateOverrideFilesExistInPackage(): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($this->packagePath);
+
+        $overrideFiles = [
+            'overrides/com_j2store/checkout/default_shipping_payment.php',
+            'overrides/com_j2store/myprofile/default.php',
+            'overrides/com_j2store/myprofile/default_addresses.php',
+        ];
+
+        foreach ($overrideFiles as $file) {
+            $this->assertNotFalse(
+                $zip->locateName($file),
+                "Template override not found in package: {$file}"
+            );
+        }
+
+        $zip->close();
+    }
+
+    public function testTemplateOverridesContainPluginCheck(): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($this->packagePath);
+
+        // Both MyProfile overrides must check for the plugin via PluginHelper
+        $filesToCheck = [
+            'overrides/com_j2store/myprofile/default.php',
+            'overrides/com_j2store/checkout/default_shipping_payment.php',
+        ];
+
+        foreach ($filesToCheck as $file) {
+            $content = $zip->getFromName($file);
+            $this->assertNotFalse($content, "Could not read {$file} from package");
+            $this->assertStringContainsString(
+                'PluginHelper',
+                $content,
+                "{$file} must use PluginHelper to check for the privacy plugin"
+            );
+        }
+
+        $zip->close();
+    }
+
     public function testManifestIsValidXml(): void
     {
         $zip = new \ZipArchive();
