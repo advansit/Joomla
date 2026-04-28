@@ -6,6 +6,10 @@ on:
     branches: [main]
     paths: 
       - 'j2commerce/com_j2commerce_importexport/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'j2commerce/com_j2commerce_importexport/**'
       - 'shared/**'
 
 jobs:
