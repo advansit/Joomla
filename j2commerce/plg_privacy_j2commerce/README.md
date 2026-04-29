@@ -251,20 +251,31 @@ The plugin detects AcyMailing by scanning the database for a table ending in `ac
 
 A `newsletter_subscriptions` domain is added to the export containing:
 
-| Field | Description |
-|---|---|
-| email | Subscriber e-mail address |
-| name | Subscriber name |
-| confirmed | Whether the subscriber confirmed their opt-in |
-| created | Subscription creation date |
-| list (per row) | List name |
-| status | `subscribed` or `unsubscribed` |
-| subscription_date | Date subscribed to this list |
-| unsubscribe_date | Date unsubscribed from this list (if applicable) |
+| Field | Source table | Description |
+|---|---|---|
+| email | `acym_user` | Subscriber e-mail address |
+| name | `acym_user` | Subscriber name |
+| confirmed | `acym_user` | Whether the subscriber confirmed their opt-in |
+| created | `acym_user` | Subscription creation date |
+| list (per row) | `acym_list` | List name |
+| status | `acym_user_has_list` | `subscribed` or `unsubscribed` |
+| subscription_date | `acym_user_has_list` | Date subscribed to this list |
+| unsubscribe_date | `acym_user_has_list` | Date unsubscribed from this list (if applicable) |
+| field / value | `acym_user_has_field` | Custom field values (name, address, phone, etc.) |
 
 **Deletion (`onPrivacyRemoveData`):**
 
-The subscriber record in `acym_user` and all rows in `acym_user_has_list` are deleted. List-association rows are deleted first to respect the foreign key constraint.
+All rows referencing the subscriber are deleted before the subscriber record itself (foreign key order):
+
+| Table | Data removed |
+|---|---|
+| `acym_user_has_list` | List subscriptions |
+| `acym_user_has_field` | Custom field values (name, address, phone, etc.) |
+| `acym_user_stat` | Per-campaign open/click/bounce/device stats |
+| `acym_url_click` | URL click tracking |
+| `acym_history` | Action log incl. IP address |
+| `acym_queue` | Pending outbound emails |
+| `acym_user` | Subscriber record (email, name, confirmation status) |
 
 ### MyProfile Newsletter tab
 
