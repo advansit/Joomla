@@ -43,6 +43,24 @@ plg_*/
     └── integration/
 ```
 
+## update.xml Requirements
+
+Every plugin `update.xml` **must** include `<client>site</client>`:
+
+```xml
+<update>
+    <element>myplugin</element>
+    <type>plugin</type>
+    <folder>myfolder</folder>
+    <client>site</client>   <!-- required: all our plugins install with client_id=0 -->
+    ...
+</update>
+```
+
+**Why:** Joomla defaults to `client_id=1` (Administrator) when `<client>` is absent. All our plugins are installed with `client_id=0` (Site). The mismatch prevents Joomla from matching the update record to the installed extension — updates are never shown in `System → Update → Extensions`.
+
+Components do not need this — they have no `client_id` conflict.
+
 ## GitHub Workflows
 
 | Workflow file | Trigger | Purpose |
