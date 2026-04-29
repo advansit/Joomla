@@ -129,68 +129,75 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     // =========================================================================
 
     /**
-     * Check whether AcyMailing is installed and its helper loadable.
+     * Detect the AcyMailing table prefix used in this Joomla installation.
+     * Returns null if AcyMailing is not installed (no acym_configuration table found).
+     *
+     * Works with all AcyMailing versions (6.x, 7.x, 8.x, 9.x, 10.x) because
+     * it only relies on the database tables, not on AcyMailing PHP classes.
      */
-    protected function isAcyMailingAvailable(): bool
+    protected function getAcymTablePrefix(): ?string
     {
-        $helper = JPATH_ADMINISTRATOR . '/components/com_acym/helpers/helper.php';
-        if (!file_exists($helper)) {
-            return false;
-        }
-        require_once $helper;
+        $db = $this->getDatabase();
 
-        $globalHelper = ACYM_HELPER . 'global/global.php';
-        if (!file_exists($globalHelper)) {
-            return false;
-        }
-        require_once $globalHelper;
+        // AcyMailing always creates a table named <joomla_prefix>acym_configuration
+        // Try the standard Joomla table prefix first, then scan for any acym_configuration table.
+        $joomlaPrefix = $db->getPrefix();
+        $candidate    = $joomlaPrefix . 'acym_configuration';
 
-        foreach (['query', 'security', 'language', 'date', 'field', 'log', 'mail', 'multibyte', 'utf8', 'addon', 'version', 'url', 'file', 'module'] as $f) {
-            $path = ACYM_HELPER . 'global/' . $f . '.php';
-            if (file_exists($path)) {
-                require_once $path;
+        try {
+            $tables = $db->getTableList();
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        if (in_array($candidate, $tables, true)) {
+            return $joomlaPrefix . 'acym_';
+        }
+
+        // Fallback: scan all tables for *acym_configuration
+        foreach ($tables as $table) {
+            if (str_ends_with($table, 'acym_configuration')) {
+                return substr($table, 0, -strlen('configuration'));
             }
         }
 
-        $cmsLib = JPATH_ADMINISTRATOR . '/components/com_acym/libraries/joomla/joomla.php';
-        if (file_exists($cmsLib)) {
-            require_once $cmsLib;
-        }
-
-        foreach ([ACYM_CLASS . 'configuration.php', ACYM_CLASS . 'list.php', ACYM_CLASS . 'user.php', ACYM_CLASS . 'listsubscriber.php'] as $classFile) {
-            if (file_exists($classFile)) {
-                require_once $classFile;
-            }
-        }
-
-        return function_exists('acym_get');
+        return null;
     }
 
     /**
-     * Export AcyMailing subscription data for a user.
+     * Export AcyMailing subscription data for a user via direct DB queries.
+     *
+     * Uses raw SQL instead of AcyMailing PHP classes so the plugin works
+     * regardless of AcyMailing version, license tier (Starter/Essential/Enterprise),
+     * or whether AcyMailing is currently enabled/disabled.
      */
     protected function createAcyMailingDomain(User $user): ?Domain
     {
-        if (!$this->isAcyMailingAvailable()) {
+        $prefix = $this->getAcymTablePrefix();
+        if ($prefix === null) {
             return null;
         }
 
-        $userClass    = acym_get('class.user');
-        $listsubClass = acym_get('class.listsubscriber');
-        $listClass    = acym_get('class.list');
+        $db    = $this->getDatabase();
+        $email = $user->email;
 
-        if (!$userClass || !$listsubClass || !$listClass) {
+        // Load subscriber record
+        try {
+            $query = $db->getQuery(true)
+                ->select(['id', 'email', 'name', 'confirmed', 'creation_date'])
+                ->from($db->quoteName($prefix . 'user'))
+                ->where($db->quoteName('email') . ' = ' . $db->quote($email));
+            $acymUser = $db->setQuery($query)->loadObject();
+        } catch (\Exception $e) {
             return null;
         }
 
-        $acymUser = $userClass->getOneByEmail($user->email);
         if (!$acymUser) {
             return null;
         }
 
         $domain = $this->createDomain('newsletter_subscriptions', Text::_('PLG_PRIVACY_J2COMMERCE_ACYM_DOMAIN'));
 
-        // Subscriber record
         $domain->addItem($this->createItemFromArray([
             'email'     => $acymUser->email,
             'name'      => $acymUser->name ?? '',
@@ -198,11 +205,30 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             'created'   => $acymUser->creation_date ?? '',
         ], 'subscriber'));
 
-        // List subscriptions
-        $subscriptions = $listsubClass->getSubscriptionStatus($acymUser->id);
+        // Load list subscriptions with list names
+        try {
+            $query = $db->getQuery(true)
+                ->select([
+                    'uhl.list_id',
+                    'uhl.status',
+                    'uhl.subscription_date',
+                    'uhl.unsubscribe_date',
+                    'l.name AS list_name',
+                    'l.display_name AS list_display_name',
+                ])
+                ->from($db->quoteName($prefix . 'user_has_list', 'uhl'))
+                ->leftJoin(
+                    $db->quoteName($prefix . 'list', 'l') .
+                    ' ON ' . $db->quoteName('l.id') . ' = ' . $db->quoteName('uhl.list_id')
+                )
+                ->where($db->quoteName('uhl.user_id') . ' = ' . (int) $acymUser->id);
+            $subscriptions = $db->setQuery($query)->loadObjectList();
+        } catch (\Exception $e) {
+            $subscriptions = [];
+        }
+
         foreach ($subscriptions as $sub) {
-            $list     = $listClass->getOneById($sub->list_id);
-            $listName = $list ? ($list->display_name ?: $list->name) : 'List #' . $sub->list_id;
+            $listName = !empty($sub->list_display_name) ? $sub->list_display_name : ($sub->list_name ?? 'List #' . $sub->list_id);
             $domain->addItem($this->createItemFromArray([
                 'list'              => $listName,
                 'status'            => (int) $sub->status === 1 ? 'subscribed' : 'unsubscribed',
@@ -215,27 +241,50 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     }
 
     /**
-     * Remove AcyMailing subscription data for a user.
+     * Remove AcyMailing subscriber data via direct DB queries.
+     *
      * Deletes the subscriber record and all list associations.
+     * Uses raw SQL for version-independence — no AcyMailing PHP classes required.
      */
     protected function removeAcyMailingData(User $user): void
     {
-        if (!$this->isAcyMailingAvailable()) {
+        $prefix = $this->getAcymTablePrefix();
+        if ($prefix === null) {
             return;
         }
 
-        $userClass = acym_get('class.user');
-        if (!$userClass) {
+        $db    = $this->getDatabase();
+        $email = $user->email;
+
+        try {
+            $query    = $db->getQuery(true)
+                ->select('id')
+                ->from($db->quoteName($prefix . 'user'))
+                ->where($db->quoteName('email') . ' = ' . $db->quote($email));
+            $acymId = (int) $db->setQuery($query)->loadResult();
+        } catch (\Exception $e) {
             return;
         }
 
-        $acymUser = $userClass->getOneByEmail($user->email);
-        if (!$acymUser) {
+        if (!$acymId) {
             return;
         }
 
         try {
-            $userClass->delete([$acymUser->id]);
+            // Delete list associations first (FK constraint)
+            $db->setQuery(
+                $db->getQuery(true)
+                    ->delete($db->quoteName($prefix . 'user_has_list'))
+                    ->where($db->quoteName('user_id') . ' = ' . $acymId)
+            )->execute();
+
+            // Delete subscriber record
+            $db->setQuery(
+                $db->getQuery(true)
+                    ->delete($db->quoteName($prefix . 'user'))
+                    ->where($db->quoteName('id') . ' = ' . $acymId)
+            )->execute();
+
             $this->logActivity('acymailing_subscriber_deleted', $user->id);
         } catch (\Exception $e) {
             Log::add('AcyMailing subscriber deletion failed: ' . $e->getMessage(), Log::WARNING, 'plg_privacy_j2commerce');
