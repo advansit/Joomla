@@ -25,6 +25,16 @@ Two separate tables are involved in lifetime license detection:
 - `#__j2store_product_customfields` — marks products as lifetime licenses (populated via J2Commerce Custom Fields UI)
 - `#__license_keys` — stores issued license keys per user (separate table, not visible in J2Commerce UI, created via SQL in post-install message)
 
+## Updates Not Shown in Joomla Backend
+
+**Issue:** `System → Update → Extensions` does not show available updates for our plugins.
+
+**Root cause:** Plugins without `<client>` in `update.xml` get `client_id=1` in `jos_updates`. Our plugins install with `client_id=0`. Joomla cannot match the update record to the installed extension.
+
+**Fix:** All plugin `update.xml` files must include `<client>site</client>`. See `joomla-extensions/references/repo-structure.md`.
+
+**Discovered:** 2026-04-29, fixed in PR #69.
+
 ## Minimum Requirements
 
 - Joomla 5.0+ (uses DI container, `Factory::getContainer()`)
