@@ -257,11 +257,11 @@ A `newsletter_subscriptions` domain is added to the export containing:
 | name | `acym_user` | Subscriber name |
 | confirmed | `acym_user` | Whether the subscriber confirmed their opt-in |
 | created | `acym_user` | Subscription creation date |
-| list (per row) | `acym_list` | List name |
-| status | `acym_user_has_list` | `subscribed` or `unsubscribed` |
-| subscription_date | `acym_user_has_list` | Date subscribed to this list |
-| unsubscribe_date | `acym_user_has_list` | Date unsubscribed from this list (if applicable) |
+| list / status / dates | `acym_user_has_list` | List name, subscribed/unsubscribed, subscription and unsubscribe dates |
 | field / value | `acym_user_has_field` | Custom field values (name, address, phone, etc.) |
+| campaign / send_date / opened / bounce / device | `acym_user_stat` | Per-campaign delivery and engagement stats |
+| campaign / url / clicks / last_click | `acym_url_click` + `acym_url` | URL click tracking per campaign |
+| date / ip / action / unsubscribe_reason | `acym_history` | Action log incl. IP address and unsubscribe reasons |
 
 **Deletion (`onPrivacyRemoveData`):**
 
