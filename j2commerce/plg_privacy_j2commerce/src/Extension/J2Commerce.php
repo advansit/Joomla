@@ -116,7 +116,130 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             $domains[] = $this->createJoomlaActionLogsDomain($user);
         }
 
+        $acymDomain = $this->createAcyMailingDomain($user);
+        if ($acymDomain !== null) {
+            $domains[] = $acymDomain;
+        }
+
         return $domains;
+    }
+
+    // =========================================================================
+    // ACYMAILING INTEGRATION
+    // =========================================================================
+
+    /**
+     * Check whether AcyMailing is installed and its helper loadable.
+     */
+    protected function isAcyMailingAvailable(): bool
+    {
+        $helper = JPATH_ADMINISTRATOR . '/components/com_acym/helpers/helper.php';
+        if (!file_exists($helper)) {
+            return false;
+        }
+        require_once $helper;
+
+        $globalHelper = ACYM_HELPER . 'global/global.php';
+        if (!file_exists($globalHelper)) {
+            return false;
+        }
+        require_once $globalHelper;
+
+        foreach (['query', 'security', 'language', 'date', 'field', 'log', 'mail', 'multibyte', 'utf8', 'addon', 'version', 'url', 'file', 'module'] as $f) {
+            $path = ACYM_HELPER . 'global/' . $f . '.php';
+            if (file_exists($path)) {
+                require_once $path;
+            }
+        }
+
+        $cmsLib = JPATH_ADMINISTRATOR . '/components/com_acym/libraries/joomla/joomla.php';
+        if (file_exists($cmsLib)) {
+            require_once $cmsLib;
+        }
+
+        foreach ([ACYM_CLASS . 'configuration.php', ACYM_CLASS . 'list.php', ACYM_CLASS . 'user.php', ACYM_CLASS . 'listsubscriber.php'] as $classFile) {
+            if (file_exists($classFile)) {
+                require_once $classFile;
+            }
+        }
+
+        return function_exists('acym_get');
+    }
+
+    /**
+     * Export AcyMailing subscription data for a user.
+     */
+    protected function createAcyMailingDomain(User $user): ?Domain
+    {
+        if (!$this->isAcyMailingAvailable()) {
+            return null;
+        }
+
+        $userClass    = acym_get('class.user');
+        $listsubClass = acym_get('class.listsubscriber');
+        $listClass    = acym_get('class.list');
+
+        if (!$userClass || !$listsubClass || !$listClass) {
+            return null;
+        }
+
+        $acymUser = $userClass->getOneByEmail($user->email);
+        if (!$acymUser) {
+            return null;
+        }
+
+        $domain = $this->createDomain('newsletter_subscriptions', Text::_('PLG_PRIVACY_J2COMMERCE_ACYM_DOMAIN'));
+
+        // Subscriber record
+        $domain->addItem($this->createItemFromArray([
+            'email'     => $acymUser->email,
+            'name'      => $acymUser->name ?? '',
+            'confirmed' => $acymUser->confirmed ? 'yes' : 'no',
+            'created'   => $acymUser->creation_date ?? '',
+        ], 'subscriber'));
+
+        // List subscriptions
+        $subscriptions = $listsubClass->getSubscriptionStatus($acymUser->id);
+        foreach ($subscriptions as $sub) {
+            $list     = $listClass->getOneById($sub->list_id);
+            $listName = $list ? ($list->display_name ?: $list->name) : 'List #' . $sub->list_id;
+            $domain->addItem($this->createItemFromArray([
+                'list'              => $listName,
+                'status'            => (int) $sub->status === 1 ? 'subscribed' : 'unsubscribed',
+                'subscription_date' => $sub->subscription_date ?? '',
+                'unsubscribe_date'  => $sub->unsubscribe_date ?? '',
+            ], 'subscription_' . $sub->list_id));
+        }
+
+        return $domain;
+    }
+
+    /**
+     * Remove AcyMailing subscription data for a user.
+     * Deletes the subscriber record and all list associations.
+     */
+    protected function removeAcyMailingData(User $user): void
+    {
+        if (!$this->isAcyMailingAvailable()) {
+            return;
+        }
+
+        $userClass = acym_get('class.user');
+        if (!$userClass) {
+            return;
+        }
+
+        $acymUser = $userClass->getOneByEmail($user->email);
+        if (!$acymUser) {
+            return;
+        }
+
+        try {
+            $userClass->delete([$acymUser->id]);
+            $this->logActivity('acymailing_subscriber_deleted', $user->id);
+        } catch (\Exception $e) {
+            Log::add('AcyMailing subscriber deletion failed: ' . $e->getMessage(), Log::WARNING, 'plg_privacy_j2commerce');
+        }
     }
 
     /**
@@ -405,6 +528,9 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             $this->anonymizeOrders($user->id);
             $this->logActivity('orders_anonymized', $user->id, 'Orders outside retention period anonymized');
         }
+
+        // Remove AcyMailing subscriber data
+        $this->removeAcyMailingData($user);
     }
 
     /**
