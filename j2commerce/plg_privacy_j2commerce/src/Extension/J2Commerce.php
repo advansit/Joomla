@@ -237,6 +237,115 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             ], 'subscription_' . $sub->list_id));
         }
 
+        // Load custom field values (may contain name, address, phone, etc.)
+        try {
+            $query = $db->getQuery(true)
+                ->select(['uhf.field_id', 'uhf.value', 'f.name AS field_name', 'f.type AS field_type'])
+                ->from($db->quoteName($prefix . 'user_has_field', 'uhf'))
+                ->leftJoin(
+                    $db->quoteName($prefix . 'field', 'f') .
+                    ' ON ' . $db->quoteName('f.id') . ' = ' . $db->quoteName('uhf.field_id')
+                )
+                ->where($db->quoteName('uhf.user_id') . ' = ' . (int) $acymUser->id);
+            $fields = $db->setQuery($query)->loadObjectList();
+        } catch (\Exception $e) {
+            $fields = [];
+        }
+
+        foreach ($fields as $field) {
+            if (empty($field->value)) {
+                continue;
+            }
+
+            $domain->addItem($this->createItemFromArray([
+                'field' => $field->field_name ?? 'field_' . $field->field_id,
+                'type'  => $field->field_type ?? '',
+                'value' => $field->value,
+            ], 'field_' . $field->field_id));
+        }
+
+        // Load send/open/click stats per campaign
+        try {
+            $query = $db->getQuery(true)
+                ->select(['us.mail_id', 'us.send_date', 'us.open', 'us.open_date', 'us.bounce',
+                          'us.bounce_rule', 'us.unsubscribe', 'us.device', 'us.opened_with',
+                          'm.name AS mail_name'])
+                ->from($db->quoteName($prefix . 'user_stat', 'us'))
+                ->leftJoin(
+                    $db->quoteName($prefix . 'mail', 'm') .
+                    ' ON ' . $db->quoteName('m.id') . ' = ' . $db->quoteName('us.mail_id')
+                )
+                ->where($db->quoteName('us.user_id') . ' = ' . (int) $acymUser->id);
+            $stats = $db->setQuery($query)->loadObjectList();
+        } catch (\Exception $e) {
+            $stats = [];
+        }
+
+        foreach ($stats as $stat) {
+            $domain->addItem($this->createItemFromArray([
+                'campaign'    => $stat->mail_name ?? 'mail_' . $stat->mail_id,
+                'send_date'   => $stat->send_date ?? '',
+                'opened'      => $stat->open ? 'yes' : 'no',
+                'open_date'   => $stat->open_date ?? '',
+                'bounce'      => $stat->bounce ? 'yes' : 'no',
+                'bounce_rule' => $stat->bounce_rule ?? '',
+                'unsubscribed'=> $stat->unsubscribe ? 'yes' : 'no',
+                'device'      => $stat->device ?? '',
+                'opened_with' => $stat->opened_with ?? '',
+            ], 'stat_' . $stat->mail_id));
+        }
+
+        // Load URL click history
+        try {
+            $query = $db->getQuery(true)
+                ->select(['uc.mail_id', 'uc.url_id', 'uc.click', 'uc.date_click',
+                          'u.url', 'm.name AS mail_name'])
+                ->from($db->quoteName($prefix . 'url_click', 'uc'))
+                ->leftJoin(
+                    $db->quoteName($prefix . 'url', 'u') .
+                    ' ON ' . $db->quoteName('u.id') . ' = ' . $db->quoteName('uc.url_id')
+                )
+                ->leftJoin(
+                    $db->quoteName($prefix . 'mail', 'm') .
+                    ' ON ' . $db->quoteName('m.id') . ' = ' . $db->quoteName('uc.mail_id')
+                )
+                ->where($db->quoteName('uc.user_id') . ' = ' . (int) $acymUser->id);
+            $clicks = $db->setQuery($query)->loadObjectList();
+        } catch (\Exception $e) {
+            $clicks = [];
+        }
+
+        foreach ($clicks as $click) {
+            $domain->addItem($this->createItemFromArray([
+                'campaign'   => $click->mail_name ?? 'mail_' . $click->mail_id,
+                'url'        => $click->url ?? 'url_' . $click->url_id,
+                'clicks'     => $click->click,
+                'last_click' => $click->date_click ?? '',
+            ], 'click_' . $click->mail_id . '_' . $click->url_id));
+        }
+
+        // Load action history (incl. IP address)
+        try {
+            $query = $db->getQuery(true)
+                ->select(['h.date', 'h.ip', 'h.action', 'h.data', 'h.unsubscribe_reason'])
+                ->from($db->quoteName($prefix . 'history', 'h'))
+                ->where($db->quoteName('h.user_id') . ' = ' . (int) $acymUser->id)
+                ->order($db->quoteName('h.date') . ' DESC');
+            $history = $db->setQuery($query)->loadObjectList();
+        } catch (\Exception $e) {
+            $history = [];
+        }
+
+        foreach ($history as $i => $entry) {
+            $domain->addItem($this->createItemFromArray([
+                'date'               => date('Y-m-d H:i:s', (int) $entry->date),
+                'ip'                 => $entry->ip ?? '',
+                'action'             => $entry->action ?? '',
+                'data'               => $entry->data ?? '',
+                'unsubscribe_reason' => $entry->unsubscribe_reason ?? '',
+            ], 'history_' . $i));
+        }
+
         return $domain;
     }
 
@@ -271,12 +380,23 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         }
 
         try {
-            // Delete list associations first (FK constraint)
-            $db->setQuery(
-                $db->getQuery(true)
-                    ->delete($db->quoteName($prefix . 'user_has_list'))
-                    ->where($db->quoteName('user_id') . ' = ' . $acymId)
-            )->execute();
+            // Tables referencing acym_user.id — delete before the subscriber record (FK constraints)
+            $relatedTables = [
+                'user_has_list',   // list subscriptions
+                'user_has_field',  // custom field values (may contain name, address, etc.)
+                'user_stat',       // per-campaign open/click/bounce stats
+                'url_click',       // URL click tracking
+                'history',         // action log incl. IP address
+                'queue',           // pending outbound emails
+            ];
+
+            foreach ($relatedTables as $table) {
+                $db->setQuery(
+                    $db->getQuery(true)
+                        ->delete($db->quoteName($prefix . $table))
+                        ->where($db->quoteName('user_id') . ' = ' . $acymId)
+                )->execute();
+            }
 
             // Delete subscriber record
             $db->setQuery(
