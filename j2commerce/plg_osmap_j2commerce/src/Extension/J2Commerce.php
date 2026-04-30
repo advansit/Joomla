@@ -9,16 +9,20 @@ namespace Advans\Plugin\Osmap\J2Commerce\Extension;
 
 defined('_JEXEC') or die;
 
-use Alledia\OSMap\Plugin\Base;
 use Alledia\OSMap\Sitemap\Collector;
 use Alledia\OSMap\Sitemap\Item;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Event\SubscriberInterface;
 use Joomla\Registry\Registry;
 
-class J2Commerce extends Base implements SubscriberInterface
+// OSMap discovers plugins by calling getComponentElement() and getTree() —
+// no methods from Alledia\OSMap\Plugin\Base are used. Extending CMSPlugin
+// directly avoids a hard dependency on OSMap's internal class hierarchy,
+// which is not available during Joomla's plugin update/install process.
+class J2Commerce extends CMSPlugin implements SubscriberInterface
 {
     use DatabaseAwareTrait;
 
