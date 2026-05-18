@@ -12,7 +12,6 @@ defined('_JEXEC') or die;
 use Alledia\OSMap\Sitemap\Collector;
 use Alledia\OSMap\Sitemap\Item;
 use Joomla\CMS\Plugin\CMSPlugin;
-use Joomla\CMS\Router\Route;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Database\ParameterType;
 use Joomla\Event\SubscriberInterface;
@@ -24,10 +23,21 @@ use Joomla\Registry\Registry;
  * OSMap calls getComponentElement() to match this plugin against menu items,
  * then calls getTree() for each matching menu item to collect sitemap nodes.
  *
- * Supported menu item types:
- *   - view=products  (product list, with optional catid filter)
- *   - view=product   (single product)
- *   - view=categories (full category tree)
+ * Two sitemap mechanisms are supported:
+ *
+ * 1. J2Store (published=-2 hidden menu items)
+ *    J2Store creates hidden menu items (published=-2) as children of the shop
+ *    menu item for each product. These items have:
+ *      link = index.php?option=com_content&view=article&id=<article_id>
+ *      path = shop/<product-alias>  (the SEF URL)
+ *    getTree() queries #__menu for published=-2 children, joins #__content and
+ *    #__j2store_products to verify the product is enabled, and emits the menu
+ *    item's path directly as the sitemap URL.
+ *
+ * 2. J2Commerce 4+ (view=products / view=product / view=categories)
+ *    J2Commerce uses standard menu items. getTree() falls back to view-based
+ *    queries against #__content + #__j2commerce_products when no published=-2
+ *    children are found. Subclass J2CommerceNew handles com_j2commerce.
  *
  * Supported components: com_j2store (J2Store) and com_j2commerce (J2Commerce).
  * The plugin registers itself for com_j2store by default. A second subclass
@@ -67,10 +77,19 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
 
     /**
      * Called by OSMap for each menu item whose option matches getComponentElement().
-     * Emits one sitemap node per enabled product reachable from this menu item.
+     *
+     * Tries the J2Store mechanism first (published=-2 hidden children). If no
+     * such children exist, falls back to view-based queries for J2Commerce 4+.
      */
     public function getTree(Collector $collector, Item $parent, Registry $params): void
     {
+        $parentId = (int) ($parent->id ?? 0);
+
+        if ($parentId > 0 && $this->emitHiddenMenuChildren($collector, $parent, $params, $parentId)) {
+            return;
+        }
+
+        // Fallback: J2Commerce 4+ view-based menu items
         parse_str(parse_url($parent->link ?? '', PHP_URL_QUERY) ?? '', $query);
 
         $view  = $query['view'] ?? '';
@@ -95,7 +114,63 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     }
 
     // -------------------------------------------------------------------------
-    // Emission helpers
+    // Mechanism 1: J2Store published=-2 hidden menu children
+    // -------------------------------------------------------------------------
+
+    /**
+     * Queries #__menu for published=-2 children of $parentId, joins #__content
+     * and the products table to verify each product is enabled, then emits one
+     * sitemap node per product using the menu item's SEF path as the URL.
+     *
+     * Returns true if at least one node was emitted, false if no children found.
+     */
+    protected function emitHiddenMenuChildren(
+        Collector $collector,
+        Item $parent,
+        Registry $params,
+        int $parentId
+    ): bool {
+        $db    = $this->getDatabase();
+        $query = $db->getQuery(true)
+            ->select([
+                $db->quoteName('m.id'),
+                $db->quoteName('m.path'),
+                $db->quoteName('m.browserNav'),
+                $db->quoteName('a.modified'),
+                $db->quoteName('a.title'),
+            ])
+            ->from($db->quoteName('#__menu', 'm'))
+            ->join(
+                'INNER',
+                $db->quoteName('#__content', 'a')
+                . ' ON (m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id, ' . $db->quote('&%') . ')'
+                . '  OR m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id))'
+                . ' AND m.link LIKE ' . $db->quote('%com_content%view=article%')
+            )
+            ->join(
+                'INNER',
+                $db->quoteName($this->productsTable, 'p')
+                . ' ON ' . $db->quoteName('p.product_source_id') . ' = ' . $db->quoteName('a.id')
+                . ' AND ' . $db->quoteName('p.product_source') . ' = ' . $db->quote('com_content')
+                . ' AND ' . $db->quoteName('p.enabled') . ' = 1'
+            )
+            ->where($db->quoteName('m.published') . ' = -2')
+            ->where($db->quoteName('m.parent_id') . ' = :parentId')
+            ->where($db->quoteName('m.client_id') . ' = 0')
+            ->bind(':parentId', $parentId, ParameterType::INTEGER)
+            ->order($db->quoteName('a.title') . ' ASC');
+
+        $items = $db->setQuery($query)->loadObjectList() ?: [];
+
+        foreach ($items as $item) {
+            $this->printMenuPathNode($collector, $parent, $params, $item);
+        }
+
+        return count($items) > 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Mechanism 2: J2Commerce 4+ view-based queries
     // -------------------------------------------------------------------------
 
     protected function emitSingleProduct(
@@ -195,10 +270,38 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     // -------------------------------------------------------------------------
 
     /**
-     * Build the SEF URL via Joomla's router and emit the node to OSMap.
-     *
-     * Route::_() applies language prefixes, Itemid resolution and SEF rules
-     * consistently with how J2Commerce/J2Store itself builds product URLs.
+     * Emits a sitemap node using the menu item's SEF path directly as the URL.
+     * Used for J2Store's published=-2 hidden menu items, where the path field
+     * already contains the correct SEF URL (e.g. "shop/product-alias").
+     */
+    protected function printMenuPathNode(
+        Collector $collector,
+        Item $parent,
+        Registry $params,
+        object $item
+    ): void {
+        if (empty($item->path)) {
+            return;
+        }
+
+        $node = (object) [
+            'id'         => $item->id,
+            'name'       => $item->title,
+            'uid'        => 'j2commerce.product.' . $item->id,
+            'modified'   => $item->modified,
+            'browserNav' => $item->browserNav ?? $parent->browserNav,
+            'priority'   => $params->get('priority', '0.8'),
+            'changefreq' => $params->get('changefreq', 'weekly'),
+            'link'       => $item->path,
+            'expandible' => false,
+        ];
+
+        $collector->printNode($node);
+    }
+
+    /**
+     * Builds a product URL via the component's view=product route and emits
+     * the node. Used for J2Commerce 4+ view-based menu items.
      */
     protected function printProductNode(
         Collector $collector,
@@ -206,7 +309,8 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         Registry $params,
         object $product
     ): void {
-        $internalUrl = sprintf(
+        // Build a non-SEF URL; OSMap will apply SEF routing if configured.
+        $link = sprintf(
             'index.php?option=%s&view=product&id=%d:%s&catid=%d&Itemid=%d',
             $this->component,
             (int) $product->id,
@@ -214,12 +318,6 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             (int) $product->catid,
             (int) $parent->id
         );
-
-        $link = Route::_($internalUrl, false);
-
-        if (empty($link)) {
-            return;
-        }
 
         $node = (object) [
             'id'         => $product->id,

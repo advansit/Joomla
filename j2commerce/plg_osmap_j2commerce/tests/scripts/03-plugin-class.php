@@ -94,9 +94,14 @@ class PluginClassTest
             return str_contains($src, "'categories'") && str_contains($src, 'emitAllProducts');
         });
 
-        $this->test('No published=-2 dependency in plugin source', function () {
+        $this->test('getTree() supports J2Store published=-2 hidden menu children', function () {
             $src = file_get_contents(JPATH_PLUGINS . '/osmap/j2commerce/src/Extension/J2Commerce.php');
-            return !str_contains($src, 'published = -2') && !str_contains($src, "published=-2");
+            return str_contains($src, 'emitHiddenMenuChildren') && str_contains($src, "published");
+        });
+
+        $this->test('J2Store mechanism uses menu path as URL (printMenuPathNode)', function () {
+            $src = file_get_contents(JPATH_PLUGINS . '/osmap/j2commerce/src/Extension/J2Commerce.php');
+            return str_contains($src, 'printMenuPathNode') && str_contains($src, "item->path");
         });
 
         echo "\n=== Plugin Class Test Summary ===\n";
