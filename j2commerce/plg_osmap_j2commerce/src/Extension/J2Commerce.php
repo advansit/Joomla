@@ -11,7 +11,6 @@ defined('_JEXEC') or die;
 
 use Alledia\OSMap\Sitemap\Collector;
 use Alledia\OSMap\Sitemap\Item;
-use Joomla\CMS\Factory;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Database\DatabaseAwareTrait;
@@ -49,7 +48,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
      */
     public function getTree(Collector $collector, Item $parent, Registry $params): void
     {
-        $db = Factory::getDbo();
+        $db = $this->getDatabase();
 
         $query = $db->getQuery(true)
             ->select([
