@@ -94,6 +94,11 @@ class PluginClassTest
             return str_contains($src, "'categories'") && str_contains($src, 'emitAllProducts');
         });
 
+        $this->test('getTree() handles view=categoryalias (J2Commerce single-category)', function () {
+            $src = file_get_contents(JPATH_PLUGINS . '/osmap/j2commerce/src/Extension/J2Commerce.php');
+            return str_contains($src, "'categoryalias'") && str_contains($src, 'emitProductsForCategory');
+        });
+
         $this->test('getTree() supports J2Store published=-2 hidden menu children', function () {
             $src = file_get_contents(JPATH_PLUGINS . '/osmap/j2commerce/src/Extension/J2Commerce.php');
             return str_contains($src, 'emitHiddenMenuChildren') && str_contains($src, "published");

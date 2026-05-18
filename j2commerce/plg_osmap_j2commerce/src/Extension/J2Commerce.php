@@ -25,17 +25,23 @@ use Joomla\Registry\Registry;
  *
  * Two sitemap mechanisms are supported:
  *
- * 1. Standard menu items (view=products / view=product / view=categories)
- *    The primary mechanism. getTree() inspects the menu item's view parameter
- *    and queries #__content joined with the products table to find enabled
- *    products. Works on any standard J2Store or J2Commerce installation.
+ * Supported menu item views:
+ *   - view=products      product list (optional catid filter)
+ *   - view=product       single product by id
+ *   - view=categories    all products across all categories
+ *   - view=categoryalias J2Commerce single-category alias (redirects to
+ *                        view=products at runtime; treated identically here)
  *
- * 2. Hidden menu items (published=-2, site-specific)
- *    Fallback for installations that manually create hidden com_content menu
- *    items as children of the shop menu item, one per product. These items
- *    carry the SEF path directly (e.g. shop/<product-alias>). If no view
- *    parameter is found on the parent item, getTree() queries #__menu for
- *    published=-2 children and uses their path field as the sitemap URL.
+ * Two URL mechanisms are tried in order for list views:
+ *
+ * 1. published=-2 hidden children: installations that manually create hidden
+ *    com_content menu items (published=-2) per product carry the correct SEF
+ *    path in the menu item's path field. These are used directly as sitemap
+ *    URLs when present.
+ *
+ * 2. Direct product queries: if no hidden children exist, products are loaded
+ *    from #__content joined with the products table. Works on any standard
+ *    J2Store or J2Commerce installation without hidden menu items.
  *
  * Supported components: com_j2store (J2Store) and com_j2commerce (J2Commerce).
  * The plugin registers itself for com_j2store by default. A second subclass
@@ -96,6 +102,13 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 }
                 return;
 
+            case 'categoryalias':
+                // J2Commerce: menu item pointing to a single category by alias.
+                // Redirects to view=products with catid=id at runtime; treat the
+                // same way here — emit products for that category.
+                $catid = $id;
+                // fall through
+
             case 'products':
             case 'categories':
                 // Prefer published=-2 hidden children: they carry correct SEF paths.
@@ -103,10 +116,10 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 if ($parentId > 0 && $this->emitHiddenMenuChildren($collector, $parent, $params, $parentId)) {
                     return;
                 }
-                if ($view === 'products') {
-                    $this->emitProductsForCategory($collector, $parent, $params, $catid);
-                } else {
+                if ($view === 'categories') {
                     $this->emitAllProducts($collector, $parent, $params);
+                } else {
+                    $this->emitProductsForCategory($collector, $parent, $params, $catid);
                 }
                 return;
         }

@@ -76,16 +76,17 @@ or `com_j2commerce`. The plugin tries two mechanisms in order:
 
 ### Mechanism 1 — Standard menu items (primary)
 
-The plugin inspects the menu item's `view` parameter and queries the products
-table directly:
+The plugin inspects the menu item's `view` parameter:
 
 - `view=products` — all enabled products in the given category (`catid`), or all products if no `catid`
 - `view=product` — the single product referenced by `id`
 - `view=categories` — all enabled products across all categories
+- `view=categoryalias` — J2Commerce single-category alias; at runtime this redirects to `view=products` with the category's `id`. The plugin treats it identically: products of that category are emitted.
 
-Product URLs are built as non-SEF `index.php?option=...` URLs; OSMap applies
-SEF routing if configured. This works on any standard J2Store or J2Commerce
-installation.
+For list views (`products`, `categories`, `categoryalias`), published=-2 hidden
+children are preferred as URL source if present (see Mechanism 2). Only if none
+exist does the plugin build URLs directly. This works on any standard J2Store or
+J2Commerce installation.
 
 ### Mechanism 2 — Hidden menu items (fallback, site-specific)
 
