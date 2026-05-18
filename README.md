@@ -163,7 +163,13 @@ Only users with write access (collaborators) can approve or request changes on p
 **Location:** Settings → Branches  
 **Documentation:** https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
 
-Protected branch rules prevent force pushes and ensure code quality standards.
+- Require a pull request before merging (1 approval required)
+- Dismiss stale approvals when new commits are pushed
+- Require status checks to pass: `Collect Results`
+- Require branches to be up to date before merging
+- Require conversation resolution before merging
+- Do not allow bypassing the above settings (applies to admins)
+- Force pushes and deletions disabled
 
 ### Repository Features
 
