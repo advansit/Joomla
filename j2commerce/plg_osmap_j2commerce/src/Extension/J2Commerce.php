@@ -76,17 +76,18 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     /**
      * Called by OSMap for each menu item whose option matches getComponentElement().
      *
-     * Primary: view-based queries for standard J2Store/J2Commerce menu items.
-     * Fallback: published=-2 hidden children for installations that manually
-     * create hidden com_content menu items per product (site-specific pattern).
+     * For view=products and view=categories: prefer published=-2 hidden children
+     * as URL source (correct SEF paths), fall back to direct product queries if
+     * none exist. For view=product: emit the single product directly.
      */
     public function getTree(Collector $collector, Item $parent, Registry $params): void
     {
         parse_str(parse_url($parent->link ?? '', PHP_URL_QUERY) ?? '', $query);
 
-        $view  = $query['view'] ?? '';
-        $catid = isset($query['catid']) ? (int) $query['catid'] : null;
-        $id    = isset($query['id'])    ? (int) $query['id']    : null;
+        $view     = $query['view'] ?? '';
+        $catid    = isset($query['catid']) ? (int) $query['catid'] : null;
+        $id       = isset($query['id'])    ? (int) $query['id']    : null;
+        $parentId = (int) ($parent->id ?? 0);
 
         switch ($view) {
             case 'product':
@@ -96,17 +97,21 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 return;
 
             case 'products':
-                $this->emitProductsForCategory($collector, $parent, $params, $catid);
-                return;
-
             case 'categories':
-                $this->emitAllProducts($collector, $parent, $params);
+                // Prefer published=-2 hidden children: they carry correct SEF paths.
+                // Fall back to direct product queries if no hidden children exist.
+                if ($parentId > 0 && $this->emitHiddenMenuChildren($collector, $parent, $params, $parentId)) {
+                    return;
+                }
+                if ($view === 'products') {
+                    $this->emitProductsForCategory($collector, $parent, $params, $catid);
+                } else {
+                    $this->emitAllProducts($collector, $parent, $params);
+                }
                 return;
         }
 
-        // Fallback: look for manually created published=-2 hidden menu children.
-        $parentId = (int) ($parent->id ?? 0);
-
+        // No view parameter: try published=-2 hidden children directly.
         if ($parentId > 0) {
             $this->emitHiddenMenuChildren($collector, $parent, $params, $parentId);
         }
