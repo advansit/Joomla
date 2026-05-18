@@ -238,6 +238,13 @@ Verify that:
 
 See the [.htaccess Requirements](#htaccess-requirements) section above.
 
+**J2Store: products appear with wrong or outdated URLs**
+
+The J2Store mechanism uses the `path` field of the `published=-2` menu item
+directly as the sitemap URL. If product aliases were renamed or the menu tree
+was modified without rebuilding, the stored paths may be stale. Run
+**System → Maintenance → Rebuild** to regenerate all menu item paths.
+
 ## Multi-Language Support
 
 - English (`en-GB`)
