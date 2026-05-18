@@ -225,20 +225,10 @@ grep -c "item->path" /var/www/html/plugins/osmap/j2commerce/src/Extension/J2Comm
     || echo "BAD: item->path NOT found — old plugin installed"
 grep "Uri::root\|item->link\|item->path" /var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php 2>/dev/null | head -5 || true
 
-echo "=== Debug: patch plugin to write debug file on printNode ==="
-PLUGIN_FILE="/var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php"
-php -r "
-\$f = '$PLUGIN_FILE';
-\$c = file_get_contents(\$f);
-// Patch printMenuPathNode to log the link being passed
-\$old = '\$collector->printNode(\$node);';
-\$new = 'file_put_contents(\"/tmp/osmap_debug.txt\", \"printNode link=\" . (\$node->link ?? \"NULL\") . \"\\n\", FILE_APPEND); \$collector->printNode(\$node);';
-\$patched = str_replace(\$old, \$new, \$c);
-if (\$patched === \$c) { echo \"WARNING: could not patch (string not found)\\n\"; } else { file_put_contents(\$f, \$patched); echo \"Patched OK\\n\"; }
-" 2>/dev/null || true
-
-echo "=== Debug: installed plugin key lines ==="
-grep -n "item->path\|item->link\|Uri::root\|printNode" /var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php 2>/dev/null | head -10 || true
+echo "=== Debug: installed plugin version check ==="
+grep -c "getTree called" /var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php 2>/dev/null \
+    && echo "GOOD: debug instrumentation found in installed plugin" \
+    || echo "BAD: debug instrumentation NOT found — old plugin installed"
 
 echo "OK" > /var/www/html/health.txt
 echo "=== Container ready ==="
