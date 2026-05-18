@@ -11,9 +11,11 @@ defined('_JEXEC') or die;
 
 use Alledia\OSMap\Sitemap\Collector;
 use Alledia\OSMap\Sitemap\Item;
+use Joomla\CMS\Factory;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Database\DatabaseAwareTrait;
+use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
 use Joomla\Event\SubscriberInterface;
 use Joomla\Registry\Registry;
@@ -78,6 +80,19 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     public function getComponentElement(): string
     {
         return $this->component;
+    }
+
+    /**
+     * Returns the database driver. Falls back to Factory::getDbo() when OSMap
+     * loads the plugin via its legacy loader, which does not call setDatabase().
+     */
+    protected function getDb(): DatabaseInterface
+    {
+        try {
+            return $this->getDatabase();
+        } catch (\RuntimeException $e) {
+            return Factory::getDbo();
+        }
     }
 
     /**
@@ -153,7 +168,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         Registry $params,
         int $parentId
     ): bool {
-        $db    = $this->getDatabase();
+        $db    = $this->getDb();
         $query = $db->getQuery(true)
             ->select([
                 $db->quoteName('m.id'),
@@ -216,7 +231,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         Registry $params,
         int $articleId
     ): void {
-        $db    = $this->getDatabase();
+        $db    = $this->getDb();
         $query = $db->getQuery(true)
             ->select([
                 $db->quoteName('a.id'),
@@ -274,7 +289,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
      */
     protected function loadProducts(?int $catid): array
     {
-        $db    = $this->getDatabase();
+        $db    = $this->getDb();
         $query = $db->getQuery(true)
             ->select([
                 $db->quoteName('a.id'),
