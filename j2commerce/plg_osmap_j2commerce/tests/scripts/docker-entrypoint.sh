@@ -219,8 +219,26 @@ mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
       AND m.client_id = 0
     ORDER BY a.title;" 2>/dev/null || true
 
-echo "=== Debug: OSMap sitemap XML output ==="
-curl -s "http://localhost/index.php?option=com_osmap&view=xml&id=1&format=xml" 2>/dev/null | head -30 || true
+echo "=== Debug: installed plugin version check ==="
+grep -c "item->path" /var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php 2>/dev/null \
+    && echo "GOOD: item->path found in installed plugin" \
+    || echo "BAD: item->path NOT found — old plugin installed"
+grep "Uri::root\|item->link\|item->path" /var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php 2>/dev/null | head -5 || true
+
+echo "=== Debug: patch plugin to write debug file on printNode ==="
+PLUGIN_FILE="/var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php"
+php -r "
+\$f = '$PLUGIN_FILE';
+\$c = file_get_contents(\$f);
+// Patch printMenuPathNode to log the link being passed
+\$old = '\$collector->printNode(\$node);';
+\$new = 'file_put_contents(\"/tmp/osmap_debug.txt\", \"printNode link=\" . (\$node->link ?? \"NULL\") . \"\\n\", FILE_APPEND); \$collector->printNode(\$node);';
+\$patched = str_replace(\$old, \$new, \$c);
+if (\$patched === \$c) { echo \"WARNING: could not patch (string not found)\\n\"; } else { file_put_contents(\$f, \$patched); echo \"Patched OK\\n\"; }
+" 2>/dev/null || true
+
+echo "=== Debug: installed plugin key lines ==="
+grep -n "item->path\|item->link\|Uri::root\|printNode" /var/www/html/plugins/osmap/j2commerce/src/Extension/J2Commerce.php 2>/dev/null | head -10 || true
 
 echo "OK" > /var/www/html/health.txt
 echo "=== Container ready ==="
