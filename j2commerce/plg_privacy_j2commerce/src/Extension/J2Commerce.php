@@ -772,17 +772,23 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $db = $this->getDatabase();
 
         if ($this->isJ2Commerce4()) {
-            $query = $this->createDbQuery()
-                ->delete($db->quoteName('#__j2store_cartitems'))
+            // #__j2store_cartitems has no user_id; delete via cart subquery
+            $subQuery = $this->createDbQuery()
+                ->select($db->quoteName('j2store_cart_id'))
+                ->from($db->quoteName('#__j2store_carts'))
                 ->where($db->quoteName('user_id') . ' = :userid')
                 ->bind(':userid', $userId, ParameterType::INTEGER);
+
+            $query = $this->createDbQuery()
+                ->delete($db->quoteName('#__j2store_cartitems'))
+                ->where($db->quoteName('cart_id') . ' IN (' . $subQuery . ')');
             $db->setQuery($query);
             $db->execute();
 
             $query = $this->createDbQuery()
                 ->delete($db->quoteName('#__j2store_carts'))
-                ->where($db->quoteName('user_id') . ' = :userid')
-                ->bind(':userid', $userId, ParameterType::INTEGER);
+                ->where($db->quoteName('user_id') . ' = :userid2')
+                ->bind(':userid2', $userId, ParameterType::INTEGER);
             $db->setQuery($query);
             $db->execute();
         } else {
