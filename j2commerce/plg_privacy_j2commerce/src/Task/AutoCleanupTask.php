@@ -210,12 +210,18 @@ class AutoCleanupTask implements SubscriberInterface
             return false;
         }
 
-        $query = $this->createDbQuery()
-            ->select('COUNT(*)')
-            ->from($db->quoteName('#__' . $customTable))
-            ->where($db->quoteName('product_id') . ' IN (' . implode(',', array_map('intval', $productIds)) . ')')
-            ->where($db->quoteName('field_name') . ' = ' . $db->quote('is_lifetime_license'))
-            ->where('LOWER(TRIM(' . $db->quoteName('field_value') . ')) = ' . $db->quote('yes'));
+        if ($this->isJ2Commerce4()) {
+            $query = $this->createDbQuery()
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__' . $customTable))
+                ->where($db->quoteName('product_id') . ' IN (' . implode(',', array_map('intval', $productIds)) . ')')
+                ->where($db->quoteName('field_name') . ' = ' . $db->quote('is_lifetime_license'))
+                ->where('LOWER(TRIM(' . $db->quoteName('field_value') . ')) = ' . $db->quote('yes'));
+        } else {
+            // TODO: J2Commerce 6 has no direct equivalent of j2store_product_customfields.
+            // Return false until the correct storage location is confirmed.
+            return false;
+        }
 
         $db->setQuery($query);
 
@@ -279,28 +285,45 @@ class AutoCleanupTask implements SubscriberInterface
                 $db->setQuery($query);
                 $db->execute();
             } else {
+                // J2Commerce 6 — billing/shipping data is in #__j2commerce_orderinfos
                 $query = $this->createDbQuery()
                     ->update($db->quoteName('#__j2commerce_orders'))
                     ->set([
                         $db->quoteName('customer_note') . ' = ' . $db->quote(''),
                         $db->quoteName('ip_address') . ' = ' . $db->quote(''),
+                    ])
+                    ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
+                $db->setQuery($query);
+                $db->execute();
+
+                $subQuery = $this->createDbQuery()
+                    ->select($db->quoteName('order_id'))
+                    ->from($db->quoteName('#__j2commerce_orders'))
+                    ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
+
+                $query = $this->createDbQuery()
+                    ->update($db->quoteName('#__j2commerce_orderinfos'))
+                    ->set([
                         $db->quoteName('billing_first_name') . ' = ' . $db->quote('Anonymized'),
                         $db->quoteName('billing_last_name') . ' = ' . $db->quote('User'),
                         $db->quoteName('billing_phone_1') . ' = ' . $db->quote(''),
+                        $db->quoteName('billing_phone_2') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_address_1') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_address_2') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_city') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_zip') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_company') . ' = ' . $db->quote(''),
+                        $db->quoteName('billing_tax_number') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_first_name') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_last_name') . ' = ' . $db->quote(''),
+                        $db->quoteName('shipping_phone_1') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_address_1') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_address_2') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_city') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_zip') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_company') . ' = ' . $db->quote(''),
                     ])
-                    ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
+                    ->where($db->quoteName('order_id') . ' IN (' . $subQuery . ')');
                 $db->setQuery($query);
                 $db->execute();
             }
@@ -365,29 +388,46 @@ class AutoCleanupTask implements SubscriberInterface
                 $db->setQuery($query);
                 $db->execute();
             } else {
+                // J2Commerce 6 — billing/shipping data is in #__j2commerce_orderinfos
                 $query = $this->createDbQuery()
                     ->update($db->quoteName('#__j2commerce_orders'))
                     ->set([
                         $db->quoteName('user_email') . ' = ' . $db->quote('anonymized@example.com'),
                         $db->quoteName('customer_note') . ' = ' . $db->quote(''),
                         $db->quoteName('ip_address') . ' = ' . $db->quote(''),
+                    ])
+                    ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
+                $db->setQuery($query);
+                $db->execute();
+
+                $subQuery = $this->createDbQuery()
+                    ->select($db->quoteName('order_id'))
+                    ->from($db->quoteName('#__j2commerce_orders'))
+                    ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
+
+                $query = $this->createDbQuery()
+                    ->update($db->quoteName('#__j2commerce_orderinfos'))
+                    ->set([
                         $db->quoteName('billing_first_name') . ' = ' . $db->quote('Anonymized'),
                         $db->quoteName('billing_last_name') . ' = ' . $db->quote('User'),
                         $db->quoteName('billing_phone_1') . ' = ' . $db->quote(''),
+                        $db->quoteName('billing_phone_2') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_address_1') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_address_2') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_city') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_zip') . ' = ' . $db->quote(''),
                         $db->quoteName('billing_company') . ' = ' . $db->quote(''),
+                        $db->quoteName('billing_tax_number') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_first_name') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_last_name') . ' = ' . $db->quote(''),
+                        $db->quoteName('shipping_phone_1') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_address_1') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_address_2') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_city') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_zip') . ' = ' . $db->quote(''),
                         $db->quoteName('shipping_company') . ' = ' . $db->quote(''),
                     ])
-                    ->where($db->quoteName('user_id') . ' = ' . $safeUserId);
+                    ->where($db->quoteName('order_id') . ' IN (' . $subQuery . ')');
                 $db->setQuery($query);
                 $db->execute();
             }
