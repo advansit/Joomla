@@ -59,6 +59,22 @@ RewriteCond %{QUERY_STRING} !^option=com_ajax [NC]
 | Enable Profile Editing | AJAX profile save (name, email, password) | Yes |
 | Enable J2Store Cart | AJAX cart operations (requires J2Commerce 4.x or 6.x) | Yes |
 
+## J2Commerce Cart Compatibility
+
+The cart features support both J2Commerce 4.x (`#__j2store_*` tables) and J2Commerce 6.x (`#__j2commerce_*` tables). The version is detected at runtime by checking whether `#__j2store_carts` exists in the database.
+
+If neither `#__j2store_carts` nor `#__j2commerce_carts` is found, cart operations return a `PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND` error — the cart feature is silently unavailable without breaking other plugin functionality.
+
+**Schema differences handled automatically:**
+
+| Operation | J2Commerce 4.x | J2Commerce 6.x |
+|---|---|---|
+| Cart item count | `SUM(product_qty)` from `#__j2store_cartitems` joined via `cart_id` | `SUM(product_qty)` from `#__j2commerce_cartitems` joined via `cart_id` |
+| Cart total | `SUM(orderitem_finalprice * orderitem_quantity)` from `#__j2store_orderitems` joined via `cart_id` → `#__j2store_carts` | `SUM(product_subtotal)` from `#__j2commerce_cartitems` joined via `cart_id` |
+| Remove item | DELETE from `#__j2store_cartitems` WHERE `cart_id IN (SELECT j2store_cart_id ...)` | DELETE from `#__j2commerce_cartitems` WHERE `cart_id IN (SELECT j2commerce_cart_id ...)` |
+
+Note: `#__j2store_cartitems` has no price column — prices are stored in `#__j2store_orderitems`.
+
 ## Usage
 
 ### Template Integration
