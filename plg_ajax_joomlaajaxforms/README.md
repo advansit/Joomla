@@ -70,10 +70,13 @@ If neither `#__j2store_carts` nor `#__j2commerce_carts` is found, cart operation
 | Operation | J2Commerce 4.x | J2Commerce 6.x |
 |---|---|---|
 | Cart item count | `SUM(product_qty)` from `#__j2store_cartitems` joined via `cart_id` | `SUM(product_qty)` from `#__j2commerce_cartitems` joined via `cart_id` |
-| Cart total | `SUM(orderitem_finalprice * orderitem_quantity)` from `#__j2store_orderitems` joined via `cart_id` → `#__j2store_carts` | `SUM(product_subtotal)` from `#__j2commerce_cartitems` joined via `cart_id` |
+| Cart total | `SUM(orderitem_finalprice * orderitem_quantity)` from `#__j2store_orderitems` joined via `cart_id` → `#__j2store_carts` | Returns `"0.00"` — see limitation below |
 | Remove item | DELETE from `#__j2store_cartitems` WHERE `cart_id IN (SELECT j2store_cart_id ...)` | DELETE from `#__j2commerce_cartitems` WHERE `cart_id IN (SELECT j2commerce_cart_id ...)` |
 
 Note: `#__j2store_cartitems` has no price column — prices are stored in `#__j2store_orderitems`.
+
+**Limitation — J2Commerce 6.x cart total:**
+`cartTotal` always returns `"0.00"` for J2Commerce 6.x. The J2Commerce 6 price model stores prices in `#__j2commerce_product_prices` with variant-based rules, quantity breaks, and customer group discounts — this cannot be reliably replicated via a direct DB query. The `removeCartItem` response will include `cartTotal: "0.00"` for J2Commerce 6.x installations; the frontend should suppress display of the total in that case and rely on the J2Commerce cart view for the authoritative total.
 
 ## Usage
 
