@@ -338,9 +338,8 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     }
 
     /**
-     * Builds a product URL from the parent menu item's SEF path + product alias
-     * and emits the node. This avoids router dependency — no view=product menu
-     * item is required.
+     * Builds a product URL via the component's view=product route and emits
+     * the node. Used for J2Commerce 4+ view-based menu items.
      */
     protected function printProductNode(
         Collector $collector,
@@ -348,10 +347,15 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         Registry $params,
         object $product
     ): void {
-        // Derive the product URL from the parent menu item's SEF path + alias.
-        // e.g. parent path "shop" + alias "my-product" → "https://example.com/shop/my-product"
-        $basePath = rtrim($parent->path ?? '', '/');
-        $link     = rtrim(Uri::root(), '/') . '/' . ($basePath ? $basePath . '/' : '') . ltrim($product->alias, '/');
+        // Build a non-SEF URL; OSMap will apply SEF routing if configured.
+        $link = sprintf(
+            'index.php?option=%s&view=product&id=%d:%s&catid=%d&Itemid=%d',
+            $this->component,
+            (int) $product->id,
+            rawurlencode($product->alias),
+            (int) $product->catid,
+            (int) $parent->id
+        );
 
         $node = (object) [
             'id'         => $product->id,
