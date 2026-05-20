@@ -713,16 +713,14 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 ->where($db->quoteName('c.user_id') . ' = :userId')
                 ->bind(':userId', $userId, ParameterType::INTEGER);
         } else {
-            $subQuery = $db->getQuery(true)
-                ->select($db->quoteName('j2commerce_cart_id'))
-                ->from($db->quoteName('#__j2commerce_carts'))
-                ->where($db->quoteName('user_id') . ' = :userId')
-                ->bind(':userId', $userId, ParameterType::INTEGER);
-
+            // #__j2commerce_cartitems has no price column; prices are in #__j2commerce_orderitems
+            // joined via cart_id → #__j2commerce_carts.j2commerce_cart_id
             $query = $db->getQuery(true)
-                ->select('COALESCE(SUM(' . $db->quoteName('product_subtotal') . '), 0)')
-                ->from($db->quoteName('#__j2commerce_cartitems'))
-                ->where($db->quoteName('cart_id') . ' IN (' . $subQuery . ')');
+                ->select('COALESCE(SUM(' . $db->quoteName('oi.orderitem_finalprice') . ' * ' . $db->quoteName('oi.orderitem_quantity') . '), 0)')
+                ->from($db->quoteName('#__j2commerce_orderitems', 'oi'))
+                ->join('INNER', $db->quoteName('#__j2commerce_carts', 'c') . ' ON ' . $db->quoteName('c.j2commerce_cart_id') . ' = ' . $db->quoteName('oi.cart_id'))
+                ->where($db->quoteName('c.user_id') . ' = :userId')
+                ->bind(':userId', $userId, ParameterType::INTEGER);
         }
 
         $db->setQuery($query);
