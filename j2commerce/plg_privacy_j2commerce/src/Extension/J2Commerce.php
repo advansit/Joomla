@@ -38,12 +38,6 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     protected $autoloadLanguage = true;
 
     /**
-     * Create a database query object (Joomla 4/5/6 compatible)
-     * Joomla 6 deprecates getQuery(true) in favor of createQuery()
-     *
-     * @return  \Joomla\Database\QueryInterface
-     */
-    /**
      * Returns true if J2Commerce 4.x is installed (#__j2store_* tables).
      * Returns false for J2Commerce 6.x (#__j2commerce_* tables).
      */
@@ -59,6 +53,12 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         return $result;
     }
 
+    /**
+     * Create a database query object (Joomla 4/5/6 compatible).
+     * Joomla 6 deprecates getQuery(true) in favor of createQuery().
+     *
+     * @return  \Joomla\Database\QueryInterface
+     */
     protected function createDbQuery()
     {
         $db = $this->getDatabase();
