@@ -353,8 +353,10 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     ): void {
         // Derive the product URL from the parent menu item's SEF path + alias.
         // e.g. parent path "shop" + alias "my-product" → "https://example.com/shop/my-product"
+        // Joomla aliases are already URL-safe ([a-z0-9-] via JFilterOutput::stringURLSafe()).
+        // rawurlencode() would produce %XX sequences that Joomla's router does not expect.
         $basePath = rtrim($parent->path ?? '', '/');
-        $link     = rtrim(Uri::root(), '/') . '/' . ($basePath ? $basePath . '/' : '') . rawurlencode(ltrim($product->alias, '/'));
+        $link     = rtrim(Uri::root(), '/') . '/' . ($basePath ? $basePath . '/' : '') . ltrim($product->alias, '/');
 
         $node = (object) [
             'id'         => $product->id,
