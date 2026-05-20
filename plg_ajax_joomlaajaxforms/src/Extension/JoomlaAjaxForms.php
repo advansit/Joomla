@@ -556,7 +556,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $userId = (int) $user->id;
 
             if (!$this->isJ2CommerceInstalled($db)) {
-                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND'));
+                return $this->jsonError(Text::_('PLG_AJAX_JOOMLAAJAXFORMS_J2COMMERCE_NOT_FOUND'));
             }
 
             if ($this->isJ2Commerce4($db)) {
@@ -670,6 +670,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     {
         if ($this->isJ2Commerce4($db)) {
             // #__j2store_cartitems FK to #__j2store_carts is `cart_id`; quantity column is `product_qty`
+            // (verified against production DB dump: advansj5_j2store_cartitems has product_qty decimal(12,4))
             $subQuery = $db->getQuery(true)
                 ->select($db->quoteName('j2store_cart_id'))
                 ->from($db->quoteName('#__j2store_carts'))
