@@ -17,6 +17,16 @@ use Joomla\CMS\Factory;
 use Joomla\Event\Dispatcher;
 use Joomla\Registry\Registry;
 
+// Register plugin namespace so the class can be resolved without a full
+// plugin bootstrap via PluginHelper::importPlugin().
+JLoader::registerNamespace(
+    'Advans\Plugin\J2Commerce\ProductCompare',
+    '/var/www/html/plugins/j2store/productcompare/src',
+    false,
+    false,
+    'psr4'
+);
+
 class GetProductsDataTest
 {
     private $db;

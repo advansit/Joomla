@@ -47,6 +47,16 @@ class PluginClassTest
 
         // --- Autoloader: class must be loadable ---
         echo "\n--- Class loading ---\n";
+        // Joomla's autoloader only registers plugin namespaces when the plugin
+        // is loaded via PluginHelper::importPlugin(). Register the namespace
+        // manually so the class can be resolved without a full plugin bootstrap.
+        JLoader::registerNamespace(
+            'Advans\Plugin\J2Commerce\ProductCompare',
+            '/var/www/html/plugins/j2store/productcompare/src',
+            false,
+            false,
+            'psr4'
+        );
         $loaded = class_exists('Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare', true);
         $this->test('ProductCompare class autoloads', $loaded);
 
