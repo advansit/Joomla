@@ -167,9 +167,45 @@ class GetProductsDataTest
     // Fixtures
     // -------------------------------------------------------------------------
 
+    private function ensureCatid(): int
+    {
+        // catid=2 may not exist; find or create a valid com_content category
+        $db    = $this->db;
+        $query = $db->getQuery(true)
+            ->select($db->quoteName('id'))
+            ->from($db->quoteName('#__categories'))
+            ->where($db->quoteName('extension') . ' = ' . $db->quote('com_content'))
+            ->where($db->quoteName('published') . ' = 1')
+            ->setLimit(1);
+        $db->setQuery($query);
+        $catid = (int) $db->loadResult();
+        if ($catid) {
+            return $catid;
+        }
+        // Create a minimal category
+        $cat = (object)[
+            'title'     => 'Test Category',
+            'alias'     => 'test-category-' . time(),
+            'extension' => 'com_content',
+            'published' => 1,
+            'access'    => 1,
+            'params'    => '{}',
+            'metadata'  => '{}',
+            'language'  => '*',
+            'path'      => 'test-category',
+            'parent_id' => 1,
+            'level'     => 1,
+            'lft'       => 0,
+            'rgt'       => 0,
+        ];
+        $db->insertObject('#__categories', $cat, 'id');
+        return (int) $db->insertid();
+    }
+
     private function seedFixtures(): void
     {
-        $ts = time();
+        $ts    = time();
+        $catid = $this->ensureCatid();
 
         // Content articles (product source)
         foreach (['Test Product Alpha', 'Test Product Beta', 'Test Product Disabled'] as $i => $title) {
@@ -179,7 +215,7 @@ class GetProductsDataTest
                 'introtext'  => 'Description for ' . $title,
                 'fulltext'   => '',
                 'state'      => 1,
-                'catid'      => 2,
+                'catid'      => $catid,
                 'created'    => date('Y-m-d H:i:s'),
                 'created_by' => 42,
                 'modified'   => date('Y-m-d H:i:s'),
