@@ -19,6 +19,19 @@ class ImportModel extends BaseDatabaseModel
 {
     const BATCH_SIZE = 100;
 
+    /**
+     * Returns the current user ID, or 0 in CLI/test contexts where no
+     * application is booted (Factory::getApplication() would throw).
+     */
+    private function getCurrentUserId(): int
+    {
+        try {
+            return (int) $this->getCurrentUserId();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
     public function importProductFull(array $data, array $options = []): array
     {
         $db = $this->getDatabase();
@@ -113,7 +126,7 @@ class ImportModel extends BaseDatabaseModel
             'published' => 1,
             'access' => 1,
             'language' => '*',
-            'created_user_id' => Factory::getApplication()->getIdentity()->id,
+            'created_user_id' => $this->getCurrentUserId(),
             'created_time' => Factory::getDate()->toSql(),
         ];
 
@@ -129,7 +142,7 @@ class ImportModel extends BaseDatabaseModel
     protected function importArticle(array $data, int $catId, array $options): int
     {
         $db = $this->getDatabase();
-        $userId = Factory::getApplication()->getIdentity()->id;
+        $userId = $this->getCurrentUserId();
         $now = Factory::getDate()->toSql();
 
         // Check if article exists - try multiple methods
@@ -209,7 +222,7 @@ class ImportModel extends BaseDatabaseModel
     protected function importJ2StoreProduct(array $data, int $articleId, array $options): int
     {
         $db = $this->getDatabase();
-        $userId = Factory::getApplication()->getIdentity()->id;
+        $userId = $this->getCurrentUserId();
         $now = Factory::getDate()->toSql();
 
         // Check if product exists
@@ -258,7 +271,7 @@ class ImportModel extends BaseDatabaseModel
     protected function importVariants(array $variants, int $productId, array $options): void
     {
         $db = $this->getDatabase();
-        $userId = Factory::getApplication()->getIdentity()->id;
+        $userId = $this->getCurrentUserId();
         $now = Factory::getDate()->toSql();
 
         foreach ($variants as $variantData) {
