@@ -20,6 +20,17 @@ $db = Factory::getContainer()->get('DatabaseDriver');
 $task = $app->input->get('task', 'display');
 
 /**
+ * Create a fresh query object — compatible with Joomla 4/5 (getQuery) and 6 (createQuery).
+ *
+ * @param \Joomla\Database\DatabaseInterface $db
+ * @return \Joomla\Database\QueryInterface
+ */
+function createDbQuery(\Joomla\Database\DatabaseInterface $db): \Joomla\Database\QueryInterface
+{
+    return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
+}
+
+/**
  * Resolve the filesystem path for an extension.
  *
  * @param object $ext  Extension record from #__extensions
@@ -234,7 +245,7 @@ if ($task === 'cleanup' && Session::checkToken()) {
     $messages = [];
     
     // Get extension details for proper uninstall
-    $query = $db->getQuery(true)
+    $query = createDbQuery($db)
         ->select($db->quoteName(['extension_id', 'type', 'element', 'folder', 'client_id']))
         ->from($db->quoteName('#__extensions'))
         ->whereIn($db->quoteName('extension_id'), $cids);
@@ -251,7 +262,7 @@ if ($task === 'cleanup' && Session::checkToken()) {
             } else {
                 // Fallback: direct DB delete if uninstall fails
                 $extId       = (int) $ext->extension_id;
-                $deleteQuery = $db->getQuery(true)
+                $deleteQuery = createDbQuery($db)
                     ->delete($db->quoteName('#__extensions'))
                     ->where($db->quoteName('extension_id') . ' = :extId')
                     ->bind(':extId', $extId, \Joomla\Database\ParameterType::INTEGER);
@@ -280,7 +291,7 @@ if ($task === 'cleanup' && Session::checkToken()) {
 }
 
 // Get all J2Store/J2Commerce extensions
-$query = $db->getQuery(true)
+$query = createDbQuery($db)
     ->select('extension_id, name, type, element, folder, enabled, client_id, manifest_cache')
     ->from('#__extensions')
     ->where("(element LIKE '%j2store%' OR element LIKE '%j2commerce%' OR element LIKE 'j2%' OR element LIKE 'mod\_j2%' OR element LIKE 'com\_j2%' OR folder = 'j2store')")
