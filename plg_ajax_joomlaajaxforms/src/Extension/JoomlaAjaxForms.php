@@ -231,7 +231,9 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $profileUrl = Uri::base();
                 $menu = $this->getApplication()->getMenu();
                 if ($menu) {
-                    $items = $menu->getItems(['component', 'link'], ['com_j2store', 'index.php?option=com_j2store&view=myprofile']);
+                    // J2Commerce 6 uses com_j2commerce; J2Commerce 4 uses com_j2store
+                    $items = $menu->getItems(['component', 'link'], ['com_j2commerce', 'index.php?option=com_j2commerce&view=myprofile'])
+                        ?: $menu->getItems(['component', 'link'], ['com_j2store', 'index.php?option=com_j2store&view=myprofile']);
                     if (!empty($items)) {
                         $sefPath = Route::_('index.php?Itemid=' . $items[0]->id, false);
                         $profileUrl = rtrim(Uri::base(), '/') . '/' . ltrim($sefPath, '/');
@@ -272,7 +274,11 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $session->set('com_users.return_url', '');
 
             if (empty($redirect)) {
-                $redirect = Route::_('index.php?option=com_j2store&view=myprofile', false);
+                // J2Commerce 6 uses com_j2commerce; fall back to com_j2store for J2Commerce 4
+                $j2Link = file_exists(JPATH_ROOT . '/components/com_j2commerce')
+                    ? 'index.php?option=com_j2commerce&view=myprofile'
+                    : 'index.php?option=com_j2store&view=myprofile';
+                $redirect = Route::_($j2Link, false);
             }
 
             return $this->jsonSuccess([
@@ -372,7 +378,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         }
 
         // Check if username/email already exists
-        $db = Factory::getContainer()->get(DatabaseInterface::class);
+        $db = $this->getDatabase();
 
         $query = $this->createDbQuery($db)
             ->select('COUNT(*)')
@@ -467,7 +473,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
         // Always return success to prevent email enumeration
         try {
-            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $db = $this->getDatabase();
             $query = $this->createDbQuery($db)
                 ->select('*')
                 ->from($db->quoteName('#__users'))
@@ -524,7 +530,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
         // Always return success to prevent email enumeration
         try {
-            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $db = $this->getDatabase();
             $query = $this->createDbQuery($db)
                 ->select('*')
                 ->from($db->quoteName('#__users'))
@@ -564,7 +570,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         }
 
         try {
-            $db     = Factory::getContainer()->get(DatabaseInterface::class);
+            $db = $this->getDatabase();
             $userId = (int) $user->id;
 
             if (!$this->isJ2CommerceInstalled($db)) {
@@ -629,7 +635,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         }
 
         try {
-            $db     = Factory::getContainer()->get(DatabaseInterface::class);
+            $db = $this->getDatabase();
             $userId = (int) $user->id;
 
             if (!$this->isJ2CommerceInstalled($db)) {
@@ -827,7 +833,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     protected function getMfaMethods(int $userId): array
     {
         try {
-            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $db = $this->getDatabase();
             $query = $this->createDbQuery($db)
                 ->select([$db->quoteName('id'), $db->quoteName('title'), $db->quoteName('method')])
                 ->from($db->quoteName('#__user_mfa'))
