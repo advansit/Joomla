@@ -140,4 +140,6 @@ class PluginClassTest
 }
 
 $test = new PluginClassTest();
-exit($test->run() ? 0 : 1);
+$result = $test->run();
+echo $result ? "✅ All plugin class tests passed\n" : "❌ Plugin class tests failed\n";
+exit($result ? 0 : 1);
