@@ -64,13 +64,9 @@ class ExportModelTest
         // Instantiate directly — avoids Factory::getApplication('administrator')
         // which requires a fully booted Joomla app. BaseDatabaseModel uses
         // DatabaseAwareTrait; inject the DB via setDatabase() after construction.
-        JLoader::registerNamespace(
-            'Advans\Component\J2CommerceImportExport',
-            '/var/www/html/administrator/components/com_j2commerce_importexport/src',
-            false,
-            false,
-            'psr4'
-        );
+        // Load the model file directly — avoids JLoader PSR-4 path resolution
+        // issues and the MVCFactory/bootComponent path.
+        require_once '/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ExportModel.php';
         $db    = Factory::getContainer()->get('DatabaseDriver');
         $model = new \Advans\Component\J2CommerceImportExport\Administrator\Model\ExportModel();
         $model->setDatabase($db);
@@ -142,6 +138,37 @@ class ExportModelTest
         }
     }
 
+    private function ensureJ2StoreTables(): void
+    {
+        // The importexport test container does not install J2Store/J2Commerce.
+        // Create the minimal tables needed for fixture seeding if absent.
+        $tables = $this->db->getTableList();
+        $prefix = $this->db->getPrefix();
+
+        if (!in_array($prefix . 'j2store_products', $tables)) {
+            $this->db->setQuery("CREATE TABLE IF NOT EXISTS `{$prefix}j2store_products` (
+                `j2store_product_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+                `product_source_id`  int(11) UNSIGNED NOT NULL DEFAULT 0,
+                `product_source`     varchar(50) NOT NULL DEFAULT 'com_content',
+                `product_type`       varchar(50) NOT NULL DEFAULT 'simple',
+                `enabled`            tinyint(1) NOT NULL DEFAULT 1,
+                PRIMARY KEY (`j2store_product_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4")->execute();
+        }
+
+        if (!in_array($prefix . 'j2store_variants', $tables)) {
+            $this->db->setQuery("CREATE TABLE IF NOT EXISTS `{$prefix}j2store_variants` (
+                `j2store_variant_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+                `product_id`         int(11) UNSIGNED NOT NULL DEFAULT 0,
+                `is_master`          tinyint(1) NOT NULL DEFAULT 1,
+                `sku`                varchar(255) NOT NULL DEFAULT '',
+                `price`              decimal(15,5) NOT NULL DEFAULT 0.00000,
+                `enabled`            tinyint(1) NOT NULL DEFAULT 1,
+                PRIMARY KEY (`j2store_variant_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4")->execute();
+        }
+    }
+
     private function ensureCategory(): int
     {
         // Return an existing content category id, or insert a minimal one.
@@ -184,6 +211,9 @@ class ExportModelTest
 
     private function seedFixtures(): void
     {
+        // The importexport container does not install J2Store — create tables.
+        $this->ensureJ2StoreTables();
+
         // Ensure a usable category exists — catid=2 is the Joomla default
         // "Uncategorised" category but may be absent in a fresh test container.
         $catId = $this->ensureCategory();

@@ -63,13 +63,7 @@ class ImportModelTest
         // Instantiate directly — avoids Factory::getApplication('administrator')
         // which requires a fully booted Joomla app. BaseDatabaseModel uses
         // DatabaseAwareTrait; inject the DB via setDatabase() after construction.
-        JLoader::registerNamespace(
-            'Advans\Component\J2CommerceImportExport',
-            '/var/www/html/administrator/components/com_j2commerce_importexport/src',
-            false,
-            false,
-            'psr4'
-        );
+        require_once '/var/www/html/administrator/components/com_j2commerce_importexport/src/Model/ImportModel.php';
         $db    = Factory::getContainer()->get('DatabaseDriver');
         $model = new \Advans\Component\J2CommerceImportExport\Administrator\Model\ImportModel();
         $model->setDatabase($db);
