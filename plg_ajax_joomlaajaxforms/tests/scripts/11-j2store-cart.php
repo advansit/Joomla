@@ -18,7 +18,7 @@ class J2StoreCartTest
 {
     public function run(): bool
     {
-        echo "=== J2Store Cart Tests ===\n\n";
+        echo "=== J2Commerce Cart Tests ===\n\n";
 
         $allPassed = true;
         $allPassed = $this->testCartFeatureConfig() && $allPassed;
