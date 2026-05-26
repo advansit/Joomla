@@ -34,7 +34,7 @@ class ImportModel extends BaseDatabaseModel
     private function getCurrentUserId(): int
     {
         try {
-            return (int) $this->getCurrentUserId();
+            return (int) Factory::getApplication()->getIdentity()->id;
         } catch (\Throwable $e) {
             return 0;
         }
