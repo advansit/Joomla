@@ -1,99 +1,131 @@
 <?php
 /**
  * Plugin Class Tests for J2Commerce Product Compare Plugin
- * Validates the plugin class structure and methods.
+ *
+ * Instantiates the plugin class and calls methods rather than checking
+ * for method names with strpos().
  */
+define('_JEXEC', 1);
+define('JPATH_BASE', '/var/www/html');
+require_once JPATH_BASE . '/includes/defines.php';
+$_SERVER['HTTP_HOST']   = $_SERVER['HTTP_HOST']   ?? 'localhost';
+$_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+require_once JPATH_BASE . '/includes/framework.php';
+
+use Joomla\CMS\Factory;
+use Joomla\Registry\Registry;
 
 class PluginClassTest
 {
     private $passed = 0;
     private $failed = 0;
-    private $classFile;
+    private $classFile = '/var/www/html/plugins/j2store/productcompare/src/Extension/ProductCompare.php';
 
-    public function __construct()
+    private function test(string $name, bool $condition, string $message = ''): void
     {
-        $this->classFile = '/var/www/html/plugins/j2store/productcompare/src/Extension/ProductCompare.php';
+        if ($condition) {
+            echo "✓ $name\n";
+            $this->passed++;
+        } else {
+            echo "✗ $name" . ($message ? " — $message" : '') . "\n";
+            $this->failed++;
+        }
     }
 
     public function run(): bool
     {
         echo "=== Plugin Class Tests ===\n\n";
 
-        $content = file_get_contents($this->classFile);
+        // --- File ---
+        echo "--- File ---\n";
+        $this->test('Class file exists', file_exists($this->classFile));
 
-        $this->test('Class file is readable', function () use ($content) {
-            return !empty($content);
-        });
+        if (!file_exists($this->classFile)) {
+            echo "Cannot continue — class file missing\n";
+            return false;
+        }
 
-        $this->test('Has onAfterDispatch method', function () use ($content) {
-            return strpos($content, 'function onAfterDispatch') !== false;
-        });
+        // --- Autoloader: class must be loadable ---
+        echo "\n--- Class loading ---\n";
+        $loaded = class_exists('Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare', true);
+        $this->test('ProductCompare class autoloads', $loaded);
 
-        $this->test('Has onJ2StoreAfterDisplayProduct method', function () use ($content) {
-            return strpos($content, 'function onJ2StoreAfterDisplayProduct') !== false;
-        });
+        if (!$loaded) {
+            echo "Cannot continue — class not loadable\n";
+            return false;
+        }
 
-        $this->test('Has onJ2StoreAfterDisplayProductList method', function () use ($content) {
-            return strpos($content, 'function onJ2StoreAfterDisplayProductList') !== false;
-        });
-
-        $this->test('Has onAjaxProductcompare method', function () use ($content) {
-            return strpos($content, 'function onAjaxProductcompare') !== false;
-        });
-
-        $this->test('Has onAfterRender method', function () use ($content) {
-            return strpos($content, 'function onAfterRender') !== false;
-        });
-
-        $this->test('Has renderCompareButton method', function () use ($content) {
-            return strpos($content, 'function renderCompareButton') !== false;
-        });
-
-        $this->test('Has getProductsData method', function () use ($content) {
-            return strpos($content, 'function getProductsData') !== false;
-        });
-
-        $this->test('Has renderLayout method', function () use ($content) {
-            return strpos($content, 'function renderLayout') !== false;
-        });
-
-        $this->test('Uses FileLayout for template overrides', function () use ($content) {
-            return strpos($content, 'FileLayout') !== false;
-        });
-
-        $this->test('Uses Joomla CMSPlugin or extends correct base', function () use ($content) {
-            return strpos($content, 'CMSPlugin') !== false || strpos($content, 'extends Plugin') !== false;
-        });
-
-        $this->test('Uses DatabaseAwareTrait or gets DB', function () use ($content) {
-            return strpos($content, 'DatabaseAwareTrait') !== false
-                || strpos($content, 'getDbo') !== false
-                || strpos($content, 'getDatabase') !== false
-                || strpos($content, 'Factory::getContainer') !== false;
-        });
-
-        $this->test('Uses WebAssetManager for assets', function () use ($content) {
-            return strpos($content, 'getWebAssetManager') !== false;
-        });
-
-        $this->test('Uses addScriptOptions for JS config', function () use ($content) {
-            return strpos($content, 'addScriptOptions') !== false;
-        });
+        $this->testReflection();
+        $this->testInstantiation();
 
         echo "\n=== Plugin Class Test Summary ===\n";
-        echo "Passed: {$this->passed}, Failed: {$this->failed}\n";
+        echo "Passed: {$this->passed}\n";
+        echo "Failed: {$this->failed}\n";
         return $this->failed === 0;
     }
 
-    private function test(string $name, callable $fn): void
+    private function testReflection(): void
     {
-        try {
-            if ($fn()) { echo "✓ {$name}\n"; $this->passed++; }
-            else { echo "✗ {$name}\n"; $this->failed++; }
-        } catch (\Exception $e) {
-            echo "✗ {$name} - Error: {$e->getMessage()}\n";
-            $this->failed++;
+        echo "\n--- Method signatures (reflection) ---\n";
+
+        $rc = new ReflectionClass('Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare');
+
+        foreach ([
+            'onAfterDispatch',
+            'onAfterRender',
+            'onJ2StoreAfterDisplayProduct',
+            'onJ2StoreAfterDisplayProductList',
+            'onAjaxProductcompare',
+        ] as $method) {
+            $this->test("$method() exists", $rc->hasMethod($method));
         }
+
+        // Private helpers must exist
+        foreach (['renderLayout', 'renderCompareButton', 'getProductsData', 'getProductOptions'] as $m) {
+            $this->test("$m() exists", $rc->hasMethod($m));
+        }
+
+        // Extends CMSPlugin
+        $this->test('Extends CMSPlugin',
+            $rc->isSubclassOf('Joomla\CMS\Plugin\CMSPlugin'));
+
+        // autoloadLanguage = true
+        $prop = $rc->getProperty('autoloadLanguage');
+        $prop->setAccessible(true);
+        $instance = $rc->newInstanceWithoutConstructor();
+        $this->test('autoloadLanguage is true', (bool) $prop->getValue($instance) === true);
+    }
+
+    private function testInstantiation(): void
+    {
+        echo "\n--- Instantiation ---\n";
+
+        $dispatcher = new \Joomla\Event\Dispatcher();
+        $params     = new Registry(['max_products' => 4, 'show_in_list' => 1, 'show_in_detail' => 1]);
+
+        try {
+            $plugin = new \Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare(
+                $dispatcher,
+                ['params' => $params]
+            );
+            $this->test('Plugin instantiates without error', true);
+        } catch (\Throwable $e) {
+            $this->test('Plugin instantiates without error', false, $e->getMessage());
+            return;
+        }
+
+        // onJ2StoreAfterDisplayProductList with show_in_list=0 → empty string
+        $params0 = new Registry(['show_in_list' => 0, 'show_in_detail' => 0]);
+        $plugin0 = new \Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare(
+            $dispatcher,
+            ['params' => $params0]
+        );
+        $product = (object)['j2store_product_id' => 1];
+        $result  = $plugin0->onJ2StoreAfterDisplayProductList($product);
+        $this->test('show_in_list=0 → empty string', $result === '');
+
+        $result2 = $plugin0->onJ2StoreAfterDisplayProduct($product, 'detail');
+        $this->test('show_in_detail=0 → empty string', $result2 === '');
     }
 }
 
