@@ -62,6 +62,18 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     protected $autoloadLanguage = true;
 
     /**
+     * Create a database query object (Joomla 4/5/6 compatible).
+     * Joomla 6 deprecates getQuery(true) in favour of createQuery().
+     *
+     * @return  \Joomla\Database\QueryInterface
+     */
+    private function createDbQuery(): \Joomla\Database\QueryInterface
+    {
+        $db = $this->getDatabase();
+        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
+    }
+
+    /**
      * The Joomla component option this instance handles.
      * Subclass J2CommerceNew overrides this to 'com_j2commerce'.
      */
@@ -167,7 +179,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         int $parentId
     ): bool {
         $db    = $this->getDb();
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select([
                 $db->quoteName('m.id'),
                 $db->quoteName('m.path'),
@@ -216,7 +228,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         int $articleId
     ): void {
         $db    = $this->getDb();
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select([
                 $db->quoteName('a.id'),
                 $db->quoteName('a.title'),
@@ -274,7 +286,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     protected function loadProducts(?int $catid): array
     {
         $db    = $this->getDb();
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select([
                 $db->quoteName('a.id'),
                 $db->quoteName('a.title'),
