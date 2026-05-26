@@ -69,7 +69,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
      */
     private function createDbQuery(): \Joomla\Database\QueryInterface
     {
-        $db = $this->getDatabase();
+        $db = $this->getDb();
         return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
     }
 
