@@ -6,14 +6,12 @@ echo "Extension: ${EXTENSION_NAME:-unknown}"
 echo "====================================================="
 
 # Wait for MySQL to be ready (max 120s).
+# --ssl-mode=DISABLED: mariadb-client (Bookworm) enforces TLS by default;
+# MySQL 8.0 uses a self-signed cert that fails the chain check.
 echo "Waiting for MySQL..."
-echo "  mysql binary: $(which mysql 2>/dev/null || echo 'NOT FOUND')"
 MYSQL_WAIT=0
-until mysql -h mysql -u joomla -pjoomla_pass -e "SELECT 1" >/dev/null 2>&1; do
+until mysql -h mysql -u joomla -pjoomla_pass --ssl-mode=DISABLED -e "SELECT 1" >/dev/null 2>&1; do
     MYSQL_WAIT=$((MYSQL_WAIT + 2))
-    if [ $((MYSQL_WAIT % 10)) -eq 0 ]; then
-        echo "  MySQL not ready (${MYSQL_WAIT}s): $(mysql -h mysql -u joomla -pjoomla_pass -e 'SELECT 1' 2>&1 | head -1)"
-    fi
     sleep 2
     if [ $MYSQL_WAIT -ge 120 ]; then
         echo "ERROR: MySQL did not become ready within 120s"
@@ -100,11 +98,11 @@ EOFCONFIG
         echo "Importing Joomla database schema..."
         for f in base extensions supports; do
             [ -f /var/www/html/installation/sql/mysql/${f}.sql ] && \
-                mysql -h mysql -u joomla -pjoomla_pass joomla_db < /var/www/html/installation/sql/mysql/${f}.sql 2>/dev/null || true
+                mysql -h mysql -u joomla -pjoomla_pass --ssl-mode=DISABLED joomla_db < /var/www/html/installation/sql/mysql/${f}.sql 2>/dev/null || true
         done
 
         ADMIN_PASS_HASH=$(php -r "echo password_hash('Admin123!', PASSWORD_BCRYPT);")
-        mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
+        mysql -h mysql -u joomla -pjoomla_pass --ssl-mode=DISABLED joomla_db -e "
             INSERT INTO j_users (id, name, username, email, password, block, sendEmail, registerDate, params)
             VALUES (42, 'Super User', 'admin', 'admin@test.local', '$ADMIN_PASS_HASH', 0, 1, NOW(), '{}')
             ON DUPLICATE KEY UPDATE password='$ADMIN_PASS_HASH';
@@ -126,7 +124,7 @@ echo "DB prefix: ${DB_PREFIX}"
 # No public J2Commerce 6.x release exists yet. Import the minimal schema
 # required for privacy plugin tests directly.
 echo "Creating J2Commerce 6 schema..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null <<EOMINIMAL
+mysql -h mysql -u joomla -pjoomla_pass --ssl-mode=DISABLED joomla_db 2>/dev/null <<EOMINIMAL
 CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_orders (
     j2commerce_order_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     order_id            VARCHAR(50)  NOT NULL,
@@ -235,14 +233,14 @@ else
 fi
 
 echo "Enabling installed plugins..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db \
+mysql -h mysql -u joomla -pjoomla_pass --ssl-mode=DISABLED joomla_db \
     -e "UPDATE ${DB_PREFIX}extensions SET enabled = 1 WHERE enabled = 0 AND type = 'plugin';" 2>&1 \
     && echo "Plugins enabled" \
     || echo "WARNING: Could not enable plugins"
 
 # Insert J2Commerce 6 test data (#__j2commerce_* tables)
 echo "Inserting J2Commerce 6 test data..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null << EOSQL
+mysql -h mysql -u joomla -pjoomla_pass --ssl-mode=DISABLED joomla_db 2>/dev/null << EOSQL
 -- Test user (ID 100)
 INSERT IGNORE INTO ${DB_PREFIX}users (id, name, username, email, password, block, sendEmail, registerDate, params)
 VALUES (100, 'Test User', 'testuser', 'test@example.com', '', 0, 0, NOW(), '{}');
@@ -286,7 +284,7 @@ echo "J2Commerce 6 test data inserted"
 
 # AcyMailing schema (same as J5 stack)
 echo "Installing AcyMailing test schema..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null << EOACYM
+mysql -h mysql -u joomla -pjoomla_pass --ssl-mode=DISABLED joomla_db 2>/dev/null << EOACYM
 CREATE TABLE IF NOT EXISTS ${DB_PREFIX}acym_configuration (
     id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
     name  VARCHAR(255) NOT NULL,
