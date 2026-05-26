@@ -62,6 +62,18 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     protected $autoloadLanguage = true;
 
     /**
+     * Create a database query object (Joomla 4/5/6 compatible).
+     * Joomla 6 deprecates getQuery(true) in favour of createQuery().
+     *
+     * @return  \Joomla\Database\QueryInterface
+     */
+    private function createDbQuery(): \Joomla\Database\QueryInterface
+    {
+        $db = $this->getDb();
+        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
+    }
+
+    /**
      * The Joomla component option this instance handles.
      * Subclass J2CommerceNew overrides this to 'com_j2commerce'.
      */
@@ -83,7 +95,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     }
 
     /**
-     * Returns the database driver. Falls back to Factory::getDbo() when OSMap
+     * Returns the database driver. Falls back to the DI container when OSMap
      * loads the plugin via its legacy loader, which does not call setDatabase().
      */
     protected function getDb(): DatabaseInterface
@@ -91,7 +103,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         try {
             return $this->getDatabase();
         } catch (\RuntimeException $e) {
-            return Factory::getDbo();
+            return Factory::getContainer()->get(DatabaseInterface::class);
         }
     }
 
@@ -138,11 +150,14 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                     $this->emitProductsForCategory($collector, $parent, $params, $catid);
                 }
                 return;
-        }
 
-        // No view parameter: try published=-2 hidden children directly.
-        if ($parentId > 0) {
-            $this->emitHiddenMenuChildren($collector, $parent, $params, $parentId);
+            default:
+                // Unknown view (wishlist, myprofile, checkout, etc.) — emit nothing.
+                // Only try hidden children for menu items with no view parameter at all.
+                if (empty($view) && $parentId > 0) {
+                    $this->emitHiddenMenuChildren($collector, $parent, $params, $parentId);
+                }
+                return;
         }
     }
 
@@ -164,7 +179,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         int $parentId
     ): bool {
         $db    = $this->getDb();
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select([
                 $db->quoteName('m.id'),
                 $db->quoteName('m.path'),
@@ -213,7 +228,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         int $articleId
     ): void {
         $db    = $this->getDb();
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select([
                 $db->quoteName('a.id'),
                 $db->quoteName('a.title'),
@@ -271,7 +286,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     protected function loadProducts(?int $catid): array
     {
         $db    = $this->getDb();
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery()
             ->select([
                 $db->quoteName('a.id'),
                 $db->quoteName('a.title'),
@@ -338,8 +353,9 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     }
 
     /**
-     * Builds a product URL via the component's view=product route and emits
-     * the node. Used for J2Commerce 4+ view-based menu items.
+     * Builds a product URL from the parent menu item's SEF path + product alias
+     * and emits the node. This avoids router dependency — no view=product menu
+     * item is required.
      */
     protected function printProductNode(
         Collector $collector,
@@ -347,15 +363,12 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         Registry $params,
         object $product
     ): void {
-        // Build a non-SEF URL; OSMap will apply SEF routing if configured.
-        $link = sprintf(
-            'index.php?option=%s&view=product&id=%d:%s&catid=%d&Itemid=%d',
-            $this->component,
-            (int) $product->id,
-            rawurlencode($product->alias),
-            (int) $product->catid,
-            (int) $parent->id
-        );
+        // Derive the product URL from the parent menu item's SEF path + alias.
+        // e.g. parent path "shop" + alias "my-product" → "https://example.com/shop/my-product"
+        // rawurlencode() is applied to handle any aliases that contain special characters
+        // (e.g. from imports or manual entry that bypassed JFilterOutput::stringURLSafe()).
+        $basePath = rtrim($parent->path ?? '', '/');
+        $link     = rtrim(Uri::root(), '/') . '/' . ($basePath ? $basePath . '/' : '') . rawurlencode(ltrim($product->alias, '/'));
 
         $node = (object) [
             'id'         => $product->id,
