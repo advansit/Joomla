@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension type="plugin" group="j2store" method="upgrade">
+<extension type="plugin" group="j2commerce" method="upgrade">
     <autoloadLanguage>true</autoloadLanguage>
     <scriptfile>script.php</scriptfile>
     <name>PLG_J2COMMERCE_PRODUCTCOMPARE</name>

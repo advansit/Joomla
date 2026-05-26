@@ -50,9 +50,11 @@ class ProductCompare extends CMSPlugin
            ->useScript('plg_j2store_productcompare');
 
         // Configuration for JS — rendered as JSON in <head>, no inline <script> needed
+        // group=j2commerce for J2Commerce 6; group=j2store for J2Commerce 4
+        $group = $this->isJ2Commerce6() ? 'j2commerce' : 'j2store';
         $doc->addScriptOptions('plg_j2store_productcompare', [
             'maxProducts' => (int) $this->params->get('max_products', 4),
-            'ajaxUrl'     => Uri::base() . 'index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json',
+            'ajaxUrl'     => Uri::base() . 'index.php?option=com_ajax&plugin=productcompare&group=' . $group . '&format=json',
         ]);
     }
 
@@ -92,7 +94,8 @@ class ProductCompare extends CMSPlugin
             return '';
         }
 
-        return $this->renderCompareButton($product->j2store_product_id);
+        $pk = $this->isJ2Commerce6() ? 'j2commerce_product_id' : 'j2store_product_id';
+        return $this->renderCompareButton((int) $product->$pk);
     }
 
     /**
@@ -104,7 +107,8 @@ class ProductCompare extends CMSPlugin
             return '';
         }
 
-        return $this->renderCompareButton($product->j2store_product_id);
+        $pk = $this->isJ2Commerce6() ? 'j2commerce_product_id' : 'j2store_product_id';
+        return $this->renderCompareButton((int) $product->$pk);
     }
 
     /**
@@ -193,15 +197,37 @@ class ProductCompare extends CMSPlugin
         return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
     }
 
+    /**
+     * Detect J2Commerce 6 by checking for #__j2commerce_products in the database.
+     * Cached after first call.
+     */
+    private ?bool $j2commerce6 = null;
+
+    private function isJ2Commerce6(): bool
+    {
+        if ($this->j2commerce6 === null) {
+            $db = $this->getDatabase();
+            $tables = $db->getTableList();
+            $this->j2commerce6 = in_array($db->getPrefix() . 'j2commerce_products', $tables, true);
+        }
+        return $this->j2commerce6;
+    }
+
     private function getProductsData(array $productIds): array
     {
-        $db = $this->getDatabase();
+        $db  = $this->getDatabase();
+        $j6  = $this->isJ2Commerce6();
+
+        $productsPk  = $j6 ? 'j2commerce_product_id' : 'j2store_product_id';
+        $variantsPk  = $j6 ? 'j2commerce_variant_id' : 'j2store_variant_id';
+        $productsT   = $j6 ? '#__j2commerce_products' : '#__j2store_products';
+        $variantsT   = $j6 ? '#__j2commerce_variants'  : '#__j2store_variants';
 
         $query = $this->createDbQuery($db)
             ->select([
-                $db->quoteName('p.j2store_product_id'),
+                $db->quoteName('p.' . $productsPk),
                 $db->quoteName('p.product_source_id'),
-                $db->quoteName('v.j2store_variant_id'),
+                $db->quoteName('v.' . $variantsPk),
                 $db->quoteName('v.sku'),
                 $db->quoteName('v.price'),
                 $db->quoteName('v.stock'),
@@ -209,18 +235,18 @@ class ProductCompare extends CMSPlugin
                 $db->quoteName('c.title'),
                 $db->quoteName('c.introtext'),
             ])
-            ->from($db->quoteName('#__j2store_products', 'p'))
-            ->join('LEFT', $db->quoteName('#__j2store_variants', 'v') . ' ON ' . $db->quoteName('p.j2store_product_id') . ' = ' . $db->quoteName('v.product_id'))
+            ->from($db->quoteName($productsT, 'p'))
+            ->join('LEFT', $db->quoteName($variantsT, 'v') . ' ON ' . $db->quoteName('p.' . $productsPk) . ' = ' . $db->quoteName('v.product_id'))
             ->join('LEFT', $db->quoteName('#__content', 'c') . ' ON ' . $db->quoteName('p.product_source_id') . ' = ' . $db->quoteName('c.id'))
-            ->whereIn($db->quoteName('p.j2store_product_id'), $productIds)
+            ->whereIn($db->quoteName('p.' . $productsPk), $productIds)
             ->where($db->quoteName('p.enabled') . ' = 1')
-            ->order($db->quoteName('p.j2store_product_id'));
+            ->order($db->quoteName('p.' . $productsPk));
 
         $db->setQuery($query);
         $products = $db->loadObjectList() ?: [];
 
         foreach ($products as &$product) {
-            $product->options = $this->getProductOptions($product->j2store_product_id);
+            $product->options = $this->getProductOptions((int) $product->$productsPk);
         }
 
         return $products;
@@ -231,11 +257,12 @@ class ProductCompare extends CMSPlugin
      */
     private function getProductOptions(int $productId): array
     {
-        $db = $this->getDatabase();
+        $db      = $this->getDatabase();
+        $optionsT = $this->isJ2Commerce6() ? '#__j2commerce_product_options' : '#__j2store_product_options';
 
         $query = $this->createDbQuery($db)
             ->select([$db->quoteName('option_name'), $db->quoteName('option_value')])
-            ->from($db->quoteName('#__j2store_product_options'))
+            ->from($db->quoteName($optionsT))
             ->where($db->quoteName('product_id') . ' = :productid')
             ->bind(':productid', $productId, ParameterType::INTEGER);
 
