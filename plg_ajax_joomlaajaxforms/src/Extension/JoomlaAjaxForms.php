@@ -716,13 +716,16 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     private function getCartTotalForUser(DatabaseInterface $db, int $userId): string
     {
         if ($this->isJ2Commerce4($db)) {
-            // #__j2store_cartitems has no price column; prices are in #__j2store_orderitems
-            // joined via cart_id → #__j2store_carts.j2store_cart_id
+            // #__j2store_cartitems has no price column. Prices are in #__j2store_variants
+            // (the master variant price). JOIN: cartitems → carts (user filter, cart_type='cart')
+            // → variants (price). This reflects the active cart, not completed orders.
             $query = $this->createDbQuery($db)
-                ->select('COALESCE(SUM(' . $db->quoteName('oi.orderitem_finalprice') . ' * ' . $db->quoteName('oi.orderitem_quantity') . '), 0)')
-                ->from($db->quoteName('#__j2store_orderitems', 'oi'))
-                ->join('INNER', $db->quoteName('#__j2store_carts', 'c') . ' ON ' . $db->quoteName('c.j2store_cart_id') . ' = ' . $db->quoteName('oi.cart_id'))
+                ->select('COALESCE(SUM(' . $db->quoteName('v.price') . ' * ' . $db->quoteName('ci.product_qty') . '), 0)')
+                ->from($db->quoteName('#__j2store_cartitems', 'ci'))
+                ->join('INNER', $db->quoteName('#__j2store_carts', 'c') . ' ON ' . $db->quoteName('c.j2store_cart_id') . ' = ' . $db->quoteName('ci.cart_id'))
+                ->join('INNER', $db->quoteName('#__j2store_variants', 'v') . ' ON ' . $db->quoteName('v.j2store_variant_id') . ' = ' . $db->quoteName('ci.variant_id'))
                 ->where($db->quoteName('c.user_id') . ' = :userId')
+                ->where($db->quoteName('c.cart_type') . ' = ' . $db->quote('cart'))
                 ->bind(':userId', $userId, ParameterType::INTEGER);
         } else {
             // J2Commerce 6: #__j2commerce_cartitems has no price column and #__j2commerce_carts
