@@ -202,3 +202,4 @@ https://advans.ch
 ## License
 
 Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.
+
