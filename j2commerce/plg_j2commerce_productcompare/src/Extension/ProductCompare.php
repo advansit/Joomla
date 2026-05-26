@@ -185,11 +185,19 @@ class ProductCompare extends CMSPlugin
      * @param   int[]  $productIds
      * @return  object[]
      */
+    /**
+     * Create a fresh query object — compatible with Joomla 4/5 (getQuery) and 6 (createQuery).
+     */
+    private function createDbQuery(\Joomla\Database\DatabaseInterface $db): \Joomla\Database\QueryInterface
+    {
+        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
+    }
+
     private function getProductsData(array $productIds): array
     {
         $db = $this->getDatabase();
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->select([
                 $db->quoteName('p.j2store_product_id'),
                 $db->quoteName('p.product_source_id'),
@@ -225,7 +233,7 @@ class ProductCompare extends CMSPlugin
     {
         $db = $this->getDatabase();
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->select([$db->quoteName('option_name'), $db->quoteName('option_value')])
             ->from($db->quoteName('#__j2store_product_options'))
             ->where($db->quoteName('product_id') . ' = :productid')
