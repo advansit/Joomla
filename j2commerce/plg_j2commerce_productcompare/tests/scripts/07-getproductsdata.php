@@ -202,10 +202,48 @@ class GetProductsDataTest
         return (int) $db->insertid();
     }
 
+    private function ensureJ2StoreTables(): void
+    {
+        // J2Store is not installed in the productcompare test container.
+        // Create minimal table stubs so fixture inserts succeed.
+        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $this->db->getPrefix() . 'j2store_products` (
+            `j2store_product_id`  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `product_source_id`   INT UNSIGNED NOT NULL DEFAULT 0,
+            `product_source`      VARCHAR(100) NOT NULL DEFAULT \'\',
+            `product_type`        VARCHAR(50)  NOT NULL DEFAULT \'simple\',
+            `enabled`             TINYINT(1)   NOT NULL DEFAULT 1,
+            `taxprofile_id`       INT UNSIGNED NOT NULL DEFAULT 0,
+            `params`              TEXT         NOT NULL,
+            PRIMARY KEY (`j2store_product_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
+
+        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $this->db->getPrefix() . 'j2store_variants` (
+            `j2store_variant_id`  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `product_id`          INT UNSIGNED NOT NULL DEFAULT 0,
+            `sku`                 VARCHAR(255) NOT NULL DEFAULT \'\',
+            `price`               DECIMAL(15,5) NOT NULL DEFAULT 0.00000,
+            `stock`               DECIMAL(15,4) NOT NULL DEFAULT 0.0000,
+            `availability`        VARCHAR(255) NOT NULL DEFAULT \'\',
+            `params`              TEXT         NOT NULL,
+            `isdefault`           TINYINT(1)   NOT NULL DEFAULT 0,
+            PRIMARY KEY (`j2store_variant_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
+
+        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $this->db->getPrefix() . 'j2store_product_options` (
+            `j2store_product_option_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `product_id`                INT UNSIGNED NOT NULL DEFAULT 0,
+            `option_name`               VARCHAR(255) NOT NULL DEFAULT \'\',
+            `option_type`               VARCHAR(50)  NOT NULL DEFAULT \'\',
+            `params`                    TEXT         NOT NULL,
+            PRIMARY KEY (`j2store_product_option_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
+    }
+
     private function seedFixtures(): void
     {
         $ts    = time();
         $catid = $this->ensureCatid();
+        $this->ensureJ2StoreTables();
 
         // Content articles (product source)
         foreach (['Test Product Alpha', 'Test Product Beta', 'Test Product Disabled'] as $i => $title) {
