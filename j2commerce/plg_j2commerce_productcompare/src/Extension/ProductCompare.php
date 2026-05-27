@@ -17,10 +17,14 @@ use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Response\JsonResponse;
 use Joomla\CMS\Session\Session;
 use Joomla\CMS\Uri\Uri;
+use Joomla\Database\DatabaseAwareInterface;
+use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Database\ParameterType;
 
-class ProductCompare extends CMSPlugin
+class ProductCompare extends CMSPlugin implements DatabaseAwareInterface
 {
+    use DatabaseAwareTrait;
+
     protected $autoloadLanguage = true;
 
     /**
