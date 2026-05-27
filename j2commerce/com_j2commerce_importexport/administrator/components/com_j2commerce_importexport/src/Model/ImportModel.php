@@ -17,13 +17,7 @@ use Joomla\CMS\Application\ApplicationHelper;
 
 class ImportModel extends BaseDatabaseModel
 {
-    /**
-     * Create a fresh query object — compatible with Joomla 4/5 (getQuery) and 6 (createQuery).
-     */
-    private function createDbQuery(\Joomla\Database\DatabaseInterface $db): \Joomla\Database\QueryInterface
-    {
-        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
-    }
+    use J2CommerceAwareTrait;
 
     const BATCH_SIZE = 100;
 
@@ -59,7 +53,7 @@ class ImportModel extends BaseDatabaseModel
             $this->importVariants($data['variants'] ?? [], $productId, $options);
 
             // 5. Import Images
-            $this->importProductImages($data['j2store_images'] ?? [], $productId);
+            $this->importProductImages($data['product_images'] ?? [], $productId);
 
             // 6. Import Options
             $this->importProductOptions($data['options'] ?? [], $productId);
@@ -184,8 +178,8 @@ class ImportModel extends BaseDatabaseModel
             $sku = $data['variants'][0]['sku'];
             $query = $this->createDbQuery($db)
                 ->select('p.product_source_id')
-                ->from($db->quoteName('#__j2store_products', 'p'))
-                ->join('INNER', $db->quoteName('#__j2store_variants', 'v') . ' ON p.j2store_product_id = v.product_id')
+                ->from($db->quoteName($this->t('products'), 'p'))
+                ->join('INNER', $db->quoteName($this->t('variants'), 'v') . ' ON p.' . $this->col('j2store_product_id') . ' = v.product_id')
                 ->where('v.sku = :sku')
                 ->where('p.product_source = ' . $db->quote('com_content'))
                 ->bind(':sku', $sku);
@@ -235,8 +229,8 @@ class ImportModel extends BaseDatabaseModel
 
         // Check if product exists
         $query = $this->createDbQuery($db)
-            ->select('j2store_product_id')
-            ->from($db->quoteName('#__j2store_products'))
+            ->select(\$this->col($this->col('j2store_product_id')))
+            ->from($db->quoteName($this->t('products')))
             ->where('product_source_id = :articleid')
             ->where('product_source = ' . $db->quote('com_content'))
             ->bind(':articleid', $articleId, \Joomla\Database\ParameterType::INTEGER);
@@ -265,14 +259,14 @@ class ImportModel extends BaseDatabaseModel
         ];
 
         if ($existingId && ($options['update_existing'] ?? true)) {
-            $product->j2store_product_id = $existingId;
-            $db->updateObject('#__j2store_products', $product, 'j2store_product_id');
+            $product->{$this->col('j2store_product_id')} = $existingId;
+            $db->updateObject($this->t('products'), $product, $this->col('j2store_product_id'));
             return $existingId;
         }
 
         $product->created_on = $now;
         $product->created_by = $userId;
-        $db->insertObject('#__j2store_products', $product);
+        $db->insertObject($this->t('products'), $product);
         return $db->insertid();
     }
 
@@ -288,8 +282,8 @@ class ImportModel extends BaseDatabaseModel
 
             if ($sku) {
                 $query = $this->createDbQuery($db)
-                    ->select('j2store_variant_id')
-                    ->from($db->quoteName('#__j2store_variants'))
+                    ->select(\$this->col($this->col('j2store_variant_id')))
+                    ->from($db->quoteName($this->t('variants')))
                     ->where('sku = :sku')
                     ->where('product_id = :productid')
                     ->bind(':sku', $sku)
@@ -325,13 +319,13 @@ class ImportModel extends BaseDatabaseModel
             ];
 
             if ($existingId && ($options['update_existing'] ?? true)) {
-                $variant->j2store_variant_id = $existingId;
-                $db->updateObject('#__j2store_variants', $variant, 'j2store_variant_id');
+                $variant->{$this->col('j2store_variant_id')} = $existingId;
+                $db->updateObject($this->t('variants'), $variant, $this->col('j2store_variant_id'));
                 $variantId = $existingId;
             } else {
                 $variant->created_on = $now;
                 $variant->created_by = $userId;
-                $db->insertObject('#__j2store_variants', $variant);
+                $db->insertObject($this->t('variants'), $variant);
                 $variantId = $db->insertid();
             }
 
@@ -358,8 +352,8 @@ class ImportModel extends BaseDatabaseModel
         $quantityMode = $options['quantity_mode'] ?? 'replace';
 
         $query = $this->createDbQuery($db)
-            ->select(['j2store_productquantity_id', 'quantity'])
-            ->from($db->quoteName('#__j2store_productquantities'))
+            ->select([$this->col('j2store_productquantity_id'), 'quantity'])
+            ->from($db->quoteName($this->t('productquantities')))
             ->where('variant_id = :variantid')
             ->bind(':variantid', $variantId, \Joomla\Database\ParameterType::INTEGER);
         $db->setQuery($query);
@@ -384,10 +378,10 @@ class ImportModel extends BaseDatabaseModel
         ];
 
         if ($existing) {
-            $qty->j2store_productquantity_id = $existing->j2store_productquantity_id;
-            $db->updateObject('#__j2store_productquantities', $qty, 'j2store_productquantity_id');
+            $qty->{$this->col('j2store_productquantity_id')} = $existing->{$this->col('j2store_productquantity_id')};
+            $db->updateObject($this->t('productquantities'), $qty, $this->col('j2store_productquantity_id'));
         } else {
-            $db->insertObject('#__j2store_productquantities', $qty);
+            $db->insertObject($this->t('productquantities'), $qty);
         }
     }
 
@@ -397,7 +391,7 @@ class ImportModel extends BaseDatabaseModel
 
         // Delete existing tier prices
         $query = $this->createDbQuery($db)
-            ->delete($db->quoteName('#__j2store_product_prices'))
+            ->delete($db->quoteName($this->t('product_prices')))
             ->where('variant_id = :variantid')
             ->bind(':variantid', $variantId, \Joomla\Database\ParameterType::INTEGER);
         $db->setQuery($query);
@@ -413,7 +407,7 @@ class ImportModel extends BaseDatabaseModel
                 'customer_group_id' => $priceData['customer_group_id'] ?? 0,
                 'price' => $priceData['price'] ?? 0,
             ];
-            $db->insertObject('#__j2store_product_prices', $price);
+            $db->insertObject($this->t('product_prices'), $price);
         }
     }
 
@@ -424,7 +418,7 @@ class ImportModel extends BaseDatabaseModel
         $db = $this->getDatabase();
 
         $query = $this->createDbQuery($db)
-            ->delete($db->quoteName('#__j2store_productimages'))
+            ->delete($db->quoteName($this->t('productimages')))
             ->where('product_id = :productid')
             ->bind(':productid', $productId, \Joomla\Database\ParameterType::INTEGER);
         $db->setQuery($query);
@@ -445,7 +439,7 @@ class ImportModel extends BaseDatabaseModel
             'additional_images' => is_array($additionalImages) ? json_encode($additionalImages) : $additionalImages,
             'additional_images_alt' => $images['additional_images_alt'] ?? '[]',
         ];
-        $db->insertObject('#__j2store_productimages', $img);
+        $db->insertObject($this->t('productimages'), $img);
     }
 
     protected function importProductOptions(array $options, int $productId): void
@@ -460,7 +454,7 @@ class ImportModel extends BaseDatabaseModel
         $db = $this->getDatabase();
 
         $query = $this->createDbQuery($db)
-            ->delete($db->quoteName('#__j2store_product_filters'))
+            ->delete($db->quoteName($this->t('product_filters')))
             ->where('product_id = :productid')
             ->bind(':productid', $productId, \Joomla\Database\ParameterType::INTEGER);
         $db->setQuery($query);
@@ -469,7 +463,7 @@ class ImportModel extends BaseDatabaseModel
         foreach ($filters as $filter) {
             $filterId = $this->ensureFilter($filter);
             $pf = (object) ['product_id' => $productId, 'filter_id' => $filterId];
-            $db->insertObject('#__j2store_product_filters', $pf);
+            $db->insertObject($this->t('product_filters'), $pf);
         }
     }
 
@@ -486,8 +480,8 @@ class ImportModel extends BaseDatabaseModel
 
         // Find or create filter
         $query = $this->createDbQuery($db)
-            ->select('j2store_filter_id')
-            ->from($db->quoteName('#__j2store_filters'))
+            ->select(\$this->col($this->col('j2store_filter_id')))
+            ->from($db->quoteName($this->t('filters')))
             ->where('filter_name = :name')
             ->where('group_id = :groupid')
             ->bind(':name', $filter['filter_name'])
@@ -501,7 +495,7 @@ class ImportModel extends BaseDatabaseModel
                 'filter_name' => $filter['filter_name'],
                 'ordering' => 0,
             ];
-            $db->insertObject('#__j2store_filters', $f);
+            $db->insertObject($this->t('filters'), $f);
             $filterId = $db->insertid();
         }
 
@@ -513,8 +507,8 @@ class ImportModel extends BaseDatabaseModel
         $db = $this->getDatabase();
 
         $query = $this->createDbQuery($db)
-            ->select('j2store_filtergroup_id')
-            ->from($db->quoteName('#__j2store_filtergroups'))
+            ->select(\$this->col($this->col('j2store_filtergroup_id')))
+            ->from($db->quoteName($this->t('filtergroups')))
             ->where('group_name = :name')
             ->bind(':name', $name);
         $db->setQuery($query);
@@ -522,7 +516,7 @@ class ImportModel extends BaseDatabaseModel
 
         if (!$groupId) {
             $g = (object) ['group_name' => $name, 'ordering' => 0, 'enabled' => 1];
-            $db->insertObject('#__j2store_filtergroups', $g);
+            $db->insertObject($this->t('filtergroups'), $g);
             $groupId = $db->insertid();
         }
 
@@ -541,7 +535,7 @@ class ImportModel extends BaseDatabaseModel
                 'product_file_display_name' => $file['product_file_display_name'] ?? '',
                 'product_file_save_name' => $file['product_file_save_name'] ?? '',
             ];
-            $db->insertObject('#__j2store_productfiles', $f);
+            $db->insertObject($this->t('productfiles'), $f);
         }
     }
 

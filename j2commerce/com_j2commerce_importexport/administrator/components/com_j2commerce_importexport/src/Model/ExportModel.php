@@ -14,48 +14,7 @@ use Joomla\CMS\MVC\Model\BaseDatabaseModel;
 
 class ExportModel extends BaseDatabaseModel
 {
-    /** @var bool|null Cached J2Commerce 6 detection result */
-    private ?bool $isJ6 = null;
-
-    /**
-     * Detect J2Commerce 6 by checking for #__j2commerce_products.
-     */
-    private function isJ2Commerce6(): bool
-    {
-        if ($this->isJ6 === null) {
-            $db = $this->getDatabase();
-            $this->isJ6 = in_array($db->getPrefix() . 'j2commerce_products', $db->getTableList(), true);
-        }
-        return $this->isJ6;
-    }
-
-    /**
-     * Return table name — j2store_ prefix for J2Commerce 4, j2commerce_ for J6.
-     */
-    private function t(string $suffix): string
-    {
-        return $this->isJ2Commerce6() ? '#__j2commerce_' . $suffix : '#__j2store_' . $suffix;
-    }
-
-    /**
-     * Return column name — replaces j2store_ prefix with j2commerce_ on J6.
-     */
-    private function col(string $column): string
-    {
-        if ($this->isJ2Commerce6()) {
-            return str_replace('j2store_', 'j2commerce_', $column);
-        }
-        return $column;
-    }
-
-    /**
-     * Create a query object compatible with Joomla 5 and 6.
-     */
-    private function createDbQuery(): \Joomla\Database\QueryInterface
-    {
-        $db = $this->getDatabase();
-        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
-    }
+    use J2CommerceAwareTrait;
 
     /**
      * Export data based on type
