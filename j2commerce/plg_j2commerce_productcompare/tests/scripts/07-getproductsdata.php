@@ -233,8 +233,7 @@ class GetProductsDataTest
             `j2store_product_option_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
             `product_id`                INT UNSIGNED NOT NULL DEFAULT 0,
             `option_name`               VARCHAR(255) NOT NULL DEFAULT \'\',
-            `option_type`               VARCHAR(50)  NOT NULL DEFAULT \'\',
-            `params`                    TEXT         NOT NULL,
+            `option_value`              VARCHAR(255) NOT NULL DEFAULT \'\',
             PRIMARY KEY (`j2store_product_option_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
     }
