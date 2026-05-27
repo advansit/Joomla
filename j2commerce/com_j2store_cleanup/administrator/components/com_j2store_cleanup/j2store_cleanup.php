@@ -14,12 +14,13 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Installer\Installer;
 use Joomla\CMS\Session\Session;
 use Joomla\CMS\Language\Text;
+use Joomla\Database\DatabaseInterface;
 
 // Defer application bootstrap so this file can be safely included in tests.
 // $app, $db, and $task are initialised on first use below.
 if (!defined('J2STORE_CLEANUP_FUNCTIONS_ONLY')) {
     $app  = Factory::getApplication();
-    $db   = Factory::getContainer()->get('DatabaseDriver');
+    $db   = Factory::getContainer()->get(DatabaseInterface::class);
     $task = $app->input->get('task', 'display');
 }
 

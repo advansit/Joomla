@@ -13,6 +13,7 @@ $_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
+use Joomla\Database\DatabaseInterface;
 
 class CleanupTest
 {
@@ -22,7 +23,7 @@ class CleanupTest
 
     public function __construct()
     {
-        $this->db = Factory::getContainer()->get('DatabaseDriver');
+        $this->db = Factory::getContainer()->get(DatabaseInterface::class);
     }
 
     private function test(string $name, bool $condition, string $message = ''): void

@@ -13,8 +13,9 @@ $_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
+use Joomla\Database\DatabaseInterface;
 
-$db = Factory::getContainer()->get('DatabaseDriver');
+$db = Factory::getContainer()->get(DatabaseInterface::class);
 
 // Prevent the component from bootstrapping Factory::getApplication() on include.
 // The component checks this constant before initialising $app/$task.

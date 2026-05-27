@@ -11,6 +11,7 @@ $_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
+use Joomla\Database\DatabaseInterface;
 
 class SafetyChecksTest
 {
@@ -21,7 +22,7 @@ class SafetyChecksTest
 
     public function __construct()
     {
-        $this->db = Factory::getContainer()->get('DatabaseDriver');
+        $this->db = Factory::getContainer()->get(DatabaseInterface::class);
         $this->tmpDir = sys_get_temp_dir() . '/j2cleanup_safety_' . uniqid();
         mkdir($this->tmpDir, 0755, true);
     }
