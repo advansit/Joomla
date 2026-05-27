@@ -93,7 +93,7 @@ jobs:
         run: |
           cd plg_ajax_joomlaajaxforms/tests
           docker compose up -d
-          sleep 60
+          timeout 300 bash -c 'until docker exec plg_ajax_joomlaajaxforms_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
       
       - name: Run tests
         run: |
