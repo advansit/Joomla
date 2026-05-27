@@ -16,8 +16,9 @@ use Joomla\CMS\Factory;
 
 $db = Factory::getContainer()->get('DatabaseDriver');
 
-// Prevent the component from running its task dispatcher on include
-$_GET['task'] = 'display';
+// Prevent the component from bootstrapping Factory::getApplication() on include.
+// The component checks this constant before initialising $app/$task.
+define('J2STORE_CLEANUP_FUNCTIONS_ONLY', true);
 
 $mainFile = JPATH_BASE . '/administrator/components/com_j2store_cleanup/j2store_cleanup.php';
 

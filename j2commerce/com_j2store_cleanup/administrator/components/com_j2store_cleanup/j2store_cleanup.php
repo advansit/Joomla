@@ -15,9 +15,13 @@ use Joomla\CMS\Installer\Installer;
 use Joomla\CMS\Session\Session;
 use Joomla\CMS\Language\Text;
 
-$app = Factory::getApplication();
-$db = Factory::getContainer()->get('DatabaseDriver');
-$task = $app->input->get('task', 'display');
+// Defer application bootstrap so this file can be safely included in tests.
+// $app, $db, and $task are initialised on first use below.
+if (!defined('J2STORE_CLEANUP_FUNCTIONS_ONLY')) {
+    $app  = Factory::getApplication();
+    $db   = Factory::getContainer()->get('DatabaseDriver');
+    $task = $app->input->get('task', 'display');
+}
 
 /**
  * Create a fresh query object — compatible with Joomla 4/5 (getQuery) and 6 (createQuery).
@@ -225,6 +229,11 @@ function classifyExtension($manifest, $ext, $patterns) {
         'reason'  => implode(', ', $parts) . ' (' . $info . ')',
         'issues'  => $issues,
     ];
+}
+
+// Only run the dispatcher and render when executing as a real Joomla request.
+if (defined('J2STORE_CLEANUP_FUNCTIONS_ONLY')) {
+    return;
 }
 
 // Handle cleanup action
