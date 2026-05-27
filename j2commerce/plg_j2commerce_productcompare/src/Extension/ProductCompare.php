@@ -95,7 +95,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface
      */
     public function onJ2StoreAfterDisplayProductList(object $product): string
     {
-        if ($this->isJ2Commerce6() || !$this->params->get('show_in_list', 1)) {
+        if (!$this->params->get('show_in_list', 1) || $this->isJ2Commerce6()) {
             return '';
         }
 
@@ -108,7 +108,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface
      */
     public function onJ2StoreAfterDisplayProduct(object $product, string $view): string
     {
-        if ($this->isJ2Commerce6() || !$this->params->get('show_in_detail', 1)) {
+        if (!$this->params->get('show_in_detail', 1) || $this->isJ2Commerce6()) {
             return '';
         }
 
@@ -121,7 +121,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface
      */
     public function onAfterProductListItemDisplay(object $product): string
     {
-        if (!$this->isJ2Commerce6() || !$this->params->get('show_in_list', 1)) {
+        if (!$this->params->get('show_in_list', 1) || !$this->isJ2Commerce6()) {
             return '';
         }
 
@@ -134,7 +134,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface
      */
     public function onAfterProductDisplay(mixed &$result, mixed &$view, object &$item): string
     {
-        if (!$this->isJ2Commerce6() || !$this->params->get('show_in_detail', 1)) {
+        if (!$this->params->get('show_in_detail', 1) || !$this->isJ2Commerce6()) {
             return '';
         }
 
