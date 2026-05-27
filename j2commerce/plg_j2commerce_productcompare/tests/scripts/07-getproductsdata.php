@@ -345,10 +345,13 @@ class GetProductsDataTest
     {
         $dispatcher = new Dispatcher();
         $params     = new Registry(['max_products' => 4, 'show_in_list' => 1, 'show_in_detail' => 1]);
-        return new \Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare(
+        $plugin = new \Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare(
             $dispatcher,
             ['params' => $params]
         );
+        // Inject the database so getDatabase() / getProductsData() work without DI container.
+        $plugin->setDatabase($this->db);
+        return $plugin;
     }
 }
 
