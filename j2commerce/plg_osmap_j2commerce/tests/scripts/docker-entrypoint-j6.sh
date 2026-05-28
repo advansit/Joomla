@@ -53,8 +53,14 @@ echo "com_content=${COM_CONTENT_ID}"
 
 COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null)
-# com_j2commerce is not installed in the test image; fall back to com_content so the INSERT is valid
-COM_J2COMMERCE_ID=${COM_J2COMMERCE_ID:-${COM_CONTENT_ID}}
+if [ -z "${COM_J2COMMERCE_ID}" ]; then
+    # com_j2commerce is not installed — insert a stub extension row so OSMap can
+    # resolve component_id → com_j2commerce and dispatch to J2CommerceNew::getTree()
+    mysql -h mysql -u joomla -pjoomla_pass joomla_db \
+        -e "INSERT IGNORE INTO ${DB_PREFIX}extensions (name, type, element, folder, client_id, enabled, access, protected, manifest_cache, params, custom_data, system_data, checked_out, checked_out_time, ordering, state) VALUES ('com_j2commerce', 'component', 'com_j2commerce', '', 0, 1, 1, 0, '', '{}', '', '', 0, NULL, 0, 0);" 2>/dev/null
+    COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+        -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null)
+fi
 echo "com_j2commerce=${COM_J2COMMERCE_ID}"
 
 # Create minimal #__j2commerce_products schema (J2Commerce 6 not installed in test image)
