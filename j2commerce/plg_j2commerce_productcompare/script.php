@@ -15,6 +15,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
+            $this->migrateGroupIfNeeded();
             $this->ensureUpdateSite();
 
             $app = Factory::getApplication();
@@ -37,12 +38,30 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         }
     }
 
+    /**
+     * Rename the plugin's folder from j2store to j2commerce in #__extensions.
+     * Needed when upgrading from a package that was registered under group="j2store".
+     */
+    private function migrateGroupIfNeeded(): void
+    {
+        $db = Factory::getContainer()->get(DatabaseInterface::class);
+
+        $query = $this->createDbQuery($db)
+            ->update($db->quoteName('#__extensions'))
+            ->set($db->quoteName('folder') . ' = ' . $db->quote('j2commerce'))
+            ->where($db->quoteName('element') . ' = ' . $db->quote('productcompare'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
+            ->where($db->quoteName('folder') . ' = ' . $db->quote('j2store'));
+        $db->setQuery($query);
+        $db->execute();
+    }
+
     private function ensureUpdateSite(): void
     {
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $updateUrl = 'https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_j2commerce_productcompare/updates/update.xml';
         $element = 'productcompare';
-        $folder = 'j2store';
+        $folder = 'j2commerce';
 
         $query = $this->createDbQuery($db)
             ->select($db->quoteName('extension_id'))
