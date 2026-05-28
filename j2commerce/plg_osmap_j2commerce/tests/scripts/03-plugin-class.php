@@ -15,6 +15,16 @@ use Joomla\Database\DatabaseInterface;
 // Use DI container instead of deprecated Factory::getDbo()
 Factory::getContainer()->get(DatabaseInterface::class);
 
+// Stubs for OSMap classes that are not installed in the test container.
+// emitSingleProduct() type-hints these but only uses $parent when a product
+// is found — with a non-existent article ID the stubs are never accessed.
+if (!class_exists(\Alledia\OSMap\Sitemap\Item::class)) {
+    class_alias(\stdClass::class, \Alledia\OSMap\Sitemap\Item::class);
+}
+if (!class_exists(\Alledia\OSMap\Sitemap\Collector::class)) {
+    class_alias(\stdClass::class, \Alledia\OSMap\Sitemap\Collector::class);
+}
+
 // Register plugin's PSR-4 namespace
 spl_autoload_register(function (string $class): void {
     $prefix = 'Advans\\Plugin\\Osmap\\J2Commerce\\';
@@ -128,6 +138,7 @@ class PluginClassTest
             $collector = new class {
                 public array $nodes = [];
                 public function add(object $node): void { $this->nodes[] = $node; }
+                public function printNode(object $node): void { $this->nodes[] = $node; }
             };
 
             $parent = new \Alledia\OSMap\Sitemap\Item();
@@ -154,6 +165,7 @@ class PluginClassTest
             $collector = new class {
                 public array $nodes = [];
                 public function add(object $node): void { $this->nodes[] = $node; }
+                public function printNode(object $node): void { $this->nodes[] = $node; }
             };
 
             $parent = new \Alledia\OSMap\Sitemap\Item();
