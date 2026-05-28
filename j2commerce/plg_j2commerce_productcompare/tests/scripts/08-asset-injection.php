@@ -20,7 +20,7 @@ use Joomla\Registry\Registry;
 // plugin bootstrap via PluginHelper::importPlugin().
 JLoader::registerNamespace(
     'Advans\Plugin\J2Commerce\ProductCompare',
-    '/var/www/html/plugins/j2store/productcompare/src',
+    '/var/www/html/plugins/j2commerce/productcompare/src',
     false,
     false,
     'psr4'
@@ -132,10 +132,10 @@ class AssetInjectionTest
         }
 
         // Verify addScriptOptions was called with correct keys
-        $options = $doc->getScriptOptions('plg_j2store_productcompare');
+        $options = $doc->getScriptOptions('plg_j2commerce_productcompare');
         $this->test('addScriptOptions called with plugin key',
             !empty($options),
-            'Script options not set for plg_j2store_productcompare');
+            'Script options not set for plg_j2commerce_productcompare');
 
         if (!empty($options)) {
             $this->test('maxProducts in script options',

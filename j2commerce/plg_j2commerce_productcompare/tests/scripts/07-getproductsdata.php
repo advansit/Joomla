@@ -22,7 +22,7 @@ use Joomla\Registry\Registry;
 // plugin bootstrap via PluginHelper::importPlugin().
 JLoader::registerNamespace(
     'Advans\Plugin\J2Commerce\ProductCompare',
-    '/var/www/html/plugins/j2store/productcompare/src',
+    '/var/www/html/plugins/j2commerce/productcompare/src',
     false,
     false,
     'psr4'

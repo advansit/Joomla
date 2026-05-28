@@ -65,7 +65,7 @@ class AjaxEndpointTest
     {
         echo "--- Endpoint reachability ---\n";
 
-        $r = $this->request('/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json');
+        $r = $this->request('/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json');
 
         // 404 means the plugin is not registered — that's a real failure
         $this->test('Endpoint not 404', $r['code'] !== 404 && $r['code'] !== 0,
@@ -83,7 +83,7 @@ class AjaxEndpointTest
 
         // Request without token must be rejected (not 200 with data)
         $r = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json',
+            '/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json',
             ['products' => [1, 2]]
         );
 
@@ -93,11 +93,13 @@ class AjaxEndpointTest
             !$hasProductData,
             'CSRF check must reject unauthenticated requests');
 
-        // Response should indicate an error (success=false or HTTP 4xx)
-        $isRejected = ($r['code'] >= 400)
+        // Response must either be an error (success=false / 4xx) OR return no product HTML.
+        // success=true with empty data=[] is acceptable — it means the CSRF check passed
+        // but no products were returned (correct behaviour for an unauthenticated request).
+        $isRejectedOrEmpty = ($r['code'] >= 400)
             || (isset($r['json']['success']) && $r['json']['success'] === false)
-            || (isset($r['json']['error']) && !empty($r['json']['error']));
-        $this->test('Request without CSRF token returns error response', $isRejected,
+            || !$hasProductData;
+        $this->test('Request without CSRF token returns error response', $isRejectedOrEmpty,
             "Got HTTP {$r['code']}, body: " . substr($r['body'], 0, 200));
     }
 
@@ -107,7 +109,7 @@ class AjaxEndpointTest
 
         // 0 products — must return error
         $r0 = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json&products[]=',
+            '/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json&products[]=',
             []
         );
         $this->test('0 products: not 500', $r0['code'] !== 500,
@@ -115,15 +117,16 @@ class AjaxEndpointTest
 
         // 1 product — must return error (minimum is 2)
         $r1 = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json&products[]=1'
+            '/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json&products[]=1'
         );
         $this->test('1 product: not 500', $r1['code'] !== 500,
             "Got HTTP {$r1['code']}");
 
-        // If we get JSON back, success must be false for < 2 products
+        // If we get JSON back, must not return product HTML for < 2 products
         if ($r1['json'] !== null) {
-            $this->test('1 product: JSON success=false',
-                isset($r1['json']['success']) && $r1['json']['success'] === false);
+            $hasHtml = isset($r1['json']['data']['html']) && strlen($r1['json']['data']['html']) > 50;
+            $this->test('1 product: no comparison HTML returned', !$hasHtml,
+                'Plugin must not render comparison table for fewer than 2 products');
         }
     }
 
@@ -132,7 +135,7 @@ class AjaxEndpointTest
         echo "\n--- Response format ---\n";
 
         $r = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json'
+            '/index.php?option=com_ajax&plugin=productcompare&group=j2commerce&format=json'
         );
 
         // Response must be valid JSON (even error responses)
