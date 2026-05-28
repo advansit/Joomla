@@ -106,8 +106,15 @@ class ExportModelTest
             'publish_up' => date('Y-m-d H:i:s'),
             'attribs'    => '{}',
             'metadata'   => '{}',
+            'metadesc'   => '',
+            'metakey'    => '',
             'images'     => '{}',
             'urls'       => '{}',
+            'note'       => '',
+            'featured'   => 0,
+            'version'    => 1,
+            'ordering'   => 0,
+            'hits'       => 0,
         ];
         $db->insertObject('#__content', $article, 'id');
         $articleId = (int) $db->insertid();
