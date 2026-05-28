@@ -713,9 +713,12 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 ->where($db->quoteName('cart_id') . ' IN (' . $subQuery . ')');
         }
 
-        $db->setQuery($query);
-
-        return (int) $db->loadResult();
+        try {
+            return (int) $db->setQuery($query)->loadResult();
+        } catch (\Throwable $e) {
+            // Cart table does not exist (component not installed) — return 0.
+            return 0;
+        }
     }
 
     /**
