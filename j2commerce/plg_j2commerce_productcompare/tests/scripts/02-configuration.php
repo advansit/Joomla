@@ -40,32 +40,32 @@ class ConfigurationTest
         });
 
         $this->test('Language file en-GB exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/language/en-GB/plg_j2store_productcompare.ini');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/language/en-GB/plg_j2store_productcompare.ini');
         });
 
         $this->test('Language file de-DE exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/language/de-DE/plg_j2store_productcompare.ini');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/language/de-DE/plg_j2store_productcompare.ini');
         });
 
         $this->test('XML manifest exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/plg_j2commerce_productcompare.xml')
-                || file_exists(JPATH_PLUGINS . '/j2store/productcompare/productcompare.xml');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/plg_j2commerce_productcompare.xml')
+                || file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/productcompare.xml');
         });
 
         $this->test('tmpl/button.php layout exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/tmpl/button.php');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/tmpl/button.php');
         });
 
         $this->test('tmpl/bar.php layout exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/tmpl/bar.php');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/tmpl/bar.php');
         });
 
         $this->test('tmpl/modal.php layout exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/tmpl/modal.php');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/tmpl/modal.php');
         });
 
         $this->test('tmpl/table.php layout exists', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/tmpl/table.php');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/tmpl/table.php');
         });
 
         echo "\n=== Configuration Test Summary ===\n";
