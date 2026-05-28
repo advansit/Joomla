@@ -77,7 +77,8 @@ echo "J6 schema created"
 
 echo "Inserting fixtures..."
 MAINMENU_ROOT_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-    -e "SELECT id FROM ${DB_PREFIX}menu WHERE menutype='mainmenu' AND parent_id=0 LIMIT 1;" 2>/dev/null || echo "1")
+    -e "SELECT COALESCE(MAX(id),1) FROM ${DB_PREFIX}menu WHERE menutype='mainmenu' AND parent_id=1 LIMIT 1;" 2>/dev/null)
+MAINMENU_ROOT_ID=${MAINMENU_ROOT_ID:-1}
 
 mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
 -- Content articles
