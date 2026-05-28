@@ -30,15 +30,17 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     /**
      * Subscribe to J2Commerce 6 events by their full dispatched names.
      *
-     * J2Commerce 6 dispatches events as onJ2Commerce{EventName} via
-     * PluginHelper::eventWithHtml(). J2Commerce 4 events (onJ2Store*) are
-     * handled by the legacy method-name convention and do not need entries here.
+     * J2Commerce 6 dispatches events via PluginHelper::eventWithHtml() which
+     * prepends 'onJ2Commerce' to the event name. Confirmed from J2Commerce 6
+     * PluginHelper source and app_bootstrap5 getSubscribedEvents().
+     * J2Commerce 4 events (onJ2Store*) are handled by the legacy method-name
+     * convention and do not need entries here.
      */
     public static function getSubscribedEvents(): array
     {
         return [
-            'onJ2CommerceAfterProductListItemDisplay' => 'onJ2CommerceAfterProductListItemDisplay',
-            'onJ2CommerceAfterProductDisplay'         => 'onJ2CommerceAfterProductDisplay',
+            'onJ2CommerceViewProductListHtml' => 'onJ2CommerceViewProductListHtml',
+            'onJ2CommerceViewProductHtml'     => 'onJ2CommerceViewProductHtml',
         ];
     }
 
@@ -135,8 +137,8 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     /**
      * J2Commerce 6 — render compare button after each product item in list/category layouts.
      *
-     * Dispatched as onJ2CommerceAfterProductListItemDisplay via:
-     *   eventWithHtml('AfterProductListItemDisplay', [$product, $context, &$displayData])
+     * Dispatched as onJ2CommerceViewProductListHtml via:
+     *   eventWithHtml('ViewProductListHtml', [$product, $context, &$displayData])
      *
      * Args[0]: product object with j2commerce_product_id
      * Args[1]: context string
@@ -144,7 +146,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
      *
      * HTML is returned via $event->addResult() which PluginHelper collects into 'html'.
      */
-    public function onJ2CommerceAfterProductListItemDisplay(Event $event): void
+    public function onJ2CommerceViewProductListHtml(Event $event): void
     {
         if (!$this->params->get('show_in_list', 1)) {
             return;
@@ -163,9 +165,9 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     /**
      * J2Commerce 6 — render compare button after the product detail template.
      *
-     * Dispatched as onJ2CommerceAfterProductDisplay via:
-     *   eventWithHtml('AfterProductDisplay', [&$result, &$this, &$this->item])  (default.php)
-     *   eventWithHtml('AfterProductDisplay', [$this->product, $this])           (app plugins)
+     * Dispatched as onJ2CommerceViewProductHtml via:
+     *   eventWithHtml('ViewProductHtml', [&$result, &$this, &$this->item])  (default.php)
+     *   eventWithHtml('ViewProductHtml', [$this->product, $this])           (app plugins)
      *
      * Args[0]: result (ref) or product object — check for j2commerce_product_id
      * Args[1]: view object
@@ -173,7 +175,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
      *
      * HTML is returned via $event->addResult().
      */
-    public function onJ2CommerceAfterProductDisplay(Event $event): void
+    public function onJ2CommerceViewProductHtml(Event $event): void
     {
         if (!$this->params->get('show_in_detail', 1)) {
             return;

@@ -85,6 +85,8 @@ class PluginClassTest
             'onAfterRender',
             'onJ2StoreAfterDisplayProduct',
             'onJ2StoreAfterDisplayProductList',
+            'onJ2CommerceViewProductHtml',
+            'onJ2CommerceViewProductListHtml',
             'onAjaxProductcompare',
         ] as $method) {
             $this->test("$method() exists", $rc->hasMethod($method));
@@ -124,7 +126,7 @@ class PluginClassTest
             return;
         }
 
-        // onJ2StoreAfterDisplayProductList with show_in_list=0 → empty string
+        // J4: onJ2StoreAfterDisplayProductList with show_in_list=0 → empty string
         $params0 = new Registry(['show_in_list' => 0, 'show_in_detail' => 0]);
         $plugin0 = new \Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare(
             $dispatcher,
@@ -132,10 +134,27 @@ class PluginClassTest
         );
         $product = (object)['j2store_product_id' => 1];
         $result  = $plugin0->onJ2StoreAfterDisplayProductList($product);
-        $this->test('show_in_list=0 → empty string', $result === '');
+        $this->test('J4 show_in_list=0 → empty string', $result === '');
 
         $result2 = $plugin0->onJ2StoreAfterDisplayProduct($product, 'detail');
-        $this->test('show_in_detail=0 → empty string', $result2 === '');
+        $this->test('J4 show_in_detail=0 → empty string', $result2 === '');
+
+        // J6: onJ2CommerceViewProductListHtml with show_in_list=0 → no result added
+        $eventList = new \Joomla\Event\Event('onJ2CommerceViewProductListHtml', [
+            (object)['j2commerce_product_id' => 1],
+            'com_j2commerce.category',
+        ]);
+        $plugin0->onJ2CommerceViewProductListHtml($eventList);
+        $this->test('J6 show_in_list=0 → no result added',
+            count($eventList->getArgument('result', [])) === 0);
+
+        // J6: onJ2CommerceViewProductHtml with show_in_detail=0 → no result added
+        $eventDetail = new \Joomla\Event\Event('onJ2CommerceViewProductHtml', [
+            (object)['j2commerce_product_id' => 1],
+        ]);
+        $plugin0->onJ2CommerceViewProductHtml($eventDetail);
+        $this->test('J6 show_in_detail=0 → no result added',
+            count($eventDetail->getArgument('result', [])) === 0);
     }
 }
 
