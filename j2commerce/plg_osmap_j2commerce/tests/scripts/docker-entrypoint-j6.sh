@@ -82,7 +82,7 @@ MAINMENU_ROOT_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
 mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
 -- Content articles
 INSERT IGNORE INTO ${DB_PREFIX}content
-    (id, title, alias, introtext, fulltext, state, catid, created, created_by,
+    (id, title, alias, introtext, \`fulltext\`, state, catid, created, created_by,
      modified, access, language, metadata, attribs, images, urls,
      metadesc, metakey, note, featured, version, ordering, hits)
 VALUES
