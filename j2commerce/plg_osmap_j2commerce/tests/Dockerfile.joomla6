@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y \
 
 RUN echo "[client]\nskip-ssl" > /etc/mysql/conf.d/no-ssl.cnf
 
+ARG OSMAP_VERSION=5.1.3
+RUN curl -fsSL "https://github.com/joomlashack/OSMap/releases/download/v${OSMAP_VERSION}/com_osmap_free_${OSMAP_VERSION}.zip" \
+    -o /tmp/osmap.zip
+
 COPY extension.zip /tmp/extension.zip
 
 COPY scripts/docker-entrypoint-j6.sh /usr/local/bin/custom-entrypoint.sh

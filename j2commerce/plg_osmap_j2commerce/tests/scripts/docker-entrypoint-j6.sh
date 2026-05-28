@@ -15,14 +15,22 @@ until [ -f /var/www/html/configuration.php ] && [ ! -d /var/www/html/installatio
     sleep 3
 done
 
-echo "Waiting for plugin in DB..."
+echo "Getting DB prefix..."
 DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; \$c=new JConfig; echo \$c->dbprefix;" 2>/dev/null || echo "joom_")
+echo "Prefix: ${DB_PREFIX}"
+
+# Install OSMap before the plugin (plugin depends on OSMap being present)
+echo "Installing OSMap..."
+cp /tmp/osmap.zip /var/www/html/tmp/osmap.zip
+php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/osmap.zip 2>&1 | tail -3 || true
+
+echo "Waiting for plugin in DB..."
 until mysql -h mysql -u joomla -pjoomla_pass joomla_db \
     -e "SELECT 1 FROM ${DB_PREFIX}extensions WHERE element='j2commerce' AND type='plugin' AND folder='osmap' LIMIT 1;" \
     2>/dev/null | grep -q 1; do
     sleep 3
 done
-echo "Plugin in DB. Prefix: ${DB_PREFIX}"
+echo "Plugin in DB."
 
 echo "Enabling plugins..."
 mysql -h mysql -u joomla -pjoomla_pass joomla_db \
@@ -87,9 +95,9 @@ INSERT IGNORE INTO ${DB_PREFIX}content
      modified, access, language, metadata, attribs, images, urls,
      metadesc, metakey, note, featured, version, ordering, hits)
 VALUES
-    (9001, 'Test Product Alpha J6', 'test-product-alpha-j6', 'Alpha description', '',
+    (9001, 'Test Product Alpha', 'test-product-alpha', 'Alpha description', '',
      1, 2, NOW(), 42, NOW(), 1, '*', '{}', '{}', '{}', '{}', '', '', '', 0, 1, 0, 0),
-    (9002, 'Test Product Beta J6', 'test-product-beta-j6', 'Beta description', '',
+    (9002, 'Test Product Beta', 'test-product-beta', 'Beta description', '',
      1, 2, NOW(), 42, NOW(), 1, '*', '{}', '{}', '{}', '{}', '', '', '', 0, 1, 0, 0);
 
 -- J2Commerce 6 products
@@ -105,15 +113,15 @@ INSERT IGNORE INTO ${DB_PREFIX}menu
     (id, menutype, title, alias, path, link, type, published, parent_id, level,
      component_id, language, client_id, params, lft, rgt)
 VALUES
-    (9001, 'mainmenu', 'Shop J6', 'shop-j6', 'shop-j6',
+    (9001, 'mainmenu', 'Shop', 'shop', 'shop',
      'index.php?option=com_j2commerce&view=products',
      'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_CONTENT_ID}, '*', 0, '{}',
      @max_rgt + 1, @max_rgt + 6),
-    (9002, 'mainmenu', 'Test Product Alpha J6', 'test-product-alpha-j6', 'shop-j6/test-product-alpha-j6',
+    (9002, 'mainmenu', 'Test Product Alpha', 'test-product-alpha', 'shop/test-product-alpha',
      'index.php?option=com_content&view=article&id=9001&Itemid=9002',
      'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 0, '{}',
      @max_rgt + 2, @max_rgt + 3),
-    (9003, 'mainmenu', 'Test Product Beta J6', 'test-product-beta-j6', 'shop-j6/test-product-beta-j6',
+    (9003, 'mainmenu', 'Test Product Beta', 'test-product-beta', 'shop/test-product-beta',
      'index.php?option=com_content&view=article&id=9002&Itemid=9003',
      'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 0, '{}',
      @max_rgt + 4, @max_rgt + 5);
@@ -125,22 +133,16 @@ WHERE lft = 0;
 EOSQL
 echo "Fixtures inserted"
 
-# OSMap sitemap — only if OSMap tables exist (OSMap may not be installed in test image)
-OSMAP_TABLE_EXISTS=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-    -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla_db' AND table_name='${DB_PREFIX}osmap_sitemaps';" 2>/dev/null || echo "0")
-if [ "${OSMAP_TABLE_EXISTS}" = "1" ]; then
-    MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-        -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
-    mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
+# OSMap sitemap — OSMap is installed above so tables are present
+MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+    -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
+mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemaps (id, name, params, is_default, published, created_on, links_count)
 VALUES (1, 'Test Sitemap J6', '{}', 1, 1, NOW(), 0);
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemap_menus (sitemap_id, menutype_id, changefreq, priority, ordering)
 VALUES (1, ${MAINMENU_ID}, 'weekly', 0.5, 1);
 EOSQL
-    echo "OSMap sitemap created"
-else
-    echo "OSMap tables not present — skipping sitemap fixture"
-fi
+echo "OSMap sitemap created"
 
 echo "Verifying fixtures..."
 mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
