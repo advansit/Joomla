@@ -16,13 +16,18 @@ use Joomla\Database\DatabaseInterface;
 Factory::getContainer()->get(DatabaseInterface::class);
 
 // Stubs for OSMap classes that are not installed in the test container.
-// emitSingleProduct() type-hints these but only uses $parent when a product
-// is found — with a non-existent article ID the stubs are never accessed.
+// emitSingleProduct() type-hints Item and Collector but only uses $parent
+// when a product is found — with a non-existent article ID (999999999) the
+// stubs are never accessed beyond satisfying the type check.
+// class_alias() cannot alias internal classes (stdClass), so we define
+// minimal user-defined stubs instead.
 if (!class_exists(\Alledia\OSMap\Sitemap\Item::class)) {
-    class_alias(\stdClass::class, \Alledia\OSMap\Sitemap\Item::class);
+    // @phpstan-ignore-next-line
+    eval('namespace Alledia\OSMap\Sitemap; class Item { public $path = ""; public $browserNav = 0; }');
 }
 if (!class_exists(\Alledia\OSMap\Sitemap\Collector::class)) {
-    class_alias(\stdClass::class, \Alledia\OSMap\Sitemap\Collector::class);
+    // @phpstan-ignore-next-line
+    eval('namespace Alledia\OSMap\Sitemap; class Collector { public function printNode(object $node): void {} }');
 }
 
 // Register plugin's PSR-4 namespace
