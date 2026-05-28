@@ -55,11 +55,14 @@ COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null)
 if [ -z "${COM_J2COMMERCE_ID}" ]; then
     # com_j2commerce is not installed — insert a stub extension row so OSMap can
-    # resolve component_id → com_j2commerce and dispatch to J2CommerceNew::getTree()
-    mysql -h mysql -u joomla -pjoomla_pass joomla_db \
-        -e "INSERT IGNORE INTO ${DB_PREFIX}extensions (name, type, element, folder, client_id, enabled, access, protected, manifest_cache, params, custom_data, system_data, checked_out, checked_out_time, ordering, state) VALUES ('com_j2commerce', 'component', 'com_j2commerce', '', 0, 1, 1, 0, '', '{}', '', '', 0, NULL, 0, 0);" 2>/dev/null
+    # resolve component_id → com_j2commerce and dispatch to J2CommerceNew::getTree().
+    # Use only columns present in all Joomla versions; || true prevents set -e
+    # from aborting on schema mismatches.
+    mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null \
+        -e "INSERT IGNORE INTO ${DB_PREFIX}extensions (name, type, element, folder, client_id, enabled, access, protected, manifest_cache, params, checked_out, checked_out_time, ordering, state) VALUES ('com_j2commerce', 'component', 'com_j2commerce', '', 0, 1, 1, 0, '', '{}', 0, '0000-00-00 00:00:00', 0, 0);" || true
     COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-        -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null)
+        -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null || echo "")
+    COM_J2COMMERCE_ID=${COM_J2COMMERCE_ID:-${COM_CONTENT_ID}}
 fi
 echo "com_j2commerce=${COM_J2COMMERCE_ID}"
 
