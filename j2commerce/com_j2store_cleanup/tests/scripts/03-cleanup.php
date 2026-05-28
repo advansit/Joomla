@@ -192,11 +192,18 @@ class CleanupTest
             return true;
         }
         try {
-            $query = $this->db->getQuery(true)
-                ->delete('#__extensions')
-                ->whereIn('extension_id', array_map('intval', $ids));
-            $this->db->setQuery($query)->execute();
-            return true;
+            // Use the component's own cleanupExtensions() function — exercises the real
+            // code path: Joomla Installer::uninstall(), which removes the extension record,
+            // runs uninstall scripts, and deletes files.
+            if (!function_exists('cleanupExtensions')) {
+                define('J2STORE_CLEANUP_FUNCTIONS_ONLY', 1);
+                require_once JPATH_BASE . '/administrator/components/com_j2store_cleanup/j2store_cleanup.php';
+            }
+
+            $sanitised = array_values(array_filter(array_map('intval', $ids), fn($id) => $id > 0));
+            $result = cleanupExtensions($this->db, $sanitised);
+
+            return $result['error'] === 0;
         } catch (\Exception $e) {
             return false;
         }

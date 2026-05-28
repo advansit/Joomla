@@ -36,6 +36,59 @@ function createDbQuery(\Joomla\Database\DatabaseInterface $db): \Joomla\Database
 }
 
 /**
+ * Uninstall a list of extensions by ID using Joomla's Installer API.
+ *
+ * Returns an array with keys 'success', 'warning', 'error' counts and
+ * a 'messages' array describing any warnings or errors.
+ *
+ * @param \Joomla\Database\DatabaseInterface $db
+ * @param int[] $ids  Extension IDs to remove (already sanitised to positive ints)
+ * @return array{success:int, warning:int, error:int, messages:string[]}
+ */
+function cleanupExtensions(\Joomla\Database\DatabaseInterface $db, array $ids): array
+{
+    $result = ['success' => 0, 'warning' => 0, 'error' => 0, 'messages' => []];
+
+    if (empty($ids)) {
+        return $result;
+    }
+
+    $query = createDbQuery($db)
+        ->select($db->quoteName(['extension_id', 'type', 'element', 'folder', 'client_id']))
+        ->from($db->quoteName('#__extensions'))
+        ->whereIn($db->quoteName('extension_id'), $ids);
+    $db->setQuery($query);
+    $extensions = $db->loadObjectList();
+
+    foreach ($extensions as $ext) {
+        try {
+            $installer = Installer::getInstance();
+
+            if ($installer->uninstall($ext->type, $ext->extension_id)) {
+                $result['success']++;
+            } else {
+                // Fallback: direct DB delete if uninstall fails (e.g. files already gone)
+                $extId = (int) $ext->extension_id;
+                $db->setQuery(
+                    createDbQuery($db)
+                        ->delete($db->quoteName('#__extensions'))
+                        ->where($db->quoteName('extension_id') . ' = :extId')
+                        ->bind(':extId', $extId, \Joomla\Database\ParameterType::INTEGER)
+                );
+                $db->execute();
+                $result['warning']++;
+                $result['messages'][] = $ext->element . ' (DB only — files may remain)';
+            }
+        } catch (\Exception $e) {
+            $result['error']++;
+            $result['messages'][] = $ext->element . ': ' . $e->getMessage();
+        }
+    }
+
+    return $result;
+}
+
+/**
  * Resolve the filesystem path for an extension.
  *
  * @param object $ext  Extension record from #__extensions
@@ -249,52 +302,16 @@ if ($task === 'cleanup' && Session::checkToken()) {
         return;
     }
     
-    $successCount = 0;
-    $warningCount = 0;
-    $errorCount = 0;
-    $messages = [];
-    
-    // Get extension details for proper uninstall
-    $query = createDbQuery($db)
-        ->select($db->quoteName(['extension_id', 'type', 'element', 'folder', 'client_id']))
-        ->from($db->quoteName('#__extensions'))
-        ->whereIn($db->quoteName('extension_id'), $cids);
-    $db->setQuery($query);
-    $extensionsToRemove = $db->loadObjectList();
-    
-    foreach ($extensionsToRemove as $ext) {
-        try {
-            // Use Joomla's Installer for proper uninstallation
-            $installer = Installer::getInstance();
-            
-            if ($installer->uninstall($ext->type, $ext->extension_id)) {
-                $successCount++;
-            } else {
-                // Fallback: direct DB delete if uninstall fails
-                $extId       = (int) $ext->extension_id;
-                $deleteQuery = createDbQuery($db)
-                    ->delete($db->quoteName('#__extensions'))
-                    ->where($db->quoteName('extension_id') . ' = :extId')
-                    ->bind(':extId', $extId, \Joomla\Database\ParameterType::INTEGER);
-                $db->setQuery($deleteQuery);
-                $db->execute();
-                $warningCount++;
-                $messages[] = $ext->element . ' (DB only - files may remain)';
-            }
-        } catch (Exception $e) {
-            $errorCount++;
-            $messages[] = $ext->element . ': ' . $e->getMessage();
-        }
+    $r = cleanupExtensions($db, $cids);
+
+    if ($r['success'] > 0) {
+        $app->enqueueMessage(sprintf(Text::_('COM_J2STORE_CLEANUP_MSG_REMOVED_SUCCESS'), $r['success']), 'success');
     }
-    
-    if ($successCount > 0) {
-        $app->enqueueMessage(sprintf(Text::_('COM_J2STORE_CLEANUP_MSG_REMOVED_SUCCESS'), $successCount), 'success');
+    if ($r['warning'] > 0) {
+        $app->enqueueMessage(sprintf(Text::_('COM_J2STORE_CLEANUP_MSG_REMOVED_WARNING'), $r['warning'], implode(', ', array_slice($r['messages'], 0, $r['warning']))), 'warning');
     }
-    if ($warningCount > 0) {
-        $app->enqueueMessage(sprintf(Text::_('COM_J2STORE_CLEANUP_MSG_REMOVED_WARNING'), $warningCount, implode(', ', array_slice($messages, 0, $warningCount))), 'warning');
-    }
-    if ($errorCount > 0) {
-        $app->enqueueMessage(sprintf(Text::_('COM_J2STORE_CLEANUP_MSG_REMOVED_ERROR'), $errorCount, implode(', ', array_slice($messages, $warningCount))), 'error');
+    if ($r['error'] > 0) {
+        $app->enqueueMessage(sprintf(Text::_('COM_J2STORE_CLEANUP_MSG_REMOVED_ERROR'), $r['error'], implode(', ', array_slice($r['messages'], $r['warning']))), 'error');
     }
     
     $app->redirect('index.php?option=com_j2store_cleanup');
