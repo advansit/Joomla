@@ -20,6 +20,7 @@ $_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 require_once JPATH_BASE . '/includes/framework.php';
 
 use Joomla\CMS\Factory;
+use Joomla\Database\DatabaseInterface;
 use Joomla\Registry\Registry;
 
 class SitemapOutputTest
@@ -27,6 +28,8 @@ class SitemapOutputTest
     private $db;
     private int $passed = 0;
     private int $failed = 0;
+    private bool $isJ6;
+    private string $productsTable;
 
     // IDs inserted by docker-entrypoint.sh fixtures
     private const SHOP_MENU_ID    = 9001;
@@ -35,7 +38,16 @@ class SitemapOutputTest
 
     public function __construct()
     {
-        $this->db = Factory::getDbo();
+        $this->db    = Factory::getContainer()->get(DatabaseInterface::class);
+        $this->isJ6  = (getenv('J2COMMERCE_STACK') === 'j6');
+        $this->productsTable = $this->isJ6 ? '#__j2commerce_products' : '#__j2store_products';
+    }
+
+    private function createDbQuery(): \Joomla\Database\QueryInterface
+    {
+        return method_exists($this->db, 'createQuery')
+            ? $this->db->createQuery()
+            : $this->db->getQuery(true);
     }
 
     public function run(): bool
@@ -43,7 +55,7 @@ class SitemapOutputTest
         echo "=== Sitemap Output Tests ===\n\n";
 
         $this->test('Fixture: shop menu item exists (published=1, com_j2store)', function () {
-            $q = $this->db->getQuery(true)
+            $q = $this->createDbQuery()
                 ->select('COUNT(*)')
                 ->from('#__menu')
                 ->where('id = ' . self::SHOP_MENU_ID)
@@ -53,7 +65,7 @@ class SitemapOutputTest
         });
 
         $this->test('Fixture: 2 product menu items exist (published=-2)', function () {
-            $q = $this->db->getQuery(true)
+            $q = $this->createDbQuery()
                 ->select('COUNT(*)')
                 ->from('#__menu')
                 ->where('parent_id = ' . self::SHOP_MENU_ID)
@@ -61,10 +73,10 @@ class SitemapOutputTest
             return (int) $this->db->setQuery($q)->loadResult() === 2;
         });
 
-        $this->test('Fixture: 2 enabled J2Store products exist', function () {
-            $q = $this->db->getQuery(true)
+        $this->test('Fixture: 2 enabled products exist (' . $this->productsTable . ')', function () {
+            $q = $this->createDbQuery()
                 ->select('COUNT(*)')
-                ->from('#__j2store_products')
+                ->from($this->productsTable)
                 ->where('product_source_id IN (9001, 9002)')
                 ->where('enabled = 1');
             return (int) $this->db->setQuery($q)->loadResult() === 2;
@@ -136,7 +148,7 @@ class SitemapOutputTest
         $this->test('Disabled product is excluded from query results', function () {
             // Temporarily disable product alpha
             $this->db->setQuery(
-                'UPDATE #__j2store_products SET enabled=0 WHERE product_source_id=9001'
+                'UPDATE ' . $this->db->quoteName($this->productsTable) . ' SET enabled=0 WHERE product_source_id=9001'
             )->execute();
 
             $products = $this->runGetTreeQuery(self::SHOP_MENU_ID);
@@ -144,7 +156,7 @@ class SitemapOutputTest
 
             // Re-enable
             $this->db->setQuery(
-                'UPDATE #__j2store_products SET enabled=1 WHERE product_source_id=9001'
+                'UPDATE ' . $this->db->quoteName($this->productsTable) . ' SET enabled=1 WHERE product_source_id=9001'
             )->execute();
 
             return $count === 1;
@@ -180,8 +192,8 @@ class SitemapOutputTest
      */
     private function runGetTreeQuery(int $parentMenuId): array
     {
-        $db = $this->db;
-        $query = $db->getQuery(true)
+        $db    = $this->db;
+        $query = $this->createDbQuery()
             ->select([
                 $db->quoteName('m.id'),
                 $db->quoteName('m.path'),
@@ -194,7 +206,7 @@ class SitemapOutputTest
                 . ' ON (m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id, ' . $db->quote('&%') . ')'
                 . '  OR m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id))'
                 . ' AND m.link LIKE ' . $db->quote('%com_content%view=article%'))
-            ->join('INNER', $db->quoteName('#__j2store_products', 'p')
+            ->join('INNER', $db->quoteName($this->productsTable, 'p')
                 . ' ON p.product_source_id = a.id'
                 . ' AND p.product_source = ' . $db->quote('com_content')
                 . ' AND p.enabled = 1')
