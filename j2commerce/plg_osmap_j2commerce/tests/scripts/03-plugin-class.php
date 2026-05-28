@@ -125,10 +125,8 @@ class PluginClassTest
             $plugin->setDatabase($db);
 
             // Use a mock Collector that records added nodes
-            $nodes     = [];
-            $collector = new class($nodes) {
-                private array &$nodes;
-                public function __construct(array &$nodes) { $this->nodes = &$nodes; }
+            $collector = new class {
+                public array $nodes = [];
                 public function add(object $node): void { $this->nodes[] = $node; }
             };
 
@@ -141,7 +139,7 @@ class PluginClassTest
             // Article ID 999999999 does not exist — must return without adding nodes
             $method->invoke($plugin, $collector, $parent, new \Joomla\Registry\Registry(), 999999999);
 
-            return count($nodes) === 0;
+            return count($collector->nodes) === 0;
         });
 
         // --- J2CommerceNew::emitSingleProduct() round-trip ---
@@ -153,10 +151,8 @@ class PluginClassTest
             $plugin = new $newClass($dispatcher, ['params' => $params]);
             $plugin->setDatabase($db);
 
-            $nodes     = [];
-            $collector = new class($nodes) {
-                private array &$nodes;
-                public function __construct(array &$nodes) { $this->nodes = &$nodes; }
+            $collector = new class {
+                public array $nodes = [];
                 public function add(object $node): void { $this->nodes[] = $node; }
             };
 
@@ -168,7 +164,7 @@ class PluginClassTest
             // Non-existent article — must not crash even against #__j2commerce_products
             $method->invoke($plugin, $collector, $parent, new \Joomla\Registry\Registry(), 999999999);
 
-            return count($nodes) === 0;
+            return count($collector->nodes) === 0;
         });
 
         echo "\n=== Plugin Class Test Summary ===\n";
