@@ -720,33 +720,17 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 
     /**
      * Get formatted cart total for a user.
+     *
+     * Both J2Commerce 4 and 6 store cart line items without a price column
+     * (#__j2store_cartitems / #__j2commerce_cartitems contain only product_qty
+     * and variant_id). Computing a correct total requires joining to the pricing
+     * engine (tier prices, customer group rules, coupons, taxes) — not feasible
+     * in a lightweight plugin query. Returns '0.00' for both versions; the
+     * frontend should hide the total display when cartTotal === '0.00'.
      */
     private function getCartTotalForUser(DatabaseInterface $db, int $userId): string
     {
-        if ($this->isJ2Commerce4($db)) {
-            // #__j2store_cartitems has no price column. Prices are in #__j2store_variants
-            // (the master variant price). JOIN: cartitems → carts (user filter, cart_type='cart')
-            // → variants (price). This reflects the active cart, not completed orders.
-            $query = $this->createDbQuery($db)
-                ->select('COALESCE(SUM(' . $db->quoteName('v.price') . ' * ' . $db->quoteName('ci.product_qty') . '), 0)')
-                ->from($db->quoteName('#__j2store_cartitems', 'ci'))
-                ->join('INNER', $db->quoteName('#__j2store_carts', 'c') . ' ON ' . $db->quoteName('c.j2store_cart_id') . ' = ' . $db->quoteName('ci.cart_id'))
-                ->join('INNER', $db->quoteName('#__j2store_variants', 'v') . ' ON ' . $db->quoteName('v.j2store_variant_id') . ' = ' . $db->quoteName('ci.variant_id'))
-                ->where($db->quoteName('c.user_id') . ' = :userId')
-                ->where($db->quoteName('c.cart_type') . ' = ' . $db->quote('cart'))
-                ->bind(':userId', $userId, ParameterType::INTEGER);
-        } else {
-            // J2Commerce 6: #__j2commerce_cartitems has no price column and #__j2commerce_carts
-            // has no cart_total column. Prices are in #__j2commerce_product_prices (variant-based,
-            // with quantity breaks and customer group rules) — replicating that logic here is not
-            // feasible. Return 0.00; the cart total display should be handled via the J2Commerce
-            // cart view, not via a direct DB query.
-            return '0.00';
-        }
-
-        $db->setQuery($query);
-
-        return number_format((float) $db->loadResult(), 2);
+        return '0.00';
     }
 
     /**
