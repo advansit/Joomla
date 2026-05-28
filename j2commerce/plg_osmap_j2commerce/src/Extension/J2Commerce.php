@@ -248,7 +248,12 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             ->where($db->quoteName('a.state') . ' = 1')
             ->bind(':id', $articleId, ParameterType::INTEGER);
 
-        $product = $db->setQuery($query)->loadObject();
+        try {
+            $product = $db->setQuery($query)->loadObject();
+        } catch (\Throwable $e) {
+            // Products table does not exist (component not installed) — skip silently.
+            return;
+        }
 
         if ($product) {
             $this->printProductNode($collector, $parent, $params, $product);
