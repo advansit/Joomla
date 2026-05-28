@@ -54,13 +54,15 @@ class SitemapOutputTest
     {
         echo "=== Sitemap Output Tests ===\n\n";
 
-        $this->test('Fixture: shop menu item exists (published=1, com_j2store)', function () {
+        $this->test('Fixture: shop menu item exists (published=1)', function () {
+            // J4: link contains com_j2store; J6: link contains com_j2commerce
+            $shopComponent = $this->isJ6 ? 'com_j2commerce' : 'com_j2store';
             $q = $this->createDbQuery()
                 ->select('COUNT(*)')
                 ->from('#__menu')
                 ->where('id = ' . self::SHOP_MENU_ID)
                 ->where('published = 1')
-                ->where('link LIKE ' . $this->db->quote('%com_j2store%'));
+                ->where('link LIKE ' . $this->db->quote('%' . $shopComponent . '%'));
             return (int) $this->db->setQuery($q)->loadResult() === 1;
         });
 
