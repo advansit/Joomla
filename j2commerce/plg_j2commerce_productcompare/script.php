@@ -44,7 +44,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         $element = 'productcompare';
         $folder = 'j2store';
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->select($db->quoteName('extension_id'))
             ->from($db->quoteName('#__extensions'))
             ->where($db->quoteName('element') . ' = :element')
@@ -59,7 +59,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
             return;
         }
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->select($db->quoteName('update_site_id'))
             ->from($db->quoteName('#__update_sites'))
             ->where($db->quoteName('location') . ' = :url')
@@ -68,7 +68,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         $siteId = (int) $db->loadResult();
 
         if ($siteId) {
-            $query = $db->getQuery(true)
+            $query = $this->createDbQuery($db)
                 ->select('COUNT(*)')
                 ->from($db->quoteName('#__update_sites_extensions'))
                 ->where($db->quoteName('update_site_id') . ' = :siteId')
@@ -77,7 +77,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
                 ->bind(':extId', $extensionId, ParameterType::INTEGER);
             $db->setQuery($query);
             if (!(int) $db->loadResult()) {
-                $query = $db->getQuery(true)
+                $query = $this->createDbQuery($db)
                     ->insert($db->quoteName('#__update_sites_extensions'))
                     ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
                     ->values(':siteId, :extId')
@@ -91,7 +91,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
 
         $name = 'J2Store Product Compare';
         $type = 'extension';
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->insert($db->quoteName('#__update_sites'))
             ->columns([$db->quoteName('name'), $db->quoteName('type'), $db->quoteName('location'), $db->quoteName('enabled')])
             ->values(':name, :type, :url, 1')
@@ -100,7 +100,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         $db->execute();
         $siteId = (int) $db->insertid();
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->insert($db->quoteName('#__update_sites_extensions'))
             ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
             ->values(':siteId, :extId')
@@ -108,5 +108,13 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
             ->bind(':extId', $extensionId, ParameterType::INTEGER);
         $db->setQuery($query);
         $db->execute();
+    }
+
+    /**
+     * Creates a query object compatible with Joomla 5 (getQuery) and 6 (createQuery).
+     */
+    private function createDbQuery(\Joomla\Database\DatabaseInterface $db): \Joomla\Database\QueryInterface
+    {
+        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
     }
 }

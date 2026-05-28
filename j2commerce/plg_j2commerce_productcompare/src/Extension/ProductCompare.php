@@ -20,10 +20,27 @@ use Joomla\CMS\Uri\Uri;
 use Joomla\Database\DatabaseAwareInterface;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Database\ParameterType;
+use Joomla\Event\Event;
+use Joomla\Event\SubscriberInterface;
 
-class ProductCompare extends CMSPlugin implements DatabaseAwareInterface
+class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, SubscriberInterface
 {
     use DatabaseAwareTrait;
+
+    /**
+     * Subscribe to J2Commerce 6 events by their full dispatched names.
+     *
+     * J2Commerce 6 dispatches events as onJ2Commerce{EventName} via
+     * PluginHelper::eventWithHtml(). J2Commerce 4 events (onJ2Store*) are
+     * handled by the legacy method-name convention and do not need entries here.
+     */
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            'onJ2CommerceAfterProductListItemDisplay' => 'onJ2CommerceAfterProductListItemDisplay',
+            'onJ2CommerceAfterProductDisplay'         => 'onJ2CommerceAfterProductDisplay',
+        ];
+    }
 
     protected $autoloadLanguage = true;
 
@@ -117,28 +134,62 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface
 
     /**
      * J2Commerce 6 — render compare button after each product item in list/category layouts.
-     * Fired via eventWithHtml('AfterProductListItemDisplay', ...) in item_simple.php etc.
+     *
+     * Dispatched as onJ2CommerceAfterProductListItemDisplay via:
+     *   eventWithHtml('AfterProductListItemDisplay', [$product, $context, &$displayData])
+     *
+     * Args[0]: product object with j2commerce_product_id
+     * Args[1]: context string
+     * Args[2]: displayData array (by reference)
+     *
+     * HTML is returned via $event->addResult() which PluginHelper collects into 'html'.
      */
-    public function onAfterProductListItemDisplay(object $product): string
+    public function onJ2CommerceAfterProductListItemDisplay(Event $event): void
     {
-        if (!$this->params->get('show_in_list', 1) || !$this->isJ2Commerce6()) {
-            return '';
+        if (!$this->params->get('show_in_list', 1)) {
+            return;
         }
 
-        return $this->renderCompareButton((int) $product->j2commerce_product_id);
+        $args    = $event->getArguments();
+        $product = $args[0] ?? null;
+
+        if (!$product || !isset($product->j2commerce_product_id)) {
+            return;
+        }
+
+        $event->addResult($this->renderCompareButton((int) $product->j2commerce_product_id));
     }
 
     /**
      * J2Commerce 6 — render compare button after the product detail template.
-     * Fired via eventWithHtml('AfterProductDisplay', ...) in tmpl/product/default.php.
+     *
+     * Dispatched as onJ2CommerceAfterProductDisplay via:
+     *   eventWithHtml('AfterProductDisplay', [&$result, &$this, &$this->item])  (default.php)
+     *   eventWithHtml('AfterProductDisplay', [$this->product, $this])           (app plugins)
+     *
+     * Args[0]: result (ref) or product object — check for j2commerce_product_id
+     * Args[1]: view object
+     * Args[2]: item object (only in default.php variant)
+     *
+     * HTML is returned via $event->addResult().
      */
-    public function onAfterProductDisplay(mixed &$result, mixed &$view, object &$item): string
+    public function onJ2CommerceAfterProductDisplay(Event $event): void
     {
-        if (!$this->params->get('show_in_detail', 1) || !$this->isJ2Commerce6()) {
-            return '';
+        if (!$this->params->get('show_in_detail', 1)) {
+            return;
         }
 
-        return $this->renderCompareButton((int) $item->j2commerce_product_id);
+        $args = $event->getArguments();
+
+        // default.php: args = [&$result, &$view, &$item] — item is args[2]
+        // app plugins: args = [$product, $view]           — product is args[0]
+        $item = $args[2] ?? $args[0] ?? null;
+
+        if (!$item || !isset($item->j2commerce_product_id)) {
+            return;
+        }
+
+        $event->addResult($this->renderCompareButton((int) $item->j2commerce_product_id));
     }
 
     /**

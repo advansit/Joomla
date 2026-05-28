@@ -41,6 +41,7 @@ class GetProductsDataTest
     public function __construct()
     {
         $this->db = Factory::getContainer()->get(DatabaseInterface::class);
+        $this->detectStack();
     }
 
     private function test(string $name, bool $condition, string $message = ''): void
@@ -91,15 +92,17 @@ class GetProductsDataTest
             'Got ' . count($products));
 
         if (!empty($products)) {
-            $p = $products[0];
-            $this->test('Product has j2store_product_id', isset($p->j2store_product_id));
-            $this->test('Product has title',              isset($p->title) && !empty($p->title));
-            $this->test('Product has sku',                isset($p->sku));
-            $this->test('Product has price',              isset($p->price));
-            $this->test('Product has options key',        isset($p->options) && is_array($p->options));
+            $p   = $products[0];
+            $pkCol = $this->productsPk;
 
-            // Product 1 has options — verify they're loaded
-            $p1 = array_values(array_filter($products, fn($x) => (int)$x->j2store_product_id === $this->seededProductIds[0]))[0] ?? null;
+            $this->test('Product has ' . $pkCol,  isset($p->$pkCol));
+            $this->test('Product has title',       isset($p->title) && !empty($p->title));
+            $this->test('Product has sku',         isset($p->sku));
+            $this->test('Product has price',       isset($p->price));
+            $this->test('Product has options key', isset($p->options) && is_array($p->options));
+
+            // Product 0 has options — verify they're loaded
+            $p1 = array_values(array_filter($products, fn($x) => (int)$x->$pkCol === $this->seededProductIds[0]))[0] ?? null;
             if ($p1) {
                 $this->test('Product with options: options not empty', !empty($p1->options),
                     'Expected options for product ' . $this->seededProductIds[0]);
@@ -107,8 +110,8 @@ class GetProductsDataTest
                 $this->test('Option name "Colour" present', in_array('Colour', $optionNames));
             }
 
-            // Product 2 has no options — verify empty array, no crash
-            $p2 = array_values(array_filter($products, fn($x) => (int)$x->j2store_product_id === $this->seededProductIds[1]))[0] ?? null;
+            // Product 1 has no options — verify empty array, no crash
+            $p2 = array_values(array_filter($products, fn($x) => (int)$x->$pkCol === $this->seededProductIds[1]))[0] ?? null;
             if ($p2) {
                 $this->test('Product without options: options is empty array',
                     isset($p2->options) && $p2->options === []);
@@ -126,8 +129,9 @@ class GetProductsDataTest
         $method->setAccessible(true);
 
         // seededProductIds[2] is the disabled product
-        $allThree = $method->invoke($plugin, $this->seededProductIds);
-        $returnedIds = array_map(fn($p) => (int)$p->j2store_product_id, $allThree);
+        $allThree  = $method->invoke($plugin, $this->seededProductIds);
+        $pkCol     = $this->productsPk;
+        $returnedIds = array_map(fn($p) => (int)$p->$pkCol, $allThree);
 
         $this->test('Disabled product not in results',
             !in_array($this->seededProductIds[2], $returnedIds),
@@ -203,39 +207,90 @@ class GetProductsDataTest
         return (int) $db->insertid();
     }
 
-    private function ensureJ2StoreTables(): void
+    /** @var bool Whether we're running against J2Commerce 6 tables */
+    private bool $isJ6;
+
+    /** @var string Products table name */
+    private string $productsTable;
+    /** @var string Variants table name */
+    private string $variantsTable;
+    /** @var string Product options table name */
+    private string $optionsTable;
+    /** @var string Products PK column */
+    private string $productsPk;
+    /** @var string Variants PK column */
+    private string $variantsPk;
+    /** @var string Options PK column */
+    private string $optionsPk;
+
+    private function detectStack(): void
     {
-        // J2Store is not installed in the productcompare test container.
-        // Create minimal table stubs so fixture inserts succeed.
-        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $this->db->getPrefix() . 'j2store_products` (
-            `j2store_product_id`  INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `product_source_id`   INT UNSIGNED NOT NULL DEFAULT 0,
-            `product_source`      VARCHAR(100) NOT NULL DEFAULT \'\',
-            `product_type`        VARCHAR(50)  NOT NULL DEFAULT \'simple\',
-            `enabled`             TINYINT(1)   NOT NULL DEFAULT 1,
-            `taxprofile_id`       INT UNSIGNED NOT NULL DEFAULT 0,
-            `params`              TEXT         NOT NULL,
-            PRIMARY KEY (`j2store_product_id`)
+        // J2COMMERCE_STACK=j6 is set in the J6 docker-compose environment and
+        // passed through to the test container. Use it to select the right tables
+        // rather than relying on getTableList() which may not reflect a fresh install.
+        $this->isJ6 = (getenv('J2COMMERCE_STACK') === 'j6');
+
+        if ($this->isJ6) {
+            $this->productsTable = '#__j2commerce_products';
+            $this->variantsTable = '#__j2commerce_variants';
+            $this->optionsTable  = '#__j2commerce_product_options';
+            $this->productsPk    = 'j2commerce_product_id';
+            $this->variantsPk    = 'j2commerce_variant_id';
+            $this->optionsPk     = 'j2commerce_product_option_id';
+        } else {
+            $this->productsTable = '#__j2store_products';
+            $this->variantsTable = '#__j2store_variants';
+            $this->optionsTable  = '#__j2store_product_options';
+            $this->productsPk    = 'j2store_product_id';
+            $this->variantsPk    = 'j2store_variant_id';
+            $this->optionsPk     = 'j2store_product_option_id';
+        }
+    }
+
+    private function ensureProductTables(): void
+    {
+        // Create minimal table stubs so fixture inserts succeed when neither
+        // J2Commerce 4 nor J2Commerce 6 is installed in the test container.
+        $prefix = $this->db->getPrefix();
+
+        $productCol = $this->productsPk;
+        $variantCol = $this->variantsPk;
+        $optionCol  = $this->optionsPk;
+
+        // '#__j2store_products' → strip '#__' prefix, then prepend real DB prefix
+        $productsBase = substr($this->productsTable, 3); // strip '#__'
+        $variantsBase = substr($this->variantsTable, 3);
+        $optionsBase  = substr($this->optionsTable, 3);
+
+        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $productsBase . '` (
+            `' . $productCol . '`  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `product_source_id`    INT UNSIGNED NOT NULL DEFAULT 0,
+            `product_source`       VARCHAR(100) NOT NULL DEFAULT \'\',
+            `product_type`         VARCHAR(50)  NOT NULL DEFAULT \'simple\',
+            `enabled`              TINYINT(1)   NOT NULL DEFAULT 1,
+            `taxprofile_id`        INT UNSIGNED NOT NULL DEFAULT 0,
+            `params`               TEXT         NOT NULL,
+            PRIMARY KEY (`' . $productCol . '`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
 
-        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $this->db->getPrefix() . 'j2store_variants` (
-            `j2store_variant_id`  INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `product_id`          INT UNSIGNED NOT NULL DEFAULT 0,
-            `sku`                 VARCHAR(255) NOT NULL DEFAULT \'\',
-            `price`               DECIMAL(15,5) NOT NULL DEFAULT 0.00000,
-            `stock`               DECIMAL(15,4) NOT NULL DEFAULT 0.0000,
-            `availability`        VARCHAR(255) NOT NULL DEFAULT \'\',
-            `params`              TEXT         NOT NULL,
-            `isdefault`           TINYINT(1)   NOT NULL DEFAULT 0,
-            PRIMARY KEY (`j2store_variant_id`)
+        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $variantsBase . '` (
+            `' . $variantCol . '`  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `product_id`           INT UNSIGNED NOT NULL DEFAULT 0,
+            `sku`                  VARCHAR(255) NOT NULL DEFAULT \'\',
+            `price`                DECIMAL(15,5) NOT NULL DEFAULT 0.00000,
+            `stock`                DECIMAL(15,4) NOT NULL DEFAULT 0.0000,
+            `availability`         VARCHAR(255) NOT NULL DEFAULT \'\',
+            `params`               TEXT         NOT NULL,
+            `isdefault`            TINYINT(1)   NOT NULL DEFAULT 0,
+            PRIMARY KEY (`' . $variantCol . '`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
 
-        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $this->db->getPrefix() . 'j2store_product_options` (
-            `j2store_product_option_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `product_id`                INT UNSIGNED NOT NULL DEFAULT 0,
-            `option_name`               VARCHAR(255) NOT NULL DEFAULT \'\',
-            `option_value`              VARCHAR(255) NOT NULL DEFAULT \'\',
-            PRIMARY KEY (`j2store_product_option_id`)
+        $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $optionsBase . '` (
+            `' . $optionCol . '`   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `product_id`           INT UNSIGNED NOT NULL DEFAULT 0,
+            `option_name`          VARCHAR(255) NOT NULL DEFAULT \'\',
+            `option_value`         VARCHAR(255) NOT NULL DEFAULT \'\',
+            PRIMARY KEY (`' . $optionCol . '`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
     }
 
@@ -243,7 +298,7 @@ class GetProductsDataTest
     {
         $ts    = time();
         $catid = $this->ensureCatid();
-        $this->ensureJ2StoreTables();
+        $this->ensureProductTables();
 
         // Content articles (product source)
         foreach (['Test Product Alpha', 'Test Product Beta', 'Test Product Disabled'] as $i => $title) {
@@ -275,21 +330,21 @@ class GetProductsDataTest
             $this->seededContentIds[] = (int)$this->db->insertid();
         }
 
-        // J2Store products
+        // Products (J4: #__j2store_products, J6: #__j2commerce_products)
         foreach ([
             ['enabled' => 1, 'idx' => 0],
             ['enabled' => 1, 'idx' => 1],
             ['enabled' => 0, 'idx' => 2],  // disabled
         ] as $p) {
             $product = (object)[
-                'product_source_id'  => $this->seededContentIds[$p['idx']],
-                'product_source'     => 'com_content',
-                'product_type'       => 'simple',
-                'enabled'            => $p['enabled'],
-                'taxprofile_id'      => 0,
-                'params'             => '{}',
+                'product_source_id' => $this->seededContentIds[$p['idx']],
+                'product_source'    => 'com_content',
+                'product_type'      => 'simple',
+                'enabled'           => $p['enabled'],
+                'taxprofile_id'     => 0,
+                'params'            => '{}',
             ];
-            $this->db->insertObject('#__j2store_products', $product, 'j2store_product_id');
+            $this->db->insertObject($this->productsTable, $product, $this->productsPk);
             $this->seededProductIds[] = (int)$this->db->insertid();
         }
 
@@ -304,7 +359,7 @@ class GetProductsDataTest
                 'params'       => '{}',
                 'isdefault'    => 1,
             ];
-            $this->db->insertObject('#__j2store_variants', $variant, 'j2store_variant_id');
+            $this->db->insertObject($this->variantsTable, $variant, $this->variantsPk);
             $this->seededVariantIds[] = (int)$this->db->insertid();
         }
 
@@ -318,7 +373,7 @@ class GetProductsDataTest
                 'option_name'  => $opt['option_name'],
                 'option_value' => $opt['option_value'],
             ];
-            $this->db->insertObject('#__j2store_product_options', $option, 'j2store_product_option_id');
+            $this->db->insertObject($this->optionsTable, $option, $this->optionsPk);
             $this->seededOptionIds[] = (int)$this->db->insertid();
         }
     }
@@ -326,10 +381,10 @@ class GetProductsDataTest
     private function cleanupFixtures(): void
     {
         foreach ([
-            ['#__j2store_product_options', 'j2store_product_option_id', $this->seededOptionIds],
-            ['#__j2store_variants',        'j2store_variant_id',        $this->seededVariantIds],
-            ['#__j2store_products',        'j2store_product_id',        $this->seededProductIds],
-            ['#__content',                 'id',                        $this->seededContentIds],
+            [$this->optionsTable,  $this->optionsPk,   $this->seededOptionIds],
+            [$this->variantsTable, $this->variantsPk,  $this->seededVariantIds],
+            [$this->productsTable, $this->productsPk,  $this->seededProductIds],
+            ['#__content',         'id',               $this->seededContentIds],
         ] as [$table, $pk, $ids]) {
             if (empty($ids)) continue;
             try {
