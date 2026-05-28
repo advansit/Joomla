@@ -52,7 +52,9 @@ COM_CONTENT_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
 echo "com_content=${COM_CONTENT_ID}"
 
 COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null || echo "${COM_CONTENT_ID}")
+    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null)
+# com_j2commerce is not installed in the test image; fall back to com_content so the INSERT is valid
+COM_J2COMMERCE_ID=${COM_J2COMMERCE_ID:-${COM_CONTENT_ID}}
 echo "com_j2commerce=${COM_J2COMMERCE_ID}"
 
 # Create minimal #__j2commerce_products schema (J2Commerce 6 not installed in test image)
@@ -115,19 +117,19 @@ VALUES
 SET @max_rgt = (SELECT COALESCE(MAX(rgt), 10) FROM ${DB_PREFIX}menu);
 INSERT IGNORE INTO ${DB_PREFIX}menu
     (id, menutype, title, alias, path, link, type, published, parent_id, level,
-     component_id, language, client_id, params, lft, rgt)
+     component_id, language, access, client_id, params, lft, rgt)
 VALUES
     (9001, 'mainmenu', 'Shop', 'shop', 'shop',
      'index.php?option=com_j2commerce&view=products',
-     'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_J2COMMERCE_ID}, '*', 1, '{}',
+     'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_J2COMMERCE_ID}, '*', 1, 0, '{}',
      @max_rgt + 1, @max_rgt + 6),
     (9002, 'mainmenu', 'Test Product Alpha', 'test-product-alpha', 'shop/test-product-alpha',
      'index.php?option=com_content&view=article&id=9001&Itemid=9002',
-     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, '{}',
+     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, 0, '{}',
      @max_rgt + 2, @max_rgt + 3),
     (9003, 'mainmenu', 'Test Product Beta', 'test-product-beta', 'shop/test-product-beta',
      'index.php?option=com_content&view=article&id=9002&Itemid=9003',
-     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, '{}',
+     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, 0, '{}',
      @max_rgt + 4, @max_rgt + 5);
 
 -- Expand global root rgt to include new items
