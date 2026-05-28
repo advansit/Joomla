@@ -54,12 +54,12 @@ class SecurityTest
     /**
      * Execute an HTTP request. Returns [http_code, body].
      */
-    private function http(string $method, string $url, array $fields = [], array $cookies = []): array
+    private function http(string $method, string $url, array $fields = [], array $cookies = [], bool $followRedirects = true): array
     {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, $followRedirects);
         curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
 
         if ($method === 'POST') {
@@ -138,29 +138,31 @@ class SecurityTest
 
         $url = $this->baseUrl . $this->ajaxPath . '&task=getCartCount';
 
-        // 1. GET with no token
-        [$code, $body] = $this->http('GET', $url);
+        // 1. GET with no token — do NOT follow redirects so we see the raw response code.
+        // Joomla may return HTTP 303 (redirect to login) or HTTP 200 with success=false JSON.
+        // Both indicate the request was rejected.
+        [$code, $body] = $this->http('GET', $url, [], [], false);
         $data = json_decode($body, true);
+        $rejected = $code === 303 || (isset($data['success']) && $data['success'] === false);
 
-        $this->test('No-token GET returns HTTP 200', $code === 200, "Got HTTP $code");
         $this->test(
-            'No-token GET returns success=false',
-            isset($data['success']) && $data['success'] === false,
-            'Body: ' . substr($body, 0, 200)
+            'No-token GET is rejected (HTTP 303 or success=false)',
+            $rejected,
+            "Got HTTP $code, body: " . substr($body, 0, 200)
         );
 
         // 2. POST with a fabricated (wrong) token
         [$code2, $body2] = $this->http('POST', $url, [
             'task'              => 'getCartCount',
             str_repeat('a', 32) => '1',   // fake 32-char hex token
-        ]);
+        ], [], false);
         $data2 = json_decode($body2, true);
+        $rejected2 = $code2 === 303 || (isset($data2['success']) && $data2['success'] === false);
 
-        $this->test('Fake-token POST returns HTTP 200', $code2 === 200, "Got HTTP $code2");
         $this->test(
-            'Fake-token POST returns success=false',
-            isset($data2['success']) && $data2['success'] === false,
-            'Body: ' . substr($body2, 0, 200)
+            'Fake-token POST is rejected (HTTP 303 or success=false)',
+            $rejected2,
+            "Got HTTP $code2, body: " . substr($body2, 0, 200)
         );
     }
 
