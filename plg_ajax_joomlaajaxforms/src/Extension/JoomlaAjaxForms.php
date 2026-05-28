@@ -274,8 +274,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $session->set('com_users.return_url', '');
 
             if (empty($redirect)) {
-                // J2Commerce 6 uses com_j2commerce; fall back to com_j2store for J2Commerce 4
-                $j2Link = file_exists(JPATH_ROOT . '/components/com_j2commerce')
+                // Prefer com_j2commerce (J2Commerce 6); fall back to com_j2store (J2Commerce 4).
+                // ComponentHelper::isEnabled() checks the extensions table — more reliable than
+                // file_exists() which misses disabled components and non-standard install paths.
+                $j2Link = ComponentHelper::isEnabled('com_j2commerce')
                     ? 'index.php?option=com_j2commerce&view=myprofile'
                     : 'index.php?option=com_j2store&view=myprofile';
                 $redirect = Route::_($j2Link, false);
