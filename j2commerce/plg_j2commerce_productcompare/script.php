@@ -12,6 +12,22 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
     protected $minimumJoomla = '4.0';
     protected $minimumPhp = '7.4';
 
+    public function preflight($type, $parent)
+    {
+        if ($type === 'update') {
+            // Remove the old j2store group directory left behind when the plugin
+            // group changes from j2store to j2commerce. Joomla installs the new
+            // files under plugins/j2commerce/productcompare/ but does not clean
+            // up the old plugins/j2store/productcompare/ directory.
+            $oldDir = JPATH_PLUGINS . '/j2store/productcompare';
+            if (is_dir($oldDir)) {
+                \Joomla\CMS\Filesystem\Folder::delete($oldDir);
+            }
+        }
+
+        return parent::preflight($type, $parent);
+    }
+
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
