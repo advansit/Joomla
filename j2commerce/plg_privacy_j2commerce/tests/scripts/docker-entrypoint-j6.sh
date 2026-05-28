@@ -220,15 +220,22 @@ CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_cartitems (
     PRIMARY KEY (j2commerce_cartitem_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Optional table for lifetime-licence detection (mirrors j2store_product_customfields).
--- Created here so isLifetimeLicense() can query it on J6 without falling back to J4 tables.
-CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_product_customfields (
-    j2commerce_product_customfield_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    product_id                        INT UNSIGNED NOT NULL DEFAULT 0,
-    field_name                        VARCHAR(255) NOT NULL DEFAULT '',
-    field_value                       VARCHAR(255) NOT NULL DEFAULT '',
-    PRIMARY KEY (j2commerce_product_customfield_id),
-    KEY idx_product_field (product_id, field_name)
+-- Standard J2Commerce 6 metafields table — used for lifetime-licence detection.
+-- isLifetimeLicense() queries: owner_resource='product', metakey='is_lifetime_license', metavalue='yes'.
+CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_metafields (
+    id             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    metakey        VARCHAR(255)  NOT NULL,
+    namespace      VARCHAR(255)  NOT NULL DEFAULT '',
+    scope          VARCHAR(255)  NOT NULL DEFAULT '',
+    metavalue      TEXT          NOT NULL,
+    valuetype      VARCHAR(255)  NOT NULL DEFAULT '',
+    description    TEXT          NOT NULL,
+    owner_id       INT UNSIGNED  NOT NULL,
+    owner_resource VARCHAR(255)  NOT NULL,
+    created_at     TIMESTAMP     NULL DEFAULT NULL,
+    updated_at     TIMESTAMP     NULL DEFAULT NULL,
+    PRIMARY KEY (id),
+    KEY idx_metafields_owner_id (owner_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 EOMINIMAL
 echo "J2Commerce 6 schema created"

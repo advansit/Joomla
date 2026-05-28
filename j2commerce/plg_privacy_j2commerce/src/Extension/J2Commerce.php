@@ -912,28 +912,45 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $tables = $db->getTableList();
         $prefix = $db->getPrefix();
 
-        // Both stacks use an optional manually-created product customfields table.
-        // The table is not part of the standard J2Commerce schema — it must be
-        // created manually as part of the post-install setup (see README step 3).
-        $customTable = $this->isJ2Commerce4()
-            ? 'j2store_product_customfields'
-            : 'j2commerce_product_customfields';
+        if ($this->isJ2Commerce4()) {
+            // J2Commerce 4: optional manually-created table (see post-install step 3).
+            $customTable = 'j2store_product_customfields';
+            if (!in_array($prefix . $customTable, $tables, true)) {
+                return false;
+            }
 
-        if (!in_array($prefix . $customTable, $tables, true)) {
+            $query = $this->createDbQuery()
+                ->select($db->quoteName('field_value'))
+                ->from($db->quoteName('#__' . $customTable))
+                ->where($db->quoteName('product_id') . ' = :productid')
+                ->where($db->quoteName('field_name') . ' = ' . $db->quote('is_lifetime_license'))
+                ->bind(':productid', $productId, ParameterType::INTEGER);
+
+            $db->setQuery($query);
+            $fieldValue = $db->loadResult();
+
+            return $fieldValue !== null && strtolower(trim($fieldValue)) === 'yes';
+        }
+
+        // J2Commerce 6: lifetime-licence flag is stored in #__j2commerce_metafields.
+        // Schema: owner_id = product_id, owner_resource = 'product',
+        //         metakey = 'is_lifetime_license', metavalue = 'yes'.
+        if (!in_array($prefix . 'j2commerce_metafields', $tables, true)) {
             return false;
         }
 
         $query = $this->createDbQuery()
-            ->select($db->quoteName('field_value'))
-            ->from($db->quoteName('#__' . $customTable))
-            ->where($db->quoteName('product_id') . ' = :productid')
-            ->where($db->quoteName('field_name') . ' = ' . $db->quote('is_lifetime_license'))
+            ->select('COUNT(*)')
+            ->from($db->quoteName('#__j2commerce_metafields'))
+            ->where($db->quoteName('owner_id')       . ' = :productid')
+            ->where($db->quoteName('owner_resource')  . ' = ' . $db->quote('product'))
+            ->where($db->quoteName('metakey')         . ' = ' . $db->quote('is_lifetime_license'))
+            ->where('LOWER(TRIM(' . $db->quoteName('metavalue') . ')) = ' . $db->quote('yes'))
             ->bind(':productid', $productId, ParameterType::INTEGER);
 
         $db->setQuery($query);
-        $fieldValue = $db->loadResult();
 
-        return $fieldValue !== null && strtolower(trim($fieldValue)) === 'yes';
+        return (int) $db->loadResult() > 0;
     }
 
     protected function formatRetentionMessage(array $retentionCheck): string
