@@ -125,16 +125,22 @@ WHERE lft = 0;
 EOSQL
 echo "Fixtures inserted"
 
-# OSMap sitemap
-MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-    -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
-mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
+# OSMap sitemap — only if OSMap tables exist (OSMap may not be installed in test image)
+OSMAP_TABLE_EXISTS=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+    -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla_db' AND table_name='${DB_PREFIX}osmap_sitemaps';" 2>/dev/null || echo "0")
+if [ "${OSMAP_TABLE_EXISTS}" = "1" ]; then
+    MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+        -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
+    mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemaps (id, name, params, is_default, published, created_on, links_count)
 VALUES (1, 'Test Sitemap J6', '{}', 1, 1, NOW(), 0);
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemap_menus (sitemap_id, menutype_id, changefreq, priority, ordering)
 VALUES (1, ${MAINMENU_ID}, 'weekly', 0.5, 1);
 EOSQL
-echo "OSMap sitemap created"
+    echo "OSMap sitemap created"
+else
+    echo "OSMap tables not present — skipping sitemap fixture"
+fi
 
 echo "Verifying fixtures..."
 mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
