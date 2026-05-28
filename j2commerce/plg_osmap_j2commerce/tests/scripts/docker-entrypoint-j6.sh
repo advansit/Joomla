@@ -51,6 +51,10 @@ COM_CONTENT_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_content' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
 echo "com_content=${COM_CONTENT_ID}"
 
+COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null || echo "${COM_CONTENT_ID}")
+echo "com_j2commerce=${COM_J2COMMERCE_ID}"
+
 # Create minimal #__j2commerce_products schema (J2Commerce 6 not installed in test image)
 echo "Creating J6 schema..."
 mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
@@ -115,15 +119,15 @@ INSERT IGNORE INTO ${DB_PREFIX}menu
 VALUES
     (9001, 'mainmenu', 'Shop', 'shop', 'shop',
      'index.php?option=com_j2commerce&view=products',
-     'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_CONTENT_ID}, '*', 0, '{}',
+     'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_J2COMMERCE_ID}, '*', 1, '{}',
      @max_rgt + 1, @max_rgt + 6),
     (9002, 'mainmenu', 'Test Product Alpha', 'test-product-alpha', 'shop/test-product-alpha',
      'index.php?option=com_content&view=article&id=9001&Itemid=9002',
-     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 0, '{}',
+     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, '{}',
      @max_rgt + 2, @max_rgt + 3),
     (9003, 'mainmenu', 'Test Product Beta', 'test-product-beta', 'shop/test-product-beta',
      'index.php?option=com_content&view=article&id=9002&Itemid=9003',
-     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 0, '{}',
+     'component', -2, 9001, 2, ${COM_CONTENT_ID}, '*', 1, '{}',
      @max_rgt + 4, @max_rgt + 5);
 
 -- Expand global root rgt to include new items
