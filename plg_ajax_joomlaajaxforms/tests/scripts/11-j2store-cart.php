@@ -228,12 +228,10 @@ class J2CommerceCartTest
     {
         $dispatcher = new Dispatcher();
         $params     = new Registry(['enable_j2store_cart' => 1]);
-        $plugin = new \Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms(
+        return new \Advans\Plugin\Ajax\JoomlaAjaxForms\Extension\JoomlaAjaxForms(
             $dispatcher,
             ['params' => $params]
         );
-        $plugin->setDatabase($this->db);
-        return $plugin;
     }
 }
 
