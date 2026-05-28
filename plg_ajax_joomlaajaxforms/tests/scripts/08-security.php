@@ -113,13 +113,18 @@ class SecurityTest
     /**
      * Returns the J2Commerce table prefix ('j2commerce' or 'j2store'),
      * or null if neither cart table exists (J2Commerce not installed).
+     *
+     * Uses SHOW TABLES LIKE directly to avoid stale getTableList() cache.
      */
     private function getTablePrefix(): ?string
     {
-        $tables = $this->db->getTableList();
         $prefix = $this->db->getPrefix();
-        if (in_array($prefix . 'j2commerce_carts', $tables, true)) return 'j2commerce';
-        if (in_array($prefix . 'j2store_carts',    $tables, true)) return 'j2store';
+        foreach (['j2commerce', 'j2store'] as $tp) {
+            $this->db->setQuery('SHOW TABLES LIKE ' . $this->db->quote($prefix . $tp . '_carts'));
+            if ($this->db->loadResult() !== null) {
+                return $tp;
+            }
+        }
         return null;
     }
 
