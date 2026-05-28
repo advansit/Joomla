@@ -139,10 +139,10 @@ class PluginClassTest
             $plugin = new $j2cClass($dispatcher, ['params' => $params]);
             $plugin->setDatabase($db);
 
-            // Use a mock Collector that records added nodes
-            $collector = new class {
+            // Use a mock Collector that records added nodes.
+            // Must extend the stub Collector so the type hint is satisfied.
+            $collector = new class extends \Alledia\OSMap\Sitemap\Collector {
                 public array $nodes = [];
-                public function add(object $node): void { $this->nodes[] = $node; }
                 public function printNode(object $node): void { $this->nodes[] = $node; }
             };
 
@@ -167,9 +167,9 @@ class PluginClassTest
             $plugin = new $newClass($dispatcher, ['params' => $params]);
             $plugin->setDatabase($db);
 
-            $collector = new class {
+            // Must extend the stub Collector so the type hint is satisfied.
+            $collector = new class extends \Alledia\OSMap\Sitemap\Collector {
                 public array $nodes = [];
-                public function add(object $node): void { $this->nodes[] = $node; }
                 public function printNode(object $node): void { $this->nodes[] = $node; }
             };
 
