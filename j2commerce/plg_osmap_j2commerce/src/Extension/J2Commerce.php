@@ -183,7 +183,6 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             ->select([
                 $db->quoteName('m.id'),
                 $db->quoteName('m.path'),
-                $db->quoteName('m.link'),
                 $db->quoteName('m.browserNav'),
                 $db->quoteName('a.modified'),
                 $db->quoteName('a.title'),
@@ -336,16 +335,13 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         Registry $params,
         object $item
     ): void {
-        if (empty($item->link) && empty($item->path)) {
+        if (empty($item->path)) {
             return;
         }
 
-        // Use the raw Joomla menu link (index.php?option=...&Itemid=...) so that
-        // OSMap's router can convert it to the correct SEF URL. Falling back to
-        // the SEF path prefixed with the site root if link is unavailable.
-        $link = !empty($item->link)
-            ? $item->link
-            : rtrim(Uri::root(), '/') . '/' . ltrim($item->path, '/');
+        // Build the absolute URL from the menu item's SEF path (m.path).
+        // e.g. path "shop/test-product-alpha" → "http://localhost/shop/test-product-alpha"
+        $link = rtrim(Uri::root(), '/') . '/' . ltrim($item->path, '/');
 
         $node = (object) [
             'id'         => $item->id,
