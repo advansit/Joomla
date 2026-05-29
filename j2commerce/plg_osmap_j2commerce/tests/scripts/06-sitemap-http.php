@@ -7,34 +7,18 @@
  * This is the only test that exercises the full stack:
  * OSMap -> plugin -> getTree() -> DB query -> XML output.
  */
-define('_JEXEC', 1);
-define('JPATH_BASE', '/var/www/html');
-require_once JPATH_BASE . '/includes/defines.php';
-$_SERVER['HTTP_HOST']   = $_SERVER['HTTP_HOST']   ?? 'localhost';
-$_SERVER['SCRIPT_NAME'] = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
-require_once JPATH_BASE . '/includes/framework.php';
-
-use Joomla\CMS\Factory;
-$db = Factory::getDbo();
 
 class SitemapHttpTest
 {
-    private $db;
     private int $passed = 0;
     private int $failed = 0;
     private string $sitemapUrl = 'http://localhost/index.php?option=com_osmap&view=xml&id=1';
-
-    public function __construct($db)
-    {
-        $this->db = $db;
-    }
 
     public function run(): bool
     {
         echo "=== Sitemap HTTP Integration Tests ===\n\n";
         echo "URL: {$this->sitemapUrl}\n\n";
 
-        // Fetch sitemap XML
         $xml = $this->fetchSitemap();
         if ($xml === null) {
             echo "FATAL: Could not fetch sitemap\n";
@@ -43,8 +27,6 @@ class SitemapHttpTest
 
         echo "Sitemap fetched (" . strlen($xml) . " bytes)\n";
         echo "Response (first 500 chars):\n" . substr($xml, 0, 500) . "\n\n";
-
-
 
         $urls = $this->extractUrls($xml);
         echo "URLs found in sitemap: " . count($urls) . "\n";
@@ -57,8 +39,6 @@ class SitemapHttpTest
             return str_contains($xml, '<urlset') && str_contains($xml, 'sitemaps.org');
         });
 
-        // The plugin uses the menu item's SEF path (m.path) prepended with Uri::root()
-        // to build absolute URLs. Fixture paths: shop/test-product-alpha, shop/test-product-beta.
         $this->test('Sitemap contains product Alpha URL', function () use ($urls) {
             foreach ($urls as $u) {
                 if (str_contains($u, 'test-product-alpha')) return true;
@@ -74,7 +54,6 @@ class SitemapHttpTest
         });
 
         $this->test('Disabled product not in sitemap', function () use ($urls) {
-            // product_source_id=9003 has enabled=0, its menu item is Itemid=9004 (no fixture)
             foreach ($urls as $u) {
                 if (str_contains($u, 'test-product-disabled')) return false;
             }
@@ -82,7 +61,6 @@ class SitemapHttpTest
         });
 
         $this->test('Product without menu item not in sitemap', function () use ($urls) {
-            // product_source_id=9004 has no SEF menu item
             foreach ($urls as $u) {
                 if (str_contains($u, 'test-product-nomenu')) return false;
             }
@@ -103,13 +81,8 @@ class SitemapHttpTest
             str_contains($u, 'test-product-alpha') || str_contains($u, 'test-product-beta')
         );
 
-        // Verify that product URLs in the sitemap are absolute and well-formed.
-        // A full HTTP 200 check is not possible in the test container because
-        // J2Commerce's routing (which serves /shop/product-alias) is only
-        // available on a fully configured live site with the correct .htaccess.
         echo "\nVerifying " . count($productUrls) . " product URL(s) are absolute:\n";
         foreach ($productUrls as $url) {
-            // Make relative URLs absolute using the sitemap host
             $absoluteUrl = $url;
             if (!str_starts_with($url, 'http')) {
                 $base = preg_replace('#/index\.php.*#', '', $this->sitemapUrl);
@@ -129,7 +102,6 @@ class SitemapHttpTest
 
     private function fetchSitemap(): ?string
     {
-        // Wait up to 30s for Apache to be ready
         for ($i = 0; $i < 6; $i++) {
             $ctx = stream_context_create(['http' => [
                 'timeout'         => 30,
@@ -151,27 +123,15 @@ class SitemapHttpTest
         $urls = [];
         if (preg_match_all('/<loc>(.*?)<\/loc>/s', $xml, $matches)) {
             foreach ($matches[1] as $raw) {
-                // Strip CDATA wrapper if present: <![CDATA[...]]>
                 $url = trim($raw);
                 if (str_starts_with($url, '<![CDATA[') && str_ends_with($url, ']]>')) {
                     $url = substr($url, 9, -3);
                 }
-                // Decode HTML entities (&amp; -> &)
                 $url = html_entity_decode($url, ENT_QUOTES | ENT_XML1, 'UTF-8');
                 $urls[] = $url;
             }
         }
         return $urls;
-    }
-
-    private function urlsContain(array $urls, string $needle): bool
-    {
-        foreach ($urls as $url) {
-            if (str_contains($url, $needle)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private function test(string $name, callable $fn): void
@@ -186,5 +146,5 @@ class SitemapHttpTest
     }
 }
 
-$test = new SitemapHttpTest($db);
+$test = new SitemapHttpTest();
 exit($test->run() ? 0 : 1);
