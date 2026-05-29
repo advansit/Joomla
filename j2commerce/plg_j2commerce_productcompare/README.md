@@ -2,8 +2,7 @@
 
 [![Build & Test](https://github.com/advansit/Joomla/actions/workflows/j2commerce-product-compare.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/j2commerce-product-compare.yml)
 [![Release](https://github.com/advansit/Joomla/actions/workflows/release-productcompare.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/release-productcompare.yml)
-[![Joomla 5](https://img.shields.io/badge/Joomla-5.x-blue.svg)](https://www.joomla.org/)
-[![Joomla 6](https://img.shields.io/badge/Joomla-6.x-blue.svg)](https://www.joomla.org/)
+[![Joomla 5+](https://img.shields.io/badge/Joomla-5.x%20%7C%206.x-blue.svg)](https://www.joomla.org/)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-purple.svg)](https://www.php.net/)
 
 Help customers make informed purchase decisions with side-by-side product comparison.
@@ -28,7 +27,7 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 
 - [Joomla](https://github.com/joomla/joomla-cms) 5.x or 6.x
 - PHP 8.1 or higher
-- J2Commerce 4.x or higher
+- J2Commerce 4.x (`#__j2store_*` tables, plugin group `j2store`) or J2Commerce 6.x (`#__j2commerce_*` tables, plugin group `j2commerce`)
 
 ## Installation
 1. Download `plg_j2commerce_productcompare.zip`
@@ -52,6 +51,22 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 3. Products added to comparison bar
 4. Click "View Comparison" to see modal
 5. Compare attributes side-by-side
+
+## J2Commerce Version Compatibility
+
+The plugin detects the installed J2Commerce version at runtime by checking for `#__j2commerce_products` in the database.
+
+**J2Commerce 4.x** (plugin group `j2store`):
+- Events received via legacy method-name convention (`onJ2StoreAfterDisplayProductList`, `onJ2StoreAfterDisplayProduct`)
+- DB tables: `#__j2store_products`, `#__j2store_variants`, `#__j2store_product_options`
+- AJAX URL uses `group=j2store`
+
+**J2Commerce 6.x** (plugin group `j2commerce`):
+- Events received via `SubscriberInterface` (`onJ2CommerceViewProductListHtml`, `onJ2CommerceViewProductHtml`)
+- DB tables: `#__j2commerce_products`, `#__j2commerce_variants`, `#__j2commerce_product_options`
+- AJAX URL uses `group=j2commerce`
+
+No configuration required — the correct event handlers and table names are selected automatically.
 
 ## Development
 
@@ -86,9 +101,11 @@ This plugin has automated tests that run on every push via GitHub Actions.
 1. **Installation** - Plugin registration in DB, file deployment
 2. **Configuration** - Plugin params, language files, XML manifest
 3. **Media Files** - CSS/JS deployment and content validation
-4. **Plugin Class** - Method existence and class structure
-5. **AJAX Endpoint** - HTTP tests against com_ajax
+4. **Plugin Class** - Method existence, `SubscriberInterface`, `isJ2Commerce6()` detection
+5. **AJAX Endpoint** - HTTP tests against com_ajax (J2Commerce 4 and 6 group)
 6. **Uninstall** - Clean removal from database and filesystem
+7. **getProductsData** - DB query compatibility for J2Commerce 4 and 6 table schemas
+8. **Asset Injection** - AJAX URL group selection based on detected version
 
 ### Running Tests Locally
 
