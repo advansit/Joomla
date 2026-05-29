@@ -2,9 +2,7 @@
 
 [![Build & Test](https://github.com/advansit/Joomla/actions/workflows/j2commerce-import-export.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/j2commerce-import-export.yml)
 [![Release](https://github.com/advansit/Joomla/actions/workflows/release-importexport.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/release-importexport.yml)
-[![Joomla 5](https://img.shields.io/badge/Joomla-5.x-blue.svg)](https://www.joomla.org/)
-[![Joomla 6](https://img.shields.io/badge/Joomla-6.x-blue.svg)](https://www.joomla.org/)
-[![Joomla 7](https://img.shields.io/badge/Joomla-7.x-blue.svg)](https://www.joomla.org/)
+[![Joomla 5+](https://img.shields.io/badge/Joomla-5.x%20%7C%206.x%20%7C%207.x-blue.svg)](https://www.joomla.org/)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-purple.svg)](https://www.php.net/)
 
 Import and export J2Commerce products with all related Joomla data.
@@ -51,7 +49,7 @@ Products are matched and updated (instead of duplicated) using three methods:
 
 - Joomla 5.x, 6.x or 7.x
 - PHP 8.1 or higher
-- J2Commerce/J2Store 4.x or higher
+- J2Commerce 4.x (`#__j2store_*` tables) or J2Commerce 6.x (`#__j2commerce_*` tables)
 
 ## Installation
 
@@ -208,6 +206,15 @@ title,alias,main_image
 
 ## Development
 
+### J2Commerce Version Compatibility
+
+All models use `J2CommerceAwareTrait` for runtime version detection. The trait checks for `#__j2commerce_products` in the database to determine whether J2Commerce 6 is installed:
+
+- **J2Commerce 4.x** — tables prefixed `#__j2store_*`, primary key columns named `j2store_*_id`
+- **J2Commerce 6.x** — tables prefixed `#__j2commerce_*`, primary key columns named `j2commerce_*_id`
+
+The `t('suffix')` helper returns the correct table name and `col('j2store_col')` returns the correct column name for the detected version. No configuration required — detection is automatic.
+
 ### Structure
 ```
 com_j2commerce_importexport/
@@ -218,7 +225,8 @@ com_j2commerce_importexport/
 │   │   │   ├── Controller/
 │   │   │   ├── Model/
 │   │   │   │   ├── ExportModel.php
-│   │   │   │   └── ImportModel.php
+│   │   │   │   ├── ImportModel.php
+│   │   │   │   └── J2CommerceAwareTrait.php   ← version detection + table helpers
 │   │   │   └── View/Dashboard/
 │   │   └── tmpl/dashboard/
 │   └── language/ (en-GB, de-DE, fr-FR)
@@ -235,8 +243,8 @@ This component has automated tests that run on every push via GitHub Actions.
 
 1. **Installation** — Component registration in DB, file deployment
 2. **Configuration** — Component params, language files, XML manifest
-3. **Export** — JSON, CSV, XML export output validation
-4. **Import** — Full product import, duplicate detection, quantity modes
+3. **Export** — JSON, CSV, XML export output validation (J2Commerce 4 and 6)
+4. **Import** — Full product import, duplicate detection, quantity modes (J2Commerce 4 and 6)
 5. **Uninstall** — Clean removal from database and filesystem
 
 ### Running Tests Locally
