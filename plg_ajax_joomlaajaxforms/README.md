@@ -7,7 +7,9 @@
 [![Joomla 7](https://img.shields.io/badge/Joomla-7.x-blue.svg)](https://www.joomla.org/)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-purple.svg)](https://www.php.net/)
 
-A Joomla plugin that provides AJAX handling for user forms, authentication, profile management, and J2Store/J2Commerce cart operations — without page reloads.
+## Description
+
+A Joomla plugin that provides AJAX handling for user forms, authentication, profile management, and J2Commerce cart operations — without page reloads.
 
 ## Features
 
@@ -128,7 +130,7 @@ Error responses use J2Commerce-compatible format:
 }
 ```
 
-## Known Pitfalls
+## Troubleshooting
 
 ### AJAX context differs from normal Joomla requests
 
@@ -161,7 +163,7 @@ After AJAX login with MFA enabled, the plugin redirects the browser to Joomla's 
 
 Joomla registers `JoomlaStorage::close()` as a PHP shutdown function. Session data written via `$session->set()` is automatically serialized into `$_SESSION['joomla']` when `exit()` is called. An explicit `$session->close()` before `$app->close()` is not necessary.
 
-## Joomla Compatibility
+### Joomla 6 API Compatibility
 
 The plugin avoids all APIs deprecated in Joomla 6:
 
