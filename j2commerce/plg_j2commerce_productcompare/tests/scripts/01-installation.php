@@ -32,7 +32,7 @@ class InstallationTest
                 ->from($this->db->quoteName('#__extensions'))
                 ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'))
                 ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
-                ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('j2store'));
+                ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('j2commerce'));
             $this->db->setQuery($query);
             return (int) $this->db->loadResult() === 1;
         });
@@ -43,26 +43,26 @@ class InstallationTest
                 ->from($this->db->quoteName('#__extensions'))
                 ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'))
                 ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('plugin'))
-                ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('j2store'));
+                ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('j2commerce'));
             $this->db->setQuery($query);
             return (int) $this->db->loadResult() === 1;
         });
 
-        $this->test('Plugin folder is j2store', function () {
+        $this->test('Plugin folder is j2commerce', function () {
             $query = $this->db->getQuery(true)
                 ->select($this->db->quoteName('folder'))
                 ->from($this->db->quoteName('#__extensions'))
                 ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('productcompare'));
             $this->db->setQuery($query);
-            return $this->db->loadResult() === 'j2store';
+            return $this->db->loadResult() === 'j2commerce';
         });
 
         $this->test('Plugin class file deployed', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/src/Extension/ProductCompare.php');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/src/Extension/ProductCompare.php');
         });
 
         $this->test('Services provider deployed', function () {
-            return file_exists(JPATH_PLUGINS . '/j2store/productcompare/services/provider.php');
+            return file_exists(JPATH_PLUGINS . '/j2commerce/productcompare/services/provider.php');
         });
 
         echo "\n=== Installation Test Summary ===\n";

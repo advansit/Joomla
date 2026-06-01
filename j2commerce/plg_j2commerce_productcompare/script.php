@@ -12,9 +12,34 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
     protected $minimumJoomla = '4.0';
     protected $minimumPhp = '7.4';
 
+    public function preflight($type, $parent)
+    {
+        if ($type === 'update') {
+            // Remove the old j2store group directory left behind when the plugin
+            // group changes from j2store to j2commerce. Joomla installs the new
+            // files under plugins/j2commerce/productcompare/ but does not clean
+            // up the old plugins/j2store/productcompare/ directory.
+            // Native PHP used because Joomla\CMS\Filesystem\Folder was removed in J6.
+            $oldDir = JPATH_PLUGINS . '/j2store/productcompare';
+            if (is_dir($oldDir)) {
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($oldDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::CHILD_FIRST
+                );
+                foreach ($files as $f) {
+                    $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath());
+                }
+                rmdir($oldDir);
+            }
+        }
+
+        return parent::preflight($type, $parent);
+    }
+
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
+            $this->migrateGroupIfNeeded();
             $this->ensureUpdateSite();
 
             $app = Factory::getApplication();
@@ -37,14 +62,32 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         }
     }
 
+    /**
+     * Rename the plugin's folder from j2store to j2commerce in #__extensions.
+     * Needed when upgrading from a package that was registered under group="j2store".
+     */
+    private function migrateGroupIfNeeded(): void
+    {
+        $db = Factory::getContainer()->get(DatabaseInterface::class);
+
+        $query = $this->createDbQuery($db)
+            ->update($db->quoteName('#__extensions'))
+            ->set($db->quoteName('folder') . ' = ' . $db->quote('j2commerce'))
+            ->where($db->quoteName('element') . ' = ' . $db->quote('productcompare'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
+            ->where($db->quoteName('folder') . ' = ' . $db->quote('j2store'));
+        $db->setQuery($query);
+        $db->execute();
+    }
+
     private function ensureUpdateSite(): void
     {
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $updateUrl = 'https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_j2commerce_productcompare/updates/update.xml';
         $element = 'productcompare';
-        $folder = 'j2store';
+        $folder = 'j2commerce';
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->select($db->quoteName('extension_id'))
             ->from($db->quoteName('#__extensions'))
             ->where($db->quoteName('element') . ' = :element')
@@ -59,7 +102,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
             return;
         }
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->select($db->quoteName('update_site_id'))
             ->from($db->quoteName('#__update_sites'))
             ->where($db->quoteName('location') . ' = :url')
@@ -68,7 +111,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         $siteId = (int) $db->loadResult();
 
         if ($siteId) {
-            $query = $db->getQuery(true)
+            $query = $this->createDbQuery($db)
                 ->select('COUNT(*)')
                 ->from($db->quoteName('#__update_sites_extensions'))
                 ->where($db->quoteName('update_site_id') . ' = :siteId')
@@ -77,7 +120,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
                 ->bind(':extId', $extensionId, ParameterType::INTEGER);
             $db->setQuery($query);
             if (!(int) $db->loadResult()) {
-                $query = $db->getQuery(true)
+                $query = $this->createDbQuery($db)
                     ->insert($db->quoteName('#__update_sites_extensions'))
                     ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
                     ->values(':siteId, :extId')
@@ -91,7 +134,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
 
         $name = 'J2Store Product Compare';
         $type = 'extension';
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->insert($db->quoteName('#__update_sites'))
             ->columns([$db->quoteName('name'), $db->quoteName('type'), $db->quoteName('location'), $db->quoteName('enabled')])
             ->values(':name, :type, :url, 1')
@@ -100,7 +143,7 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         $db->execute();
         $siteId = (int) $db->insertid();
 
-        $query = $db->getQuery(true)
+        $query = $this->createDbQuery($db)
             ->insert($db->quoteName('#__update_sites_extensions'))
             ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
             ->values(':siteId, :extId')
@@ -108,5 +151,13 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
             ->bind(':extId', $extensionId, ParameterType::INTEGER);
         $db->setQuery($query);
         $db->execute();
+    }
+
+    /**
+     * Creates a query object compatible with Joomla 5 (getQuery) and 6 (createQuery).
+     */
+    private function createDbQuery(\Joomla\Database\DatabaseInterface $db): \Joomla\Database\QueryInterface
+    {
+        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
     }
 }
