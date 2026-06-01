@@ -19,9 +19,17 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
             // group changes from j2store to j2commerce. Joomla installs the new
             // files under plugins/j2commerce/productcompare/ but does not clean
             // up the old plugins/j2store/productcompare/ directory.
+            // Native PHP used because Joomla\CMS\Filesystem\Folder was removed in J6.
             $oldDir = JPATH_PLUGINS . '/j2store/productcompare';
             if (is_dir($oldDir)) {
-                \Joomla\CMS\Filesystem\Folder::delete($oldDir);
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($oldDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::CHILD_FIRST
+                );
+                foreach ($files as $f) {
+                    $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath());
+                }
+                rmdir($oldDir);
             }
         }
 

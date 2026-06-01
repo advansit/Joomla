@@ -65,12 +65,12 @@ jobs:
             script: 'plugin-class'
           - name: '05 - AJAX Endpoint'
             script: 'ajax'
-          - name: '06 - Uninstall'
-            script: 'uninstall'
-          - name: '07 - getProductsData'
+          - name: '06 - getProductsData'
             script: 'getproductsdata'
-          - name: '08 - Asset Injection'
+          - name: '07 - Asset Injection'
             script: 'asset-injection'
+          - name: '08 - Uninstall'
+            script: 'uninstall'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -126,12 +126,12 @@ jobs:
             script: 'plugin-class'
           - name: '05 - AJAX Endpoint'
             script: 'ajax'
-          - name: '06 - Uninstall'
-            script: 'uninstall'
-          - name: '07 - getProductsData'
+          - name: '06 - getProductsData'
             script: 'getproductsdata'
-          - name: '08 - Asset Injection'
+          - name: '07 - Asset Injection'
             script: 'asset-injection'
+          - name: '08 - Uninstall'
+            script: 'uninstall'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

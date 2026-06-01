@@ -165,13 +165,10 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     /**
      * J2Commerce 6 — render compare button after the product detail template.
      *
-     * Dispatched as onJ2CommerceViewProductHtml via:
-     *   eventWithHtml('ViewProductHtml', [&$result, &$this, &$this->item])  (default.php)
-     *   eventWithHtml('ViewProductHtml', [$this->product, $this])           (app plugins)
-     *
-     * Args[0]: result (ref) or product object — check for j2commerce_product_id
-     * Args[1]: view object
-     * Args[2]: item object (only in default.php variant)
+     * Dispatched as onJ2CommerceViewProductHtml. The dispatch signature varies
+     * across J2Commerce 6 versions and call sites. Rather than relying on a
+     * fixed argument index, scan all arguments for the one that carries
+     * j2commerce_product_id.
      *
      * HTML is returned via $event->addResult().
      */
@@ -181,13 +178,15 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
             return;
         }
 
-        $args = $event->getArguments();
+        $item = null;
+        foreach ($event->getArguments() as $arg) {
+            if (is_object($arg) && isset($arg->j2commerce_product_id)) {
+                $item = $arg;
+                break;
+            }
+        }
 
-        // default.php: args = [&$result, &$view, &$item] — item is args[2]
-        // app plugins: args = [$product, $view]           — product is args[0]
-        $item = $args[2] ?? $args[0] ?? null;
-
-        if (!$item || !isset($item->j2commerce_product_id)) {
+        if ($item === null) {
             return;
         }
 
@@ -282,6 +281,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
 
     /**
      * Detect J2Commerce 6 by checking for #__j2commerce_products in the database.
+     * Uses SHOW TABLES LIKE to avoid stale getTableList() cache (e.g. during install).
      * Cached after first call.
      */
     private ?bool $j2commerce6 = null;
@@ -289,9 +289,9 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     private function isJ2Commerce6(): bool
     {
         if ($this->j2commerce6 === null) {
-            $db = $this->getDatabase();
-            $tables = $db->getTableList();
-            $this->j2commerce6 = in_array($db->getPrefix() . 'j2commerce_products', $tables, true);
+            $db     = $this->getDatabase();
+            $result = $db->setQuery('SHOW TABLES LIKE ' . $db->quote($db->getPrefix() . 'j2commerce_products'))->loadResult();
+            $this->j2commerce6 = !empty($result);
         }
         return $this->j2commerce6;
     }
@@ -308,22 +308,26 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
 
         $query = $this->createDbQuery($db)
             ->select([
-                $db->quoteName('p.' . $productsPk),
-                $db->quoteName('p.product_source_id'),
-                $db->quoteName('v.' . $variantsPk),
-                $db->quoteName('v.sku'),
-                $db->quoteName('v.price'),
-                $db->quoteName('v.stock'),
-                $db->quoteName('v.availability'),
-                $db->quoteName('c.title'),
-                $db->quoteName('c.introtext'),
+                $db->quoteName('p') . '.' . $db->quoteName($productsPk),
+                $db->quoteName('p') . '.' . $db->quoteName('product_source_id'),
+                $db->quoteName('v') . '.' . $db->quoteName($variantsPk),
+                $db->quoteName('v') . '.' . $db->quoteName('sku'),
+                $db->quoteName('v') . '.' . $db->quoteName('price'),
+                $db->quoteName('v') . '.' . $db->quoteName('stock'),
+                $db->quoteName('v') . '.' . $db->quoteName('availability'),
+                $db->quoteName('c') . '.' . $db->quoteName('title'),
+                $db->quoteName('c') . '.' . $db->quoteName('introtext'),
             ])
             ->from($db->quoteName($productsT, 'p'))
-            ->join('LEFT', $db->quoteName($variantsT, 'v') . ' ON ' . $db->quoteName('p.' . $productsPk) . ' = ' . $db->quoteName('v.product_id'))
-            ->join('LEFT', $db->quoteName('#__content', 'c') . ' ON ' . $db->quoteName('p.product_source_id') . ' = ' . $db->quoteName('c.id'))
-            ->whereIn($db->quoteName('p.' . $productsPk), $productIds)
-            ->where($db->quoteName('p.enabled') . ' = 1')
-            ->order($db->quoteName('p.' . $productsPk));
+            ->join('LEFT', $db->quoteName($variantsT, 'v')
+                . ' ON ' . $db->quoteName('v') . '.' . $db->quoteName('product_id')
+                . ' = ' . $db->quoteName('p') . '.' . $db->quoteName($productsPk))
+            ->join('LEFT', $db->quoteName('#__content', 'c')
+                . ' ON ' . $db->quoteName('c') . '.' . $db->quoteName('id')
+                . ' = ' . $db->quoteName('p') . '.' . $db->quoteName('product_source_id'))
+            ->whereIn($db->quoteName('p') . '.' . $db->quoteName($productsPk), $productIds)
+            ->where($db->quoteName('p') . '.' . $db->quoteName('enabled') . ' = 1')
+            ->order($db->quoteName('p') . '.' . $db->quoteName($productsPk));
 
         $db->setQuery($query);
         $products = $db->loadObjectList() ?: [];
