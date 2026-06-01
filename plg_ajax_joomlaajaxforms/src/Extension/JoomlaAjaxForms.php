@@ -24,6 +24,7 @@ use Joomla\CMS\Session\Session;
 use Joomla\CMS\Uri\Uri;
 use Joomla\CMS\User\UserFactoryInterface;
 use Joomla\CMS\User\UserHelper;
+use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
 use Joomla\Event\DispatcherInterface;
@@ -31,6 +32,7 @@ use Joomla\Event\SubscriberInterface;
 
 class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
 {
+    use DatabaseAwareTrait;
     protected $autoloadLanguage = true;
 
     public static function getSubscribedEvents(): array
@@ -244,9 +246,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                     false
                 );
 
+                // JS reads redirect from data.data.redirect (login handler line 276, logout line 613)
                 return $this->jsonSuccess([
-                    'redirect' => $captiveUrl,
-                    'message'  => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_REQUIRED'),
+                    'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_MFA_REQUIRED'),
+                    'data'    => ['redirect' => $captiveUrl],
                 ]);
             }
 
@@ -271,12 +274,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $profileItemId = $this->getMyProfileMenuItemId();
                 $redirect = $profileItemId
                     ? Route::_('index.php?Itemid=' . $profileItemId, false)
-                    : Route::_('index.php?option=' . ($this->isJ2Commerce4(Factory::getContainer()->get(DatabaseInterface::class)) ? 'com_j2store' : 'com_j2commerce') . '&view=myprofile', false);
+                    : Route::_('index.php?option=' . ($this->isJ2Commerce4($this->getDatabase()) ? 'com_j2store' : 'com_j2commerce') . '&view=myprofile', false);
             }
 
+            // JS reads redirect from data.data.redirect (login handler line 276, logout line 613)
             return $this->jsonSuccess([
-                'redirect' => $redirect,
-                'message'  => Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
+                'message' => Text::sprintf('PLG_AJAX_JOOMLAAJAXFORMS_LOGIN_SUCCESS', $user->name),
+                'data'    => ['redirect' => $redirect],
             ]);
         }
 
@@ -317,9 +321,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $redirect = Uri::base();
             }
 
+            // JS reads redirect from data.data.redirect (logout handler line 613)
             return $this->jsonSuccess([
-                'redirect' => $redirect,
-                'message'  => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGOUT_SUCCESS'),
+                'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_LOGOUT_SUCCESS'),
+                'data'    => ['redirect' => $redirect],
             ]);
         }
 
@@ -606,10 +611,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $cartCount = $this->getCartCountForUser($db, $userId);
             $cartTotal = $this->getCartTotalForUser($db, $userId);
 
+            // JS reads cartCount/cartTotal from data.data.* (see joomlaajaxforms.js removeCartItem handler)
             return $this->jsonSuccess([
-                'cartCount' => $cartCount,
-                'cartTotal' => $cartTotal,
-                'message'   => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_ITEM_REMOVED'),
+                'message' => Text::_('PLG_AJAX_JOOMLAAJAXFORMS_CART_ITEM_REMOVED'),
+                'data'    => [
+                    'cartCount' => $cartCount,
+                    'cartTotal' => $cartTotal,
+                ],
             ]);
         } catch (\Exception $e) {
             Log::add('Cart remove error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
@@ -625,7 +633,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         $user = $this->getApplication()->getIdentity();
 
         if (!$user || $user->guest) {
-            return $this->jsonSuccess(['cartCount' => 0]);
+            return $this->jsonSuccess(['data' => ['cartCount' => 0]]);
         }
 
         try {
@@ -633,15 +641,16 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $userId = (int) $user->id;
 
             if (!$this->isJ2CommerceInstalled($db)) {
-                return $this->jsonSuccess(['cartCount' => 0]);
+                return $this->jsonSuccess(['data' => ['cartCount' => 0]]);
             }
 
             $cartCount = $this->getCartCountForUser($db, $userId);
 
-            return $this->jsonSuccess(['cartCount' => $cartCount]);
+            // JS reads cartCount from data.data.* (see joomlaajaxforms.js getCartCount handler)
+            return $this->jsonSuccess(['data' => ['cartCount' => $cartCount]]);
         } catch (\Exception $e) {
             Log::add('Cart count error: ' . $e->getMessage(), Log::ERROR, 'plg_ajax_joomlaajaxforms');
-            return $this->jsonSuccess(['cartCount' => 0]);
+            return $this->jsonSuccess(['data' => ['cartCount' => 0]]);
         }
     }
 
@@ -657,7 +666,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      */
     private function getMyProfileMenuItemId(): ?int
     {
-        $db = Factory::getContainer()->get(DatabaseInterface::class);
+        $db = $this->getDatabase();
         $j4 = $this->isJ2Commerce4($db);
 
         $option = $j4 ? 'com_j2store' : 'com_j2commerce';
