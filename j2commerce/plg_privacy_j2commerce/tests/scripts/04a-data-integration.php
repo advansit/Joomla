@@ -275,11 +275,103 @@ class DataIntegrationTest
         $this->db->setQuery('DELETE FROM ' . $this->db->quoteName('#__' . $this->tp . '_orders') . ' WHERE ' . $this->tp . '_order_id = ' . $orderPk);
         $this->db->execute();
 
+        // Test 6: deleteCartData() round-trip via plugin reflection
+        echo "\n--- deleteCartData() Round-Trip ---\n";
+        $this->testDeleteCartData();
+
         echo "\n=== Data Integration Test Summary ===\n";
         echo "Passed: {$this->passed}\n";
         echo "Failed: {$this->failed}\n";
 
         return $this->failed === 0;
+    }
+
+    private function testDeleteCartData(): void
+    {
+        $cartPkCol     = $this->tp . '_cart_id';
+        $cartitemPkCol = $this->tp . '_cartitem_id';
+        $deleteUserId  = 998; // isolated test user — not used elsewhere
+
+        // Seed: two carts with one item each for the test user
+        $cartIds     = [];
+        $cartitemIds = [];
+        for ($i = 0; $i < 2; $i++) {
+            $cart = (object)[
+                'user_id'    => $deleteUserId,
+                'session_id' => 'delete-test-' . uniqid(),
+                'cart_type'  => 'cart',
+                'created_on' => date('Y-m-d H:i:s'),
+            ];
+            $this->db->insertObject('#__' . $this->tp . '_carts', $cart, $cartPkCol);
+            $cartId    = (int) $this->db->insertid();
+            $cartIds[] = $cartId;
+
+            $item = (object)[
+                'cart_id'     => $cartId,
+                'product_id'  => 1,
+                'variant_id'  => 1,
+                'product_qty' => 1.0,
+            ];
+            $this->db->insertObject('#__' . $this->tp . '_cartitems', $item, $cartitemPkCol);
+            $cartitemIds[] = (int) $this->db->insertid();
+        }
+
+        $this->test('Seeded 2 carts for deleteCartData test',
+            count($cartIds) === 2 && $cartIds[0] > 0 && $cartIds[1] > 0);
+
+        // Load the plugin class and call deleteCartData() via reflection
+        $pluginFile = JPATH_BASE . '/plugins/privacy/j2commerce/src/Extension/J2Commerce.php';
+        if (!file_exists($pluginFile)) {
+            $this->test('Plugin class file exists for reflection', false, $pluginFile);
+            return;
+        }
+
+        // Bootstrap plugin namespace
+        JLoader::registerNamespace(
+            'Advans\\Plugin\\Privacy\\J2Commerce',
+            JPATH_BASE . '/plugins/privacy/j2commerce/src',
+            false, false, 'psr4'
+        );
+
+        $pluginClass = 'Advans\\Plugin\\Privacy\\J2Commerce\\Extension\\J2Commerce';
+        if (!class_exists($pluginClass, true)) {
+            $this->test('Plugin class loadable', false, $pluginClass);
+            return;
+        }
+        $this->test('Plugin class loadable', true);
+
+        $rc       = new ReflectionClass($pluginClass);
+        $instance = $rc->newInstanceWithoutConstructor();
+
+        // Inject database via DatabaseAwareTrait::setDatabase()
+        $instance->setDatabase($this->db);
+
+        // Call protected deleteCartData()
+        $method = $rc->getMethod('deleteCartData');
+        $method->setAccessible(true);
+        $method->invoke($instance, $deleteUserId);
+
+        // Verify cart items deleted
+        $query = $this->db->getQuery(true)
+            ->select('COUNT(*)')
+            ->from($this->db->quoteName('#__' . $this->tp . '_cartitems'))
+            ->where($this->db->quoteName('cart_id') . ' IN (' . implode(',', $cartIds) . ')');
+        $this->db->setQuery($query);
+        $remainingItems = (int) $this->db->loadResult();
+
+        $this->test('deleteCartData() removed all cart items', $remainingItems === 0,
+            "Remaining items: $remainingItems");
+
+        // Verify carts deleted
+        $query = $this->db->getQuery(true)
+            ->select('COUNT(*)')
+            ->from($this->db->quoteName('#__' . $this->tp . '_carts'))
+            ->where($this->db->quoteName('user_id') . ' = ' . $deleteUserId);
+        $this->db->setQuery($query);
+        $remainingCarts = (int) $this->db->loadResult();
+
+        $this->test('deleteCartData() removed all carts', $remainingCarts === 0,
+            "Remaining carts: $remainingCarts");
     }
 }
 

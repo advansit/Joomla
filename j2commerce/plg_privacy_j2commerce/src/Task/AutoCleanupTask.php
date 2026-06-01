@@ -95,6 +95,12 @@ class AutoCleanupTask implements SubscriberInterface
     {
         $this->logTask('Starting automatic data cleanup...');
 
+        // TaskPluginTrait populates $this->params from the event on J5.
+        // On J6, params may be passed via the event argument instead.
+        if ($this->params === null) {
+            $this->params = $event->getArgument('params') ?? new \Joomla\Registry\Registry();
+        }
+
         try {
             $db = $this->getDatabase();
             $retentionYears = (int) $this->params->get('retention_years', 10);
@@ -178,54 +184,82 @@ class AutoCleanupTask implements SubscriberInterface
 
         $tables      = $db->getTableList();
         $prefix      = $db->getPrefix();
-        $customTable = $this->isJ2Commerce4() ? 'j2store_product_customfields' : 'j2commerce_customfields';
-
-        if (!in_array($prefix . $customTable, $tables, true)) {
-            return false;
-        }
-
         if ($this->isJ2Commerce4()) {
-            $ordersTable    = '#__j2store_orders';
+            // J2Commerce 4: optional manually-created table #__j2store_product_customfields.
+            $customTable = 'j2store_product_customfields';
+            if (!in_array($prefix . $customTable, $tables, true)) {
+                return false;
+            }
+
+            $ordersTable     = '#__j2store_orders';
             $orderitemsTable = '#__j2store_orderitems';
-        } else {
-            $ordersTable    = '#__j2commerce_orders';
-            $orderitemsTable = '#__j2commerce_orderitems';
-        }
 
-        $query = $this->createDbQuery()
-            ->select('DISTINCT oi.product_id')
-            ->from($db->quoteName($ordersTable, 'o'))
-            ->leftJoin(
-                $db->quoteName($orderitemsTable, 'oi') .
-                ' ON ' . $db->quoteName('o.order_id') . ' = ' . $db->quoteName('oi.order_id')
-            )
-            ->where($db->quoteName('o.user_id') . ' = :userid')
-            ->where($db->quoteName('oi.product_id') . ' IS NOT NULL')
-            ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+            $query = $this->createDbQuery()
+                ->select('DISTINCT oi.product_id')
+                ->from($db->quoteName($ordersTable, 'o'))
+                ->leftJoin(
+                    $db->quoteName($orderitemsTable, 'oi') .
+                    ' ON ' . $db->quoteName('o.order_id') . ' = ' . $db->quoteName('oi.order_id')
+                )
+                ->where($db->quoteName('o.user_id') . ' = :userid')
+                ->where($db->quoteName('oi.product_id') . ' IS NOT NULL')
+                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
 
-        $db->setQuery($query);
-        $productIds = $db->loadColumn();
+            $db->setQuery($query);
+            $productIds = $db->loadColumn();
 
-        if (empty($productIds)) {
-            return false;
-        }
+            if (empty($productIds)) {
+                return false;
+            }
 
-        if ($this->isJ2Commerce4()) {
             $query = $this->createDbQuery()
                 ->select('COUNT(*)')
                 ->from($db->quoteName('#__' . $customTable))
                 ->where($db->quoteName('product_id') . ' IN (' . implode(',', array_map('intval', $productIds)) . ')')
                 ->where($db->quoteName('field_name') . ' = ' . $db->quote('is_lifetime_license'))
                 ->where('LOWER(TRIM(' . $db->quoteName('field_value') . ')) = ' . $db->quote('yes'));
-        } else {
-            // TODO(#96): J2Commerce 6 has no direct equivalent of j2store_product_customfields.
-            // Return false until the correct storage location is confirmed.
+
+            $db->setQuery($query);
+
+            return (int) $db->loadResult() > 0;
+        }
+
+        // J2Commerce 6: lifetime-licence flag is stored in #__j2commerce_metafields.
+        // Schema (verified against J2Commerce 6 install.mysql.utf8.sql):
+        //   owner_id INT, owner_resource VARCHAR, metakey VARCHAR, metavalue TEXT
+        // FK in #__j2commerce_orderitems is order_id (VARCHAR), not j2commerce_order_id.
+        // A DB error here (e.g. column name mismatch after a J2Commerce upgrade)
+        // is caught and returns false so the user is not incorrectly blocked.
+        if (!in_array($prefix . 'j2commerce_metafields', $tables, true)) {
             return false;
         }
 
-        $db->setQuery($query);
+        try {
+            $query = $this->createDbQuery()
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__j2commerce_orderitems', 'oi'))
+                ->join(
+                    'INNER',
+                    $db->quoteName('#__j2commerce_orders', 'o') .
+                    ' ON ' . $db->quoteName('o.order_id') . ' = ' . $db->quoteName('oi.order_id')
+                )
+                ->join(
+                    'INNER',
+                    $db->quoteName('#__j2commerce_metafields', 'mf') .
+                    ' ON '  . $db->quoteName('mf.owner_id')      . ' = '  . $db->quoteName('oi.product_id') .
+                    ' AND ' . $db->quoteName('mf.owner_resource') . ' = '  . $db->quote('product') .
+                    ' AND ' . $db->quoteName('mf.metakey')        . ' = '  . $db->quote('is_lifetime_license') .
+                    ' AND LOWER(TRIM(' . $db->quoteName('mf.metavalue') . ')) = ' . $db->quote('yes')
+                )
+                ->where($db->quoteName('o.user_id') . ' = :userid')
+                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
 
-        return (int) $db->loadResult() > 0;
+            $db->setQuery($query);
+
+            return (int) $db->loadResult() > 0;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     /**
@@ -349,7 +383,7 @@ class AutoCleanupTask implements SubscriberInterface
                 $query = $this->createDbQuery()
                     ->update($db->quoteName('#__j2store_orders'))
                     ->set([
-                        $db->quoteName('user_email') . ' = ' . $db->quote('anonymized@example.com'),
+                        $db->quoteName('user_email') . ' = ' . $db->quote('anonymized@deleted.invalid'),
                         $db->quoteName('customer_note') . ' = ' . $db->quote(''),
                         $db->quoteName('ip_address') . ' = ' . $db->quote(''),
                     ])
@@ -392,7 +426,7 @@ class AutoCleanupTask implements SubscriberInterface
                 $query = $this->createDbQuery()
                     ->update($db->quoteName('#__j2commerce_orders'))
                     ->set([
-                        $db->quoteName('user_email') . ' = ' . $db->quote('anonymized@example.com'),
+                        $db->quoteName('user_email') . ' = ' . $db->quote('anonymized@deleted.invalid'),
                         $db->quoteName('customer_note') . ' = ' . $db->quote(''),
                         $db->quoteName('ip_address') . ' = ' . $db->quote(''),
                     ])

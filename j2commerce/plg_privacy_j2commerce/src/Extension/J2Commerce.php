@@ -509,7 +509,9 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 }
             }
         } else {
-            // J2Commerce 6 — billing data is in #__j2commerce_orderinfos, not in #__j2commerce_orders
+            // J2Commerce 6 — billing data is in #__j2commerce_orderinfos, not in #__j2commerce_orders.
+            // FK in #__j2commerce_orderitems and #__j2commerce_orderinfos is order_id (VARCHAR),
+            // not j2commerce_order_id (the PK of #__j2commerce_orders).
             $query = $this->createDbQuery()
                 ->select(['o.*', 'oi.orderitem_name', 'oi.orderitem_sku', 'oi.orderitem_quantity', 'oi.orderitem_finalprice',
                     'inf.billing_first_name', 'inf.billing_last_name'])
@@ -830,6 +832,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 ->where($db->quoteName('o.user_id') . ' = :userid')
                 ->bind(':userid', $userId, ParameterType::INTEGER);
         } else {
+            // FK in #__j2commerce_orderitems is order_id (VARCHAR), not j2commerce_order_id.
             $query = $this->createDbQuery()
                 ->select(['o.j2commerce_order_id', 'o.order_id AS order_number', 'o.created_on', 'o.order_total', 'o.currency_code', 'oi.product_id'])
                 ->from($db->quoteName('#__j2commerce_orders', 'o'))
@@ -913,7 +916,7 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         $prefix = $db->getPrefix();
 
         if ($this->isJ2Commerce4()) {
-            // J2Store 4 — product-specific custom fields in #__j2store_product_customfields
+            // J2Commerce 4: optional manually-created table (see post-install step 3).
             $customTable = 'j2store_product_customfields';
             if (!in_array($prefix . $customTable, $tables, true)) {
                 return false;
@@ -925,19 +928,39 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
                 ->where($db->quoteName('product_id') . ' = :productid')
                 ->where($db->quoteName('field_name') . ' = ' . $db->quote('is_lifetime_license'))
                 ->bind(':productid', $productId, ParameterType::INTEGER);
-        } else {
-            // TODO(#96): J2Commerce 6 has no direct equivalent of j2store_product_customfields.
-            // #__j2commerce_customfields is a field definition table (no product_id column).
-            // Product-specific metadata lives in #__j2commerce_metafields, but whether
-            // is_lifetime_license values are written there depends on the installation.
-            // Until the correct data model is confirmed, return false (no lifetime block).
+
+            $db->setQuery($query);
+            $fieldValue = $db->loadResult();
+
+            return $fieldValue !== null && strtolower(trim($fieldValue)) === 'yes';
+        }
+
+        // J2Commerce 6: lifetime-licence flag is stored in #__j2commerce_metafields.
+        // Schema (verified against J2Commerce 6 install.mysql.utf8.sql):
+        //   owner_id INT, owner_resource VARCHAR, metakey VARCHAR, metavalue TEXT
+        // A DB error here (e.g. column name mismatch after a J2Commerce upgrade)
+        // is caught and returns false so the user is not incorrectly blocked.
+        if (!in_array($prefix . 'j2commerce_metafields', $tables, true)) {
             return false;
         }
 
-        $db->setQuery($query);
-        $fieldValue = $db->loadResult();
+        try {
+            $query = $this->createDbQuery()
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__j2commerce_metafields'))
+                ->where($db->quoteName('owner_id')      . ' = :productid')
+                ->where($db->quoteName('owner_resource') . ' = ' . $db->quote('product'))
+                ->where($db->quoteName('metakey')        . ' = ' . $db->quote('is_lifetime_license'))
+                ->where('LOWER(TRIM(' . $db->quoteName('metavalue') . ')) = ' . $db->quote('yes'))
+                ->bind(':productid', $productId, ParameterType::INTEGER);
 
-        return $fieldValue !== null && strtolower(trim($fieldValue)) === 'yes';
+            $db->setQuery($query);
+
+            return (int) $db->loadResult() > 0;
+        } catch (\Exception $e) {
+            Log::add('isLifetimeLicense J6 query failed: ' . $e->getMessage(), Log::WARNING, 'plg_privacy_j2commerce');
+            return false;
+        }
     }
 
     protected function formatRetentionMessage(array $retentionCheck): string
