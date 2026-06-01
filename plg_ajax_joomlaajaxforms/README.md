@@ -164,11 +164,19 @@ This plugin has automated tests that run on every push and on pull requests via 
 5. **Registration** — AJAX user registration
 6. **Password Reset** — reset email request
 7. **Username Reminder** — reminder email request
-8. **Security** — CSRF rejection, prepared-statement check, blocked-user check
+8. **Security** — CSRF rejection (no-token GET, fake-token POST), IDOR protection (unauthenticated removeCartItem rejected, victim row not deleted)
 9. **Uninstall** — clean removal from database and filesystem
 10. **Profile** — AJAX profile save (name, email, password)
 11. **J2Store Cart** — cart count, remove item, J2Commerce 4/6 detection
 12. **htaccess Check** — `.htaccess` rule validation
+
+### CI Limitations
+
+The CI test environments install Joomla and this plugin only — J2Commerce 4.x and 6.x are not installed because they require a licensed package not available in public CI. As a result:
+
+- Cart tests (suite 11) run without J2Commerce and verify only the detection logic and graceful fallback (`cartCount: 0`). Actual cart queries against `#__j2store_cartitems` / `#__j2commerce_cartitems` are not exercised in CI.
+- The IDOR test in suite 8 is skipped when cart tables are absent and counted as passed. Real IDOR protection (unauthenticated delete rejected + row intact) is only verified when J2Commerce is installed locally.
+- Runtime compatibility with J2Commerce 4.x (`#__j2store_*`) and J2Commerce 6.x (`#__j2commerce_*`) must be verified manually against a local installation.
 
 ### Running Tests Locally
 
