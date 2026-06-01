@@ -178,7 +178,7 @@ This plugin has automated tests that run on every push via GitHub Actions.
 ### Running Tests Locally
 
 ```bash
-cd j2commerce/plg_osmap_j2commerce/tests
+cd tests
 docker compose up -d
 timeout 300 bash -c 'until docker exec plg_osmap_j2commerce_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
 ./run-tests.sh all
