@@ -95,6 +95,12 @@ class AutoCleanupTask implements SubscriberInterface
     {
         $this->logTask('Starting automatic data cleanup...');
 
+        // TaskPluginTrait populates $this->params from the event on J5.
+        // On J6, params may be passed via the event argument instead.
+        if ($this->params === null) {
+            $this->params = $event->getArgument('params') ?? new \Joomla\Registry\Registry();
+        }
+
         try {
             $db = $this->getDatabase();
             $retentionYears = (int) $this->params->get('retention_years', 10);
@@ -219,35 +225,41 @@ class AutoCleanupTask implements SubscriberInterface
         }
 
         // J2Commerce 6: lifetime-licence flag is stored in #__j2commerce_metafields.
-        // Schema: owner_id = product_id, owner_resource = 'product',
-        //         metakey = 'is_lifetime_license', metavalue = 'yes'.
-        // The table is part of the standard J2Commerce 6 schema (not optional).
+        // Schema (verified against J2Commerce 6 install.mysql.utf8.sql):
+        //   owner_id INT, owner_resource VARCHAR, metakey VARCHAR, metavalue TEXT
+        // FK in #__j2commerce_orderitems is order_id (VARCHAR), not j2commerce_order_id.
+        // A DB error here (e.g. column name mismatch after a J2Commerce upgrade)
+        // is caught and returns false so the user is not incorrectly blocked.
         if (!in_array($prefix . 'j2commerce_metafields', $tables, true)) {
             return false;
         }
 
-        $query = $this->createDbQuery()
-            ->select('COUNT(*)')
-            ->from($db->quoteName('#__j2commerce_orderitems', 'oi'))
-            ->join(
-                'INNER',
-                $db->quoteName('#__j2commerce_orders', 'o') .
-                ' ON ' . $db->quoteName('o.order_id') . ' = ' . $db->quoteName('oi.order_id')
-            )
-            ->join(
-                'INNER',
-                $db->quoteName('#__j2commerce_metafields', 'mf') .
-                ' ON '  . $db->quoteName('mf.owner_id')       . ' = '  . $db->quoteName('oi.product_id') .
-                ' AND ' . $db->quoteName('mf.owner_resource')  . ' = '  . $db->quote('product') .
-                ' AND ' . $db->quoteName('mf.metakey')         . ' = '  . $db->quote('is_lifetime_license') .
-                ' AND LOWER(TRIM(' . $db->quoteName('mf.metavalue') . ')) = ' . $db->quote('yes')
-            )
-            ->where($db->quoteName('o.user_id') . ' = :userid')
-            ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
+        try {
+            $query = $this->createDbQuery()
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__j2commerce_orderitems', 'oi'))
+                ->join(
+                    'INNER',
+                    $db->quoteName('#__j2commerce_orders', 'o') .
+                    ' ON ' . $db->quoteName('o.order_id') . ' = ' . $db->quoteName('oi.order_id')
+                )
+                ->join(
+                    'INNER',
+                    $db->quoteName('#__j2commerce_metafields', 'mf') .
+                    ' ON '  . $db->quoteName('mf.owner_id')      . ' = '  . $db->quoteName('oi.product_id') .
+                    ' AND ' . $db->quoteName('mf.owner_resource') . ' = '  . $db->quote('product') .
+                    ' AND ' . $db->quoteName('mf.metakey')        . ' = '  . $db->quote('is_lifetime_license') .
+                    ' AND LOWER(TRIM(' . $db->quoteName('mf.metavalue') . ')) = ' . $db->quote('yes')
+                )
+                ->where($db->quoteName('o.user_id') . ' = :userid')
+                ->bind(':userid', $userId, \Joomla\Database\ParameterType::INTEGER);
 
-        $db->setQuery($query);
+            $db->setQuery($query);
 
-        return (int) $db->loadResult() > 0;
+            return (int) $db->loadResult() > 0;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     /**
