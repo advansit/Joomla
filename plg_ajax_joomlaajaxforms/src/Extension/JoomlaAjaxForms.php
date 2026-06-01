@@ -225,19 +225,13 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $session = $this->getApplication()->getSession();
                 $session->set('application.queue', []);
 
-                // Find the profile page URL via the menu system.
-                // We look up the Itemid and let Route::_() build the
-                // SEF URL with the correct language prefix.
+                // Find the profile page URL via a direct DB query.
+                // Menu::getItems(['component','link'],[...]) was removed in J6.
                 $profileUrl = Uri::base();
-                $menu = $this->getApplication()->getMenu();
-                if ($menu) {
-                    // J2Commerce 6 uses com_j2commerce; J2Commerce 4 uses com_j2store
-                    $items = $menu->getItems(['component', 'link'], ['com_j2commerce', 'index.php?option=com_j2commerce&view=myprofile'])
-                        ?: $menu->getItems(['component', 'link'], ['com_j2store', 'index.php?option=com_j2store&view=myprofile']);
-                    if (!empty($items)) {
-                        $sefPath = Route::_('index.php?Itemid=' . $items[0]->id, false);
-                        $profileUrl = rtrim(Uri::base(), '/') . '/' . ltrim($sefPath, '/');
-                    }
+                $profileItemId = $this->getMyProfileMenuItemId();
+                if ($profileItemId) {
+                    $sefPath = Route::_('index.php?Itemid=' . $profileItemId, false);
+                    $profileUrl = rtrim(Uri::base(), '/') . '/' . ltrim($sefPath, '/');
                 }
                 $session->set('com_users.return_url', $profileUrl);
 
@@ -274,13 +268,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
             $session->set('com_users.return_url', '');
 
             if (empty($redirect)) {
-                // Prefer com_j2commerce (J2Commerce 6); fall back to com_j2store (J2Commerce 4).
-                // ComponentHelper::isEnabled() checks the extensions table — more reliable than
-                // file_exists() which misses disabled components and non-standard install paths.
-                $j2Link = ComponentHelper::isEnabled('com_j2commerce')
-                    ? 'index.php?option=com_j2commerce&view=myprofile'
-                    : 'index.php?option=com_j2store&view=myprofile';
-                $redirect = Route::_($j2Link, false);
+                $profileItemId = $this->getMyProfileMenuItemId();
+                $redirect = $profileItemId
+                    ? Route::_('index.php?Itemid=' . $profileItemId, false)
+                    : Route::_('index.php?option=' . ($this->isJ2Commerce4(Factory::getContainer()->get(DatabaseInterface::class)) ? 'com_j2store' : 'com_j2commerce') . '&view=myprofile', false);
             }
 
             return $this->jsonSuccess([
@@ -403,10 +394,11 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
         }
 
         try {
-            $user = new \Joomla\CMS\User\User();
-            $user->name = $name;
+            // new User() is removed in Joomla 6 — use UserFactoryInterface instead.
+            $user = Factory::getContainer()->get(UserFactoryInterface::class)->loadUserById(0);
+            $user->name     = $name;
             $user->username = $username;
-            $user->email = $email;
+            $user->email    = $email;
             $user->password = UserHelper::hashPassword($password);
 
             $userActivation = $usersConfig->get('useractivation');
@@ -656,6 +648,36 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     /**
      * Returns true if any supported version of J2Commerce is installed.
      */
+    /**
+     * Returns the menu item ID for the J2Store/J2Commerce "myprofile" view,
+     * or null if no such menu item exists.
+     *
+     * Menu::getItems(['component','link'],[...]) was removed in Joomla 6.
+     * This method uses a direct DB query instead, which works on J4/J5/J6.
+     */
+    private function getMyProfileMenuItemId(): ?int
+    {
+        $db = Factory::getContainer()->get(DatabaseInterface::class);
+        $j4 = $this->isJ2Commerce4($db);
+
+        $option = $j4 ? 'com_j2store' : 'com_j2commerce';
+        $link   = 'index.php?option=' . $option . '&view=myprofile';
+
+        $q = (method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true))
+            ->select($db->quoteName('id'))
+            ->from($db->quoteName('#__menu'))
+            ->where($db->quoteName('link') . ' = :link')
+            ->where($db->quoteName('client_id') . ' = 0')
+            ->where($db->quoteName('published') . ' = 1')
+            ->bind(':link', $link)
+            ->setLimit(1);
+
+        $db->setQuery($q);
+        $id = $db->loadResult();
+
+        return $id ? (int) $id : null;
+    }
+
     private function isJ2CommerceInstalled(DatabaseInterface $db): bool
     {
         static $installed = null;
