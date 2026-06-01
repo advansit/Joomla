@@ -60,7 +60,7 @@ RewriteCond %{QUERY_STRING} !^option=com_ajax [NC]
 | Enable Profile Editing | AJAX profile save (name, email, password) | Yes |
 | Enable J2Store Cart | AJAX cart operations (requires J2Commerce 4.x or 6.x) | Yes |
 
-## J2Commerce Cart Compatibility
+### J2Commerce Cart Compatibility
 
 The cart features support both J2Commerce 4.x (`#__j2store_*` tables) and J2Commerce 6.x (`#__j2commerce_*` tables). The version is detected at runtime by checking whether `#__j2store_carts` exists in the database.
 
@@ -175,7 +175,7 @@ This plugin has automated tests that run on every push and on pull requests via 
 ### Running Tests Locally
 
 ```bash
-cd plg_ajax_joomlaajaxforms/tests
+cd tests
 docker compose up -d
 timeout 300 bash -c 'until docker exec plg_ajax_joomlaajaxforms_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
 ./run-tests.sh all
