@@ -248,7 +248,12 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             ->where($db->quoteName('a.state') . ' = 1')
             ->bind(':id', $articleId, ParameterType::INTEGER);
 
-        $product = $db->setQuery($query)->loadObject();
+        try {
+            $product = $db->setQuery($query)->loadObject();
+        } catch (\Throwable $e) {
+            // Products table does not exist (component not installed) — skip silently.
+            return;
+        }
 
         if ($product) {
             $this->printProductNode($collector, $parent, $params, $product);
@@ -318,11 +323,14 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     // -------------------------------------------------------------------------
 
     /**
-     * Emits a sitemap node using the menu item's SEF path as an absolute URL.
-     * Used for J2Store's published=-2 hidden menu items. The path field contains
-     * the SEF path (e.g. shop/product-alias). We prepend Uri::root() to produce
-     * an absolute URL that OSMap can include in the sitemap without routing.
-     * Using the path avoids Joomla router failures for published=-2 menu items.
+     * Emits a sitemap node for a published=-2 hidden menu item.
+     *
+     * OSMap excludes published=-2 items from its routing cache, so passing
+     * 'index.php?Itemid=<id>' produces an empty fullLink and the node is
+     * suppressed. Instead, use the menu item's path field directly — it
+     * already contains the correct SEF-relative path (e.g. 'shop/my-product')
+     * and is always present for published=-2 items created by J2Store.
+     * This is the same approach used by printProductNode().
      */
     protected function printMenuPathNode(
         Collector $collector,
@@ -330,11 +338,12 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
         Registry $params,
         object $item
     ): void {
-        if (empty($item->path)) {
+        if (empty($item->id)) {
             return;
         }
 
-        // Build absolute URL from SEF path. Uri::root() includes trailing slash.
+        // Build absolute URL from the menu item's SEF path, bypassing OSMap's
+        // router (which skips published=-2 items).
         $link = rtrim(Uri::root(), '/') . '/' . ltrim($item->path, '/');
 
         $node = (object) [
