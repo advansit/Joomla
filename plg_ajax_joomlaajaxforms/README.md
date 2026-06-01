@@ -4,7 +4,6 @@
 [![Release](https://github.com/advansit/Joomla/actions/workflows/release-joomla-ajax-forms.yml/badge.svg)](https://github.com/advansit/Joomla/actions/workflows/release-joomla-ajax-forms.yml)
 [![Joomla 5](https://img.shields.io/badge/Joomla-5.x-blue.svg)](https://www.joomla.org/)
 [![Joomla 6](https://img.shields.io/badge/Joomla-6.x-blue.svg)](https://www.joomla.org/)
-[![Joomla 7](https://img.shields.io/badge/Joomla-7.x-blue.svg)](https://www.joomla.org/)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-purple.svg)](https://www.php.net/)
 
 ## Description
@@ -28,7 +27,7 @@ All features can be individually enabled/disabled via plugin parameters.
 
 ## Requirements
 
-- Joomla 5.x, 6.x, or 7.x
+- Joomla 5.x or 6.x
 - PHP 8.1+
 - J2Commerce 4.x or 6.x (only for cart features)
 
@@ -130,6 +129,65 @@ Error responses use J2Commerce-compatible format:
 }
 ```
 
+## Development
+
+### Structure
+
+```
+plg_ajax_joomlaajaxforms/
+├── joomlaajaxforms.xml
+├── build.sh
+├── script.php
+├── services/provider.php
+├── src/Extension/JoomlaAjaxForms.php
+├── language/ (en-GB, de-DE, fr-FR)
+├── media/js/
+└── tests/
+```
+
+### Building
+
+```bash
+./build.sh
+```
+
+Creates: `plg_ajax_joomlaajaxforms.zip`
+
+## Automated Testing
+
+This plugin has automated tests that run on every push and on pull requests via GitHub Actions.
+
+### Test Suites
+
+1. **Installation** — plugin registration in DB, file deployment
+2. **Configuration** — plugin params, language files, XML manifest
+3. **AJAX Endpoint** — unauthenticated access rejection
+4. **Login** — AJAX login, MFA redirect flow
+5. **Registration** — AJAX user registration
+6. **Password Reset** — reset email request
+7. **Username Reminder** — reminder email request
+8. **Security** — CSRF rejection, prepared-statement check, blocked-user check
+9. **Uninstall** — clean removal from database and filesystem
+10. **Profile** — AJAX profile save (name, email, password)
+11. **J2Store Cart** — cart count, remove item, J2Commerce 4/6 detection
+12. **htaccess Check** — `.htaccess` rule validation
+
+### Running Tests Locally
+
+```bash
+cd plg_ajax_joomlaajaxforms/tests
+docker compose up -d
+timeout 300 bash -c 'until docker exec plg_ajax_joomlaajaxforms_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+./run-tests.sh all
+docker compose down -v
+
+# Joomla 6
+docker compose -f docker-compose.joomla6.yml up -d
+timeout 300 bash -c 'until docker exec plg_ajax_joomlaajaxforms_j6_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+./run-tests.sh all
+docker compose -f docker-compose.joomla6.yml down -v
+```
+
 ## Troubleshooting
 
 ### AJAX context differs from normal Joomla requests
@@ -171,17 +229,6 @@ The plugin avoids all APIs deprecated in Joomla 6:
 - Uses `MailerFactoryInterface` instead of `Factory::getMailer()`
 - Uses `UserFactoryInterface` instead of `User::getInstance()`
 - Uses `->getInput()` instead of `->input`
-
-## Automated Testing
-
-12 test scripts run on every push and on pull requests via GitHub Actions: installation, configuration, endpoint access, login/MFA, registration, reset, remind, security, profile, J2Store cart, .htaccess validation, and uninstall.
-
-```bash
-cd plg_ajax_joomlaajaxforms/tests
-docker compose up -d
-./run-tests.sh all
-docker compose down -v
-```
 
 ## Multi-Language Support
 
