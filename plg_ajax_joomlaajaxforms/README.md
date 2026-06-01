@@ -64,7 +64,7 @@ RewriteCond %{QUERY_STRING} !^option=com_ajax [NC]
 
 The cart features support both J2Commerce 4.x (`#__j2store_*` tables) and J2Commerce 6.x (`#__j2commerce_*` tables). The version is detected at runtime by checking whether `#__j2store_carts` exists in the database.
 
-If neither `#__j2store_carts` nor `#__j2commerce_carts` is found, cart operations return a `PLG_AJAX_JOOMLAAJAXFORMS_J2STORE_NOT_FOUND` error — the cart feature is silently unavailable without breaking other plugin functionality.
+If neither `#__j2store_carts` nor `#__j2commerce_carts` is found, cart operations return a `PLG_AJAX_JOOMLAAJAXFORMS_J2COMMERCE_NOT_FOUND` error — the cart feature is silently unavailable without breaking other plugin functionality.
 
 **Schema differences handled automatically:**
 
@@ -257,4 +257,3 @@ https://advans.ch
 ## License
 
 Proprietary software. Copyright (C) 2026 Advans IT Solutions GmbH. All rights reserved.
-

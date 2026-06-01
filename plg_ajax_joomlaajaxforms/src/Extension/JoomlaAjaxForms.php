@@ -228,7 +228,7 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
                 $session->set('application.queue', []);
 
                 // Find the profile page URL via a direct DB query.
-                // Menu::getItems(['component','link'],[...]) was removed in J6.
+                // Direct DB query instead of Menu::getItems() to avoid loading the full menu tree.
                 $profileUrl = Uri::base();
                 $profileItemId = $this->getMyProfileMenuItemId();
                 if ($profileItemId) {
@@ -661,8 +661,8 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
      * Returns the menu item ID for the J2Store/J2Commerce "myprofile" view,
      * or null if no such menu item exists.
      *
-     * Menu::getItems(['component','link'],[...]) was removed in Joomla 6.
-     * This method uses a direct DB query instead, which works on J4/J5/J6.
+     * Uses a direct DB query instead of Menu::getItems() to avoid loading
+     * the full menu tree. Works on J4/J5/J6.
      */
     private function getMyProfileMenuItemId(): ?int
     {
@@ -691,10 +691,15 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     {
         static $installed = null;
         if ($installed === null) {
-            $tables   = $db->getTableList();
-            $prefix   = $db->getPrefix();
-            $installed = in_array($prefix . 'j2store_carts', $tables, true)
-                      || in_array($prefix . 'j2commerce_carts', $tables, true);
+            // SHOW TABLES LIKE avoids the stale in-memory cache of getTableList().
+            $prefix    = $db->getPrefix();
+            $db->setQuery('SHOW TABLES LIKE ' . $db->quote($prefix . 'j2store_carts'));
+            $j4 = $db->loadResult() !== null;
+            if (!$j4) {
+                $db->setQuery('SHOW TABLES LIKE ' . $db->quote($prefix . 'j2commerce_carts'));
+                $j6 = $db->loadResult() !== null;
+            }
+            $installed = $j4 || (!$j4 && ($j6 ?? false));
         }
         return $installed;
     }
@@ -707,9 +712,10 @@ class JoomlaAjaxForms extends CMSPlugin implements SubscriberInterface
     {
         static $result = null;
         if ($result === null) {
-            $tables  = $db->getTableList();
-            $prefix  = $db->getPrefix();
-            $result  = in_array($prefix . 'j2store_carts', $tables, true);
+            // SHOW TABLES LIKE avoids the stale in-memory cache of getTableList().
+            $prefix = $db->getPrefix();
+            $db->setQuery('SHOW TABLES LIKE ' . $db->quote($prefix . 'j2store_carts'));
+            $result = $db->loadResult() !== null;
         }
         return $result;
     }
