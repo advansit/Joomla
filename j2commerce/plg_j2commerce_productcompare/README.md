@@ -28,7 +28,7 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 - PHP 8.1 or higher
 - J2Commerce 4.x (`#__j2store_*` tables, plugin group `j2store`) or J2Commerce 6.x (`#__j2commerce_*` tables, plugin group `j2commerce`)
 
-## J2Commerce Version Compatibility
+### J2Commerce Version Compatibility
 
 The plugin detects the installed J2Commerce version at runtime by checking for `#__j2commerce_products` in the database.
 
@@ -97,19 +97,19 @@ This plugin has automated tests that run on every push via GitHub Actions.
 
 ### Test Suites
 
-1. **Installation** - Plugin registration in DB, file deployment
-2. **Configuration** - Plugin params, language files, XML manifest
-3. **Media Files** - CSS/JS deployment and content validation
-4. **Plugin Class** - Method existence, `SubscriberInterface`, `isJ2Commerce6()` detection
-5. **AJAX Endpoint** - HTTP tests against com_ajax (J2Commerce 4 and 6 group)
-6. **Uninstall** - Clean removal from database and filesystem
-7. **getProductsData** - DB query compatibility for J2Commerce 4 and 6 table schemas
-8. **Asset Injection** - AJAX URL group selection based on detected version
+1. **Installation** — plugin registration in DB, file deployment
+2. **Configuration** — plugin params, language files, XML manifest
+3. **Media Files** — CSS/JS deployment and content validation
+4. **Plugin Class** — method existence, `SubscriberInterface`, `isJ2Commerce6()` detection
+5. **AJAX Endpoint** — HTTP tests against com_ajax (J2Commerce 4 and 6 group)
+6. **getProductsData** — DB query compatibility for J2Commerce 4 and 6 table schemas
+7. **Asset Injection** — AJAX URL group selection based on detected version
+8. **Uninstall** — clean removal from database and filesystem
 
 ### Running Tests Locally
 
 ```bash
-cd j2commerce/plg_j2commerce_productcompare/tests
+cd tests
 docker compose up -d
 timeout 300 bash -c 'until docker exec plg_j2commerce_productcompare_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
 ./run-tests.sh all
