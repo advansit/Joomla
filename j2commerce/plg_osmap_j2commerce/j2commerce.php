@@ -52,7 +52,8 @@ class PlgOsmapJ2commerce extends J2CommerceNew
               ->where('type = ' . $db->quote('component'))
               ->where('element IN (' . $db->quote('com_j2commerce') . ',' . $db->quote('com_j2store') . ')')
               ->where('enabled = 1')
-              ->order('element ASC');  // com_j2commerce sorts before com_j2store
+              ->order('element ASC');  // ASC: 'com_j2commerce' < 'com_j2store' alphabetically,
+                                      // so J6 takes precedence in a migration scenario where both are present.
             $element = $db->setQuery($q)->loadResult() ?: 'com_j2commerce';
         } catch (\Throwable $e) {
             $element = 'com_j2commerce';
@@ -68,6 +69,13 @@ class PlgOsmapJ2commerce extends J2CommerceNew
     public function getTree(Collector $collector, Item $parent, Registry $params): void
     {
         $component = $parent->component ?? '';
+
+        // Older OSMap versions (<5.x) may not populate $parent->component.
+        // Fall back to parsing the option parameter from the menu item link.
+        if (empty($component) && !empty($parent->link)) {
+            parse_str(parse_url($parent->link, PHP_URL_QUERY) ?? '', $linkQuery);
+            $component = $linkQuery['option'] ?? '';
+        }
 
         if ($component === 'com_j2store') {
             $this->component     = 'com_j2store';

@@ -97,12 +97,14 @@ class SitemapOutputTest
             return $paths === ['shop/test-product-alpha', 'shop/test-product-beta'];
         });
 
-        $this->test('Generated nodes use Itemid-based link for OSMap routing', function () use ($products) {
+        $this->test('Generated nodes use path-based absolute URL', function () use ($products) {
+            $root = rtrim(\Joomla\CMS\Uri\Uri::root(), '/');
             foreach ($products as $p) {
                 $node = $this->buildNode($p, new Registry('{}'));
-                // Plugin passes 'index.php?Itemid=<id>' so OSMap's router produces
-                // the correct SEF URL on any Joomla version.
-                $expected = 'index.php?Itemid=' . (int) $p->id;
+                // Plugin builds absolute URL from m.path (SEF-relative path).
+                // OSMap excludes published=-2 items from its routing cache, so
+                // Itemid-based links produce empty fullLink for these items.
+                $expected = $root . '/' . ltrim($p->path, '/');
                 if ($node->link !== $expected) {
                     echo "  Expected: {$expected}\n  Got:      {$node->link}\n";
                     return false;
@@ -225,12 +227,12 @@ class SitemapOutputTest
 
     /**
      * Replicates the node-building logic from PlgOsmapJ2commerce::printMenuPathNode().
-     * The plugin passes 'index.php?Itemid=<id>' so OSMap's router produces the
-     * correct SEF URL regardless of which components are installed.
+     * The plugin builds an absolute URL from the menu item's path field, bypassing
+     * OSMap's router (which excludes published=-2 items from its routing cache).
      */
     private function buildNode(object $product, Registry $params): object
     {
-        $link = 'index.php?Itemid=' . (int) $product->id;
+        $link = rtrim(\Joomla\CMS\Uri\Uri::root(), '/') . '/' . ltrim($product->path, '/');
 
         return (object) [
             'id'         => $product->id,

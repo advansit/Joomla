@@ -60,25 +60,25 @@ class SitemapHttpTest
             return str_contains($xml, '<urlset') && str_contains($xml, 'sitemaps.org');
         });
 
-        // The plugin passes 'index.php?Itemid=<id>' to OSMap's router.
-        // OSMap routes this to the menu item's SEF path (if SEF is on) or
-        // keeps it as index.php?Itemid=<id>&lang=en (if SEF is off).
-        // Both forms are valid — we check for the Itemid in the URL.
+        // The plugin builds absolute URLs from the menu item's path field
+        // (e.g. http://localhost/shop/test-product-alpha). OSMap excludes
+        // published=-2 items from its routing cache, so Itemid-based links
+        // produce empty fullLink for these items.
         $alphaId = self::PRODUCT_ALPHA_MENU_ID;
         $betaId  = self::PRODUCT_BETA_MENU_ID;
 
-        $this->test("Sitemap contains product Alpha URL (Itemid={$alphaId} or SEF path)", function () use ($urls, $alphaId) {
+        $this->test("Sitemap contains product Alpha URL (SEF path)", function () use ($urls) {
             foreach ($urls as $u) {
-                if (str_contains($u, 'Itemid=' . $alphaId) || str_contains($u, 'test-product-alpha')) {
+                if (str_contains($u, 'test-product-alpha')) {
                     return true;
                 }
             }
             return false;
         });
 
-        $this->test("Sitemap contains product Beta URL (Itemid={$betaId} or SEF path)", function () use ($urls, $betaId) {
+        $this->test("Sitemap contains product Beta URL (SEF path)", function () use ($urls) {
             foreach ($urls as $u) {
-                if (str_contains($u, 'Itemid=' . $betaId) || str_contains($u, 'test-product-beta')) {
+                if (str_contains($u, 'test-product-beta')) {
                     return true;
                 }
             }
@@ -99,11 +99,11 @@ class SitemapHttpTest
             return true;
         });
 
-        $this->test('At least 2 product URLs in sitemap', function () use ($urls, $alphaId, $betaId) {
+        $this->test('At least 2 product URLs in sitemap', function () use ($urls) {
             $count = 0;
             foreach ($urls as $u) {
-                if (str_contains($u, 'Itemid=' . $alphaId) || str_contains($u, 'test-product-alpha')) $count++;
-                if (str_contains($u, 'Itemid=' . $betaId)  || str_contains($u, 'test-product-beta'))  $count++;
+                if (str_contains($u, 'test-product-alpha')) $count++;
+                if (str_contains($u, 'test-product-beta'))  $count++;
             }
             return $count >= 2;
         });

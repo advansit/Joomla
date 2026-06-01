@@ -325,10 +325,12 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
     /**
      * Emits a sitemap node for a published=-2 hidden menu item.
      *
-     * OSMap routes the link internally: passing 'index.php?Itemid=<id>' lets
-     * OSMap's router produce the correct SEF URL on any Joomla version without
-     * requiring the J2Commerce router to be installed in the test container.
-     * The path field is kept as a fallback uid component.
+     * OSMap excludes published=-2 items from its routing cache, so passing
+     * 'index.php?Itemid=<id>' produces an empty fullLink and the node is
+     * suppressed. Instead, use the menu item's path field directly — it
+     * already contains the correct SEF-relative path (e.g. 'shop/my-product')
+     * and is always present for published=-2 items created by J2Store.
+     * This is the same approach used by printProductNode().
      */
     protected function printMenuPathNode(
         Collector $collector,
@@ -340,10 +342,9 @@ class J2Commerce extends CMSPlugin implements SubscriberInterface
             return;
         }
 
-        // Pass the menu item ID as a Joomla-internal link so OSMap's router
-        // can produce the correct SEF URL regardless of which components are
-        // installed. OSMap handles published=-2 items via Itemid routing.
-        $link = 'index.php?Itemid=' . (int) $item->id;
+        // Build absolute URL from the menu item's SEF path, bypassing OSMap's
+        // router (which skips published=-2 items).
+        $link = rtrim(Uri::root(), '/') . '/' . ltrim($item->path, '/');
 
         $node = (object) [
             'id'         => $item->id,

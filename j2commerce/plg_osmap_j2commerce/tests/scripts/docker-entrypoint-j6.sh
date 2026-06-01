@@ -36,7 +36,10 @@ echo "Enabling plugins..."
 mysql -h mysql -u joomla -pjoomla_pass joomla_db \
     -e "UPDATE ${DB_PREFIX}extensions SET enabled=1 WHERE type='plugin' AND enabled=0;" 2>/dev/null
 
-# Disable SEF URLs so OSMap generates plain index.php?... URLs
+# Disable SEF URLs so OSMap generates plain index.php?... URLs.
+# NOTE: This means the J6 sitemap test does not verify correct SEF URL output
+# in a production environment with SEF enabled. The test validates plugin
+# dispatch and node emission only, not SEF URL formatting.
 mysql -h mysql -u joomla -pjoomla_pass joomla_db \
     -e "UPDATE ${DB_PREFIX}extensions SET params=JSON_SET(COALESCE(params,'{}'), '$.sef', 0) WHERE element='com_config' AND type='component' LIMIT 1;" 2>/dev/null || true
 php -r "
