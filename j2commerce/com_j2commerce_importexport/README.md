@@ -54,7 +54,7 @@ Products are matched and updated (instead of duplicated) using three methods:
 - PHP 8.1 or higher
 - J2Commerce 4.x (`#__j2store_*` tables) or J2Commerce 6.x (`#__j2commerce_*` tables)
 
-## J2Commerce Version Compatibility
+### J2Commerce Version Compatibility
 
 All models use `J2CommerceAwareTrait` for runtime version detection. The trait checks for `#__j2commerce_products` in the database to determine whether J2Commerce 6 is installed:
 
@@ -254,7 +254,7 @@ This component has automated tests that run on every push via GitHub Actions.
 ### Running Tests Locally
 
 ```bash
-cd j2commerce/com_j2commerce_importexport/tests
+cd tests
 docker compose up -d
 timeout 300 bash -c 'until docker exec com_j2commerce_importexport_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
 ./run-tests.sh all
