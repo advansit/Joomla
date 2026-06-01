@@ -28,6 +28,22 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 - PHP 8.1 or higher
 - J2Commerce 4.x (`#__j2store_*` tables, plugin group `j2store`) or J2Commerce 6.x (`#__j2commerce_*` tables, plugin group `j2commerce`)
 
+## J2Commerce Version Compatibility
+
+The plugin detects the installed J2Commerce version at runtime by checking for `#__j2commerce_products` in the database.
+
+**J2Commerce 4.x** (plugin group `j2store`):
+- Events received via legacy method-name convention (`onJ2StoreAfterDisplayProductList`, `onJ2StoreAfterDisplayProduct`)
+- DB tables: `#__j2store_products`, `#__j2store_variants`, `#__j2store_product_options`
+- AJAX URL uses `group=j2store`
+
+**J2Commerce 6.x** (plugin group `j2commerce`):
+- Events received via `SubscriberInterface` (`onJ2CommerceViewProductListHtml`, `onJ2CommerceViewProductHtml`)
+- DB tables: `#__j2commerce_products`, `#__j2commerce_variants`, `#__j2commerce_product_options`
+- AJAX URL uses `group=j2commerce`
+
+No configuration required — the correct event handlers and table names are selected automatically.
+
 ## Installation
 1. Download `plg_j2commerce_productcompare.zip`
 2. **System → Extensions → Install**
@@ -50,22 +66,6 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 3. Products added to comparison bar
 4. Click "View Comparison" to see modal
 5. Compare attributes side-by-side
-
-## J2Commerce Version Compatibility
-
-The plugin detects the installed J2Commerce version at runtime by checking for `#__j2commerce_products` in the database.
-
-**J2Commerce 4.x** (plugin group `j2store`):
-- Events received via legacy method-name convention (`onJ2StoreAfterDisplayProductList`, `onJ2StoreAfterDisplayProduct`)
-- DB tables: `#__j2store_products`, `#__j2store_variants`, `#__j2store_product_options`
-- AJAX URL uses `group=j2store`
-
-**J2Commerce 6.x** (plugin group `j2commerce`):
-- Events received via `SubscriberInterface` (`onJ2CommerceViewProductListHtml`, `onJ2CommerceViewProductHtml`)
-- DB tables: `#__j2commerce_products`, `#__j2commerce_variants`, `#__j2commerce_product_options`
-- AJAX URL uses `group=j2commerce`
-
-No configuration required — the correct event handlers and table names are selected automatically.
 
 ## Development
 
@@ -111,10 +111,15 @@ This plugin has automated tests that run on every push via GitHub Actions.
 ```bash
 cd j2commerce/plg_j2commerce_productcompare/tests
 docker compose up -d
-# Wait for container readiness (health.txt written by docker-entrypoint.sh)
 timeout 300 bash -c 'until docker exec plg_j2commerce_productcompare_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
 ./run-tests.sh all
 docker compose down -v
+
+# Joomla 6
+docker compose -f docker-compose.joomla6.yml up -d
+timeout 300 bash -c 'until docker exec plg_j2commerce_productcompare_j6_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+./run-tests.sh all
+docker compose -f docker-compose.joomla6.yml down -v
 ```
 
 ## Troubleshooting
