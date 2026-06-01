@@ -1139,30 +1139,6 @@ AND field_name = 'is_lifetime_license';
 
 ---
 
-## Troubleshooting
-
-### Common Issues
-
-**Issue: Custom Field not visible**
-- Check: Field is Published
-- Check: Display in = Product
-- Clear cache: System → Clear Cache
-
-**Issue: Lifetime products not detected**
-- Check: Field name is exactly `is_lifetime_license`
-- Check: Field value is `Yes` (not `yes` or `1`)
-- Check: Product saved after setting field
-
-**Issue: Scheduled task not running**
-- Check: Joomla Cron configured
-- Test: Run task manually
-- Check: Task logs for errors
-
-**Issue: Subscription-based products**
-- **Status:** Recurring subscription lifecycle management not included in current version
-- **Recommended Approach:** Apply standard accounting retention periods to subscription orders
-- **Enterprise Requirements:** Contact Advans IT Solutions for custom subscription handling implementation
-
 ## Development
 
 ### Building
@@ -1206,6 +1182,30 @@ timeout 300 bash -c 'until docker exec plg_privacy_j2commerce_j6_test test -f /v
 ./run-tests.sh all
 docker compose -f docker-compose.joomla6.yml down -v
 ```
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: Custom Field not visible**
+- Check: Field is Published
+- Check: Display in = Product
+- Clear cache: System → Clear Cache
+
+**Issue: Lifetime products not detected**
+- Check: Field name is exactly `is_lifetime_license`
+- Check: Field value is `Yes` (not `yes` or `1`)
+- Check: Product saved after setting field
+
+**Issue: Scheduled task not running**
+- Check: Joomla Cron configured
+- Test: Run task manually
+- Check: Task logs for errors
+
+**Issue: Subscription-based products**
+- **Status:** Recurring subscription lifecycle management not included in current version
+- **Recommended Approach:** Apply standard accounting retention periods to subscription orders
+- **Enterprise Requirements:** Contact Advans IT Solutions for custom subscription handling implementation
 
 ## Support & Contact
 
