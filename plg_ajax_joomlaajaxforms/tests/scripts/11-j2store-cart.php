@@ -151,11 +151,12 @@ class J2CommerceCartTest
         $is4 = $m4->invoke($plugin, $this->db);
         $this->test('isJ2Commerce4() returns bool', is_bool($is4));
 
-        // If J2Commerce is installed, detection must match actual table presence
+        // If J2Commerce is installed, detection must match actual table presence.
+        // Use SHOW TABLES LIKE (same method as the plugin) to avoid stale cache.
         if ($installed) {
-            $tables = $this->db->getTableList();
             $prefix = $this->db->getPrefix();
-            $hasJ4  = in_array($prefix . 'j2store_carts',    $tables, true);
+            $this->db->setQuery('SHOW TABLES LIKE ' . $this->db->quote($prefix . 'j2store_carts'));
+            $hasJ4 = $this->db->loadResult() !== null;
             $this->test('isJ2Commerce4() matches table presence', $is4 === $hasJ4,
                 'isJ2Commerce4=' . var_export($is4, true) . ' hasJ4Tables=' . var_export($hasJ4, true));
         } else {

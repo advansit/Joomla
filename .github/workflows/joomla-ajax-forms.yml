@@ -247,10 +247,139 @@ jobs:
           
           echo "Language files are present"
 
+  test-j2c4-full:
+    name: J5 + J2Commerce 4 (full install)
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: plg_ajax_joomlaajaxforms/tests-j2c4/
+
+      - name: Rename package
+        run: mv plg_ajax_joomlaajaxforms/tests-j2c4/plg_ajax_joomlaajaxforms_*.zip \
+               plg_ajax_joomlaajaxforms/tests-j2c4/extension.zip
+
+      - name: Build image (downloads J2Commerce 4 from public GitHub release)
+        run: |
+          cd plg_ajax_joomlaajaxforms
+          docker build \
+            -f tests-j2c4/Dockerfile \
+            --build-arg J2C4_URL=https://github.com/j2commerce/j2cart/releases/download/v4.1.3/com_j2store_v4-4.1.3-pro.zip \
+            -t plg_ajax_j2c4_test \
+            ../
+
+      - name: Start environment
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests-j2c4
+          docker compose up -d
+          timeout 360 bash -c \
+            'until docker inspect plg_ajax_j2c4_test \
+               --format "{{.State.Health.Status}}" 2>/dev/null | grep -q healthy; \
+             do sleep 5; done'
+
+      - name: Show container logs
+        if: always()
+        run: docker logs plg_ajax_j2c4_test 2>&1 | tail -80 || true
+
+      - name: Run J2C4 cart tests
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests-j2c4
+          chmod +x run-tests.sh
+          ./run-tests.sh 11-j2c4-cart
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: j2c4-full-logs
+          path: plg_ajax_joomlaajaxforms/tests-j2c4/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests-j2c4
+          docker compose down -v
+
+  test-j2c6-full:
+    name: J6 + J2Commerce 6 (full install)
+    runs-on: ubuntu-latest
+    needs: build
+    # Only runs when the J2Commerce 6 ZIP is available as a repository secret.
+    # To enable: base64-encode the ZIP and store it as secret J2COMMERCE6_ZIP.
+    if: ${{ secrets.J2COMMERCE6_ZIP != '' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: plg_ajax_joomlaajaxforms/tests-j2c6/
+
+      - name: Rename package
+        run: mv plg_ajax_joomlaajaxforms/tests-j2c6/plg_ajax_joomlaajaxforms_*.zip \
+               plg_ajax_joomlaajaxforms/tests-j2c6/extension.zip
+
+      - name: Decode J2Commerce 6 ZIP from secret
+        env:
+          J2COMMERCE6_ZIP: ${{ secrets.J2COMMERCE6_ZIP }}
+        run: echo "$J2COMMERCE6_ZIP" | base64 -d > plg_ajax_joomlaajaxforms/tests-j2c6/j2commerce6.zip
+
+      - name: Build image
+        run: |
+          cd plg_ajax_joomlaajaxforms
+          docker build \
+            -f tests-j2c6/Dockerfile \
+            -t plg_ajax_j2c6_test \
+            ../
+
+      - name: Start environment
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests-j2c6
+          docker compose up -d
+          timeout 360 bash -c \
+            'until docker inspect plg_ajax_j2c6_test \
+               --format "{{.State.Health.Status}}" 2>/dev/null | grep -q healthy; \
+             do sleep 5; done'
+
+      - name: Show container logs
+        if: always()
+        run: docker logs plg_ajax_j2c6_test 2>&1 | tail -80 || true
+
+      - name: Run J2C6 cart tests
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests-j2c6
+          chmod +x run-tests.sh
+          ./run-tests.sh 11-j2c6-cart
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: j2c6-full-logs
+          path: plg_ajax_joomlaajaxforms/tests-j2c6/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd plg_ajax_joomlaajaxforms/tests-j2c6
+          docker compose down -v
+
   collect-results:
     name: Collect Results
     runs-on: ubuntu-latest
-    needs: [test-j5, test-j6]
+    needs: [test-j5, test-j6, test-j2c4-full, test-j2c6-full]
     if: always()
     permissions: {}
 

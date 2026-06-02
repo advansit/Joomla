@@ -170,13 +170,17 @@ This plugin has automated tests that run on every push and on pull requests via 
 11. **J2Store Cart** — cart count, remove item, J2Commerce 4/6 detection
 12. **htaccess Check** — `.htaccess` rule validation
 
-### CI Limitations
+### Full-Install Tests (J2Commerce)
 
-The CI test environments install Joomla and this plugin only — J2Commerce 4.x and 6.x are not installed because they require a licensed package not available in public CI. As a result:
+Two additional CI jobs exercise the plugin against real J2Commerce installations:
 
-- Cart tests (suite 11) run without J2Commerce and verify only the detection logic and graceful fallback (`cartCount: 0`). Actual cart queries against `#__j2store_cartitems` / `#__j2commerce_cartitems` are not exercised in CI.
-- The IDOR test in suite 8 is skipped when cart tables are absent and counted as passed. Real IDOR protection (unauthenticated delete rejected + row intact) is only verified when J2Commerce is installed locally.
-- Runtime compatibility with J2Commerce 4.x (`#__j2store_*`) and J2Commerce 6.x (`#__j2commerce_*`) must be verified manually against a local installation.
+**`test-j2c4-full` (Joomla 5 + J2Commerce 4)** — runs on every push/PR. Downloads `com_j2store_v4-4.1.3-pro.zip` from the public [j2commerce/j2cart](https://github.com/j2commerce/j2cart/releases) GitHub release, installs it into a Joomla 5 container, seeds cart data for a test user, then verifies:
+- `isJ2CommerceInstalled()` returns `true`, `isJ2Commerce4()` returns `true`
+- `getCartCountForUser(999)` returns 3 (matching seeded rows)
+- IDOR: unauthenticated `removeCartItem` rejected, row not deleted
+- Authenticated `removeCartItem` deletes the row and returns updated `cartCount`
+
+**`test-j2c6-full` (Joomla 6 + J2Commerce 6)** — runs only when the repository secret `J2COMMERCE6_ZIP` is set (base64-encoded ZIP). J2Commerce 6 has no public release; store the ZIP as a secret to enable this job. Tests mirror the J2C4 suite against `#__j2commerce_*` tables.
 
 ### Running Tests Locally
 
