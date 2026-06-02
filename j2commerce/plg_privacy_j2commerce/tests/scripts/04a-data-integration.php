@@ -136,20 +136,29 @@ class DataIntegrationTest
         echo "\n--- Cart Operations ---\n";
 
         $testCart = (object) [
-            'user_id' => 999,
-            'session_id' => 'test-delete-session',
-            'cart_type' => 'cart',
-            'created_on' => date('Y-m-d H:i:s')
+            'user_id'        => 999,
+            'session_id'     => 'test-delete-session',
+            'cart_type'      => 'cart',
+            'created_on'     => date('Y-m-d H:i:s'),
+            'modified_on'    => date('Y-m-d H:i:s'),
+            'customer_ip'    => '127.0.0.1',
+            'cart_params'    => '{}',
+            'cart_browser'   => '',
+            'cart_analytics' => '',
         ];
         $this->db->insertObject('#__' . $this->tp . '_carts', $testCart, $this->tp . '_cart_id');
         $cartId = $this->db->insertid();
         $this->test('Cart insert works', $cartId > 0);
 
         $testCartItem = (object) [
-            'cart_id' => $cartId,
-            'product_id' => 1,
-            'variant_id' => 1,
-            'product_qty' => 1.0000
+            'cart_id'        => $cartId,
+            'product_id'     => 1,
+            'variant_id'     => 1,
+            'vendor_id'      => 0,
+            'product_type'   => 'simple',
+            'cartitem_params' => '{}',
+            'product_qty'    => 1.0000,
+            'product_options' => '{}',
         ];
         $this->db->insertObject('#__' . $this->tp . '_cartitems', $testCartItem, $this->tp . '_cartitem_id');
         $cartItemId = $this->db->insertid();
