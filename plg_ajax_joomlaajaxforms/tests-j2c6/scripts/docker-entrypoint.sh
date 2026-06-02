@@ -41,16 +41,18 @@ VALUES
      '$2y$10$abcdefghijklmnopqrstuuVGZzGzGzGzGzGzGzGzGzGzGzGzGzGzG',
      0, 0, NOW(), NOW(), '', '{}', NOW(), 0, '', '', 0, '');
 
+-- j2commerce_carts: created_on, modified_on, customer_ip, cart_params, cart_browser, cart_voucher, cart_coupon, cart_analytics are NOT NULL
 INSERT IGNORE INTO jos_j2commerce_carts
-    (j2commerce_cart_id, user_id, cart_type, created_on, modified_on, session_id)
+    (j2commerce_cart_id, user_id, session_id, cart_type, created_on, modified_on, customer_ip, cart_params, cart_browser, cart_voucher, cart_coupon, cart_analytics)
 VALUES
-    (1, 999, 'cart', NOW(), NOW(), 'testsession999');
+    (1, 999, 'testsession999', 'cart', NOW(), NOW(), '127.0.0.1', '{}', '', '', '', '');
 
+-- j2commerce_cartitems: no created_on/modified_on; variant_id, vendor_id, cartitem_params are NOT NULL
 INSERT IGNORE INTO jos_j2commerce_cartitems
-    (j2commerce_cartitem_id, cart_id, product_id, product_qty, product_options, product_type, created_on, modified_on)
+    (j2commerce_cartitem_id, cart_id, product_id, variant_id, vendor_id, product_type, cartitem_params, product_qty, product_options)
 VALUES
-    (1, 1, 1, 2, '{}', 'simple', NOW(), NOW()),
-    (2, 1, 2, 1, '{}', 'simple', NOW(), NOW());
+    (1, 1, 1, 0, 0, 'simple', '{}', 2, '{}'),
+    (2, 1, 2, 0, 0, 'simple', '{}', 1, '{}');
 SQL
     echo "[j2c6] Cart data seeded."
 

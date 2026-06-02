@@ -13,9 +13,7 @@ services:
       retries: 20
 
   joomla:
-    build:
-      context: ../..
-      dockerfile: plg_ajax_joomlaajaxforms/tests-j2c6/Dockerfile
+    image: plg_ajax_j2c6_test
     container_name: plg_ajax_j2c6_test
     depends_on:
       db:

@@ -83,7 +83,7 @@ $baseUrl = 'http://localhost/index.php?option=com_ajax&plugin=joomlaajaxforms&gr
 $ch = curl_init($baseUrl);
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => http_build_query(['action' => 'removeCartItem', 'cart_item_id' => 1, $token => '1']),
+    CURLOPT_POSTFIELDS     => http_build_query(['task' => 'removeCartItem', 'cartitem_id' => 1, $token => '1']),
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 10,
     CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
@@ -117,7 +117,8 @@ if ($user && !$user->guest) {
         $p->setAccessible(true);
         $p->setValue($app, $user);
     }
-    $app->input->set('cart_item_id', 2);
+    // Plugin reads $input->getInt('cartitem_id', 0)
+    $app->input->set('cartitem_id', 2);
 
     $mRemove = $rc->getMethod('handleRemoveCartItem');
     $mRemove->setAccessible(true);

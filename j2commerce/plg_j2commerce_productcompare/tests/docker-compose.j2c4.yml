@@ -1,0 +1,37 @@
+services:
+  joomla:
+    image: plg_j2commerce_productcompare_test_j2c4
+    container_name: plg_j2commerce_productcompare_test_j2c4
+    environment:
+      JOOMLA_DB_HOST: mysql
+      JOOMLA_DB_USER: joomla
+      JOOMLA_DB_PASSWORD: joomla_pass
+      JOOMLA_DB_NAME: joomla_db
+      JOOMLA_SITE_NAME: "Test Site J2C4"
+      JOOMLA_ADMIN_USER: admin
+      JOOMLA_ADMIN_USERNAME: admin
+      JOOMLA_ADMIN_PASSWORD: Admin123456789!@#
+      JOOMLA_ADMIN_EMAIL: admin@test.local
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "test", "-f", "/var/www/html/health.txt"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 300s
+
+  mysql:
+    image: mysql:8.0
+    container_name: plg_j2commerce_productcompare_test_mysql_j2c4
+    environment:
+      MYSQL_DATABASE: joomla_db
+      MYSQL_USER: joomla
+      MYSQL_PASSWORD: joomla_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

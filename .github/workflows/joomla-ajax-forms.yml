@@ -312,9 +312,6 @@ jobs:
     name: J6 + J2Commerce 6 (full install)
     runs-on: ubuntu-latest
     needs: build
-    # Only runs when the J2Commerce 6 ZIP is available as a repository secret.
-    # To enable: base64-encode the ZIP and store it as secret J2COMMERCE6_ZIP.
-    if: ${{ secrets.J2COMMERCE6_ZIP != '' }}
     permissions:
       contents: read
     steps:
@@ -330,10 +327,21 @@ jobs:
         run: mv plg_ajax_joomlaajaxforms/tests-j2c6/plg_ajax_joomlaajaxforms_*.zip \
                plg_ajax_joomlaajaxforms/tests-j2c6/extension.zip
 
-      - name: Decode J2Commerce 6 ZIP from secret
-        env:
-          J2COMMERCE6_ZIP: ${{ secrets.J2COMMERCE6_ZIP }}
-        run: echo "$J2COMMERCE6_ZIP" | base64 -d > plg_ajax_joomlaajaxforms/tests-j2c6/j2commerce6.zip
+      - name: Build J2Commerce 6 from source
+        run: |
+          git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2commerce6-src
+          cd /tmp/j2commerce6-src
+          php build/build_package.php
+          # build_package.php writes to docs/packages/
+          ZIP=$(ls docs/packages/pkg_j2commerce_*.zip 2>/dev/null | head -1)
+          if [ -z "$ZIP" ]; then
+            ZIP=$(ls docs/packages/com_j2commerce_*.zip 2>/dev/null | head -1)
+          fi
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: No J2Commerce 6 package ZIP found in docs/packages/" && ls docs/packages/ && exit 1
+          fi
+          echo "Built: $ZIP"
+          cp "$ZIP" "$GITHUB_WORKSPACE/plg_ajax_joomlaajaxforms/tests-j2c6/j2commerce6.zip"
 
       - name: Build image
         run: |

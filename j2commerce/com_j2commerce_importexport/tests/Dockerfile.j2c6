@@ -1,0 +1,16 @@
+FROM joomla:6.1-php8.3-apache
+
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    unzip curl default-mysql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY j2commerce6.zip /tmp/j2commerce.zip
+COPY extension.zip /tmp/extension.zip
+COPY scripts/ /scripts/
+COPY docker-entrypoint-j2c-base.sh /usr/local/bin/docker-entrypoint-j2c-base.sh
+COPY scripts/docker-entrypoint-j2c6.sh /usr/local/bin/custom-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-j2c-base.sh \
+              /usr/local/bin/custom-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]
+CMD ["apache2-foreground"]

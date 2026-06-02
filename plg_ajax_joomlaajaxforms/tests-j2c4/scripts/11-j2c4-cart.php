@@ -105,7 +105,7 @@ $baseUrl = 'http://localhost/index.php?option=com_ajax&plugin=joomlaajaxforms&gr
 $ch = curl_init($baseUrl);
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => http_build_query(['action' => 'getCartCount', $token => '1']),
+    CURLOPT_POSTFIELDS     => http_build_query(['task' => 'getCartCount', $token => '1']),
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 10,
     CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
@@ -134,9 +134,9 @@ $ch = curl_init($baseUrl);
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => http_build_query([
-        'action'       => 'removeCartItem',
-        'cart_item_id' => 1,
-        $token         => '1',
+        'task'        => 'removeCartItem',
+        'cartitem_id' => 1,
+        $token        => '1',
     ]),
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 10,
@@ -183,8 +183,8 @@ if ($user && !$user->guest) {
         $identProp->setValue($app, $user);
     }
 
-    // Set cart_item_id in input
-    $app->input->set('cart_item_id', 2);
+    // Set cartitem_id in input (plugin reads $input->getInt('cartitem_id', 0))
+    $app->input->set('cartitem_id', 2);
 
     try {
         $result = $mRemove->invoke($plugin);
