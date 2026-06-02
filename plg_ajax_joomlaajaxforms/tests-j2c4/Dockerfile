@@ -4,6 +4,8 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     unzip curl default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
+RUN echo "[client]\nskip-ssl" > /etc/mysql/conf.d/no-ssl.cnf
+
 # Plugin ZIP is copied in by the CI build step
 COPY plg_ajax_joomlaajaxforms/tests-j2c4/extension.zip /tmp/extension.zip
 

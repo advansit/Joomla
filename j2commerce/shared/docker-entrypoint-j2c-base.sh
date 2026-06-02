@@ -45,6 +45,20 @@ else
     exit 1
 fi
 
+# Install optional dependency (e.g. OSMap) before the extension under test
+if [ -f /tmp/osmap.zip ]; then
+    echo "[j2c$J2C_VER] Installing OSMap (required dependency)..."
+    cp /tmp/osmap.zip "$JOOMLA_ROOT/tmp/osmap.zip"
+    if php "$JOOMLA_ROOT/cli/joomla.php" extension:install \
+           --path="$JOOMLA_ROOT/tmp/osmap.zip" \
+           --no-interaction; then
+        echo "[j2c$J2C_VER] OSMap installed."
+    else
+        echo "ERROR: OSMap installation failed."
+        exit 1
+    fi
+fi
+
 echo "[j2c$J2C_VER] Installing extension under test..."
 cp /tmp/extension.zip "$JOOMLA_ROOT/tmp/extension.zip"
 if php "$JOOMLA_ROOT/cli/joomla.php" extension:install \

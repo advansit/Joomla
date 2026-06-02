@@ -31,7 +31,8 @@ fi
 
 echo "[fixtures] Inserting privacy fixtures (J2C$VER)..."
 
-mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null << EOSQL
+# User and address fixtures are schema-identical for J2C4 and J2C6
+mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<EOSQL
 INSERT IGNORE INTO ${DB_PREFIX}users (id, name, username, email, password, block, sendEmail, registerDate, params)
 VALUES (100, 'Test User', 'testuser', 'test@example.com', '', 0, 0, NOW(), '{}');
 
@@ -41,7 +42,91 @@ INSERT INTO ${ADDRESSES_TABLE} (user_id, first_name, last_name, email, address_1
 VALUES
     (100, 'Test', 'User', 'test@example.com', 'Teststrasse 1', 'Zürich', '8000', 204, 'billing'),
     (100, 'Test', 'User', 'test@example.com', 'Teststrasse 1', 'Zürich', '8000', 204, 'shipping');
+EOSQL
 
+if [ "$VER" = "6" ]; then
+    # J2Commerce 6: orders/orderinfos/orderitems have additional NOT NULL columns without defaults
+    mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<EOSQL
+INSERT INTO ${ORDERS_TABLE}
+    (order_id, cart_id, invoice_prefix, invoice_number, token,
+     user_id, user_email,
+     order_total, order_subtotal, order_tax, order_shipping, order_shipping_tax,
+     order_discount, order_credit, order_surcharge,
+     orderpayment_type, transaction_id, transaction_status, transaction_details,
+     currency_id, currency_code, currency_value,
+     ip_address, is_shippable, is_including_tax,
+     customer_note, customer_language, customer_group,
+     order_state_id, order_state, created_on)
+VALUES
+    ('ORD-2024-001', 0, 'INV-', 1, 'tok001',
+     100, 'test@example.com',
+     199.00000, 180.00000, 19.00000, 0.00000, 0.00000,
+     0.00000, 0.00000, 0.00000,
+     '', '', '', '',
+     1, 'CHF', 1.00000,
+     '127.0.0.1', 0, 0,
+     '', '', '',
+     1, 'Confirmed', DATE_SUB(NOW(), INTERVAL 1 YEAR)),
+    ('ORD-2013-001', 0, 'INV-', 2, 'tok002',
+     100, 'test@example.com',
+      99.00000,  90.00000,  9.00000, 0.00000, 0.00000,
+     0.00000, 0.00000, 0.00000,
+     '', '', '', '',
+     1, 'CHF', 1.00000,
+     '127.0.0.1', 0, 0,
+     '', '', '',
+     1, 'Confirmed', DATE_SUB(NOW(), INTERVAL 11 YEAR));
+
+INSERT INTO ${ORDERINFOS_TABLE}
+    (order_id,
+     billing_first_name, billing_last_name, billing_address_1, billing_city,
+     billing_zip, billing_country_id,
+     shipping_first_name, shipping_last_name, shipping_address_1, shipping_city,
+     shipping_zip, shipping_country_id,
+     all_billing, all_shipping, all_payment)
+VALUES
+    ('ORD-2024-001',
+     'Test', 'User', 'Teststrasse 1', 'Zürich', '8000', 204,
+     'Test', 'User', 'Teststrasse 1', 'Zürich', '8000', 204,
+     '{}', '{}', '{}'),
+    ('ORD-2013-001',
+     'Test', 'User', 'Alte Strasse 5', 'Bern', '3000', 204,
+     'Test', 'User', 'Alte Strasse 5', 'Bern', '3000', 204,
+     '{}', '{}', '{}');
+
+INSERT INTO ${ORDERITEMS_TABLE}
+    (order_id, cart_id, cartitem_id,
+     product_id, product_type, variant_id, vendor_id,
+     orderitem_sku, orderitem_name, orderitem_attributes,
+     orderitem_quantity, orderitem_taxprofile_id,
+     orderitem_per_item_tax, orderitem_tax, orderitem_discount, orderitem_discount_tax,
+     orderitem_price, orderitem_option_price, orderitem_finalprice,
+     orderitem_finalprice_with_tax, orderitem_finalprice_without_tax,
+     orderitem_params, created_on, created_by,
+     orderitem_weight, orderitem_weight_total)
+VALUES
+    ('ORD-2024-001', 0, 0,
+     1, 'simple', 1, 0,
+     'PROD-001', 'Test Product', '',
+     '1', 0,
+     0.00000, 0.00000, 0.00000, 0.00000,
+     180.00000, 0.00000, 199.00000,
+     199.00000, 180.00000,
+     '', NOW(), 0,
+     '0', '0'),
+    ('ORD-2013-001', 0, 0,
+     2, 'simple', 2, 0,
+     'PROD-002', 'Old Product', '',
+     '1', 0,
+     0.00000, 0.00000, 0.00000, 0.00000,
+      90.00000, 0.00000,  99.00000,
+      99.00000,  90.00000,
+     '', NOW(), 0,
+     '0', '0');
+EOSQL
+else
+    # J2Commerce 4 schema
+    mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<EOSQL
 INSERT INTO ${ORDERS_TABLE} (order_id, user_id, user_email, order_total, order_subtotal, order_tax, order_shipping, order_discount, order_state_id, order_state, currency_code, currency_value, created_on)
 VALUES
     ('ORD-2024-001', 100, 'test@example.com', 199.00000, 180.00000, 19.00000, 0.00000, 0.00000, 1, 'Confirmed', 'CHF', 1.00000000, DATE_SUB(NOW(), INTERVAL 1 YEAR)),
@@ -56,7 +141,11 @@ INSERT INTO ${ORDERITEMS_TABLE} (order_id, product_id, variant_id, orderitem_sku
 VALUES
     ('ORD-2024-001', 1, 1, 'PROD-001', 'Test Product', '1', 180.00000, 199.00000),
     ('ORD-2013-001', 2, 2, 'PROD-002', 'Old Product',  '1',  90.00000,  99.00000);
+EOSQL
+fi
 
+# Cart fixtures: cart_analytics column exists in both J2C4 and J2C6 schemas
+mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<EOSQL
 INSERT INTO ${CARTS_TABLE} (user_id, session_id, cart_type, created_on, modified_on, customer_ip, cart_params, cart_browser, cart_analytics)
 VALUES (100, 'test-session-123', 'cart', NOW(), NOW(), '127.0.0.1', '{}', '', '');
 
@@ -65,7 +154,7 @@ VALUES (LAST_INSERT_ID(), 1, 1, 0, 'simple', '{}', 2.0000, '{}');
 EOSQL
 
 # AcyMailing test schema
-mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null << EOACYM
+mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<EOACYM
 CREATE TABLE IF NOT EXISTS ${DB_PREFIX}acym_configuration (
     id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
     name  VARCHAR(255) NOT NULL,
