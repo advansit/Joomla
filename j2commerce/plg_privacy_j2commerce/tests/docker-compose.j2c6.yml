@@ -7,6 +7,7 @@ services:
       JOOMLA_DB_USER: joomla
       JOOMLA_DB_PASSWORD: joomla_pass
       JOOMLA_DB_NAME: joomla_db
+      J2COMMERCE_STACK: j6
       JOOMLA_SITE_NAME: "Test Site J2C6"
       JOOMLA_ADMIN_USER: admin
       JOOMLA_ADMIN_USERNAME: admin
