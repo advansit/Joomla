@@ -7,11 +7,13 @@ on:
       - main
     paths:
       - 'plg_ajax_joomlaajaxforms/**'
+      - 'j2commerce/shared/**'
   pull_request:
     branches:
       - main
     paths:
       - 'plg_ajax_joomlaajaxforms/**'
+      - 'j2commerce/shared/**'
 
 jobs:
   build:
@@ -248,11 +250,40 @@ jobs:
           echo "Language files are present"
 
   test-j2c4-full:
-    name: J5 + J2Commerce 4 (full install)
+    name: ${{ matrix.name }} (J5+J2C4)
     runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Configuration'
+            script: 'configuration'
+          - name: '03 - AJAX Endpoint'
+            script: 'ajax-endpoint'
+          - name: '04 - Login'
+            script: 'login'
+          - name: '05 - Registration'
+            script: 'registration'
+          - name: '06 - Reset Request'
+            script: 'reset-request'
+          - name: '07 - Remind Request'
+            script: 'remind-request'
+          - name: '08 - Security'
+            script: 'security'
+          - name: '10 - Profile'
+            script: 'profile'
+          - name: '11 - J2Store Cart'
+            script: 'j2store-cart'
+          - name: '12 - htaccess Check'
+            script: 'htaccess-check'
+          - name: '09 - Uninstall'
+            script: 'uninstall'
     steps:
       - uses: actions/checkout@v4
 
@@ -263,43 +294,37 @@ jobs:
           path: plg_ajax_joomlaajaxforms/tests-j2c4/
 
       - name: Rename package
-        run: mv plg_ajax_joomlaajaxforms/tests-j2c4/plg_ajax_joomlaajaxforms_*.zip \
-               plg_ajax_joomlaajaxforms/tests-j2c4/extension.zip
+        run: mv plg_ajax_joomlaajaxforms/tests-j2c4/plg_ajax_joomlaajaxforms_*.zip plg_ajax_joomlaajaxforms/tests-j2c4/extension.zip
 
-      - name: Build image (downloads J2Commerce 4 from public GitHub release)
+      - name: Build image
         run: |
-          cd plg_ajax_joomlaajaxforms
           docker build \
-            -f tests-j2c4/Dockerfile \
+            -f plg_ajax_joomlaajaxforms/tests-j2c4/Dockerfile \
             --build-arg J2C4_URL=https://github.com/j2commerce/j2cart/releases/download/v4.1.3/com_j2store_v4-4.1.3-pro.zip \
             -t plg_ajax_j2c4_test \
-            ../
+            .
 
       - name: Start environment
         run: |
           cd plg_ajax_joomlaajaxforms/tests-j2c4
           docker compose up -d
-          timeout 360 bash -c \
-            'until docker inspect plg_ajax_j2c4_test \
-               --format "{{.State.Health.Status}}" 2>/dev/null | grep -q healthy; \
-             do sleep 5; done'
+          timeout 360 bash -c 'until docker exec plg_ajax_j2c4_test cat /var/www/html/health.txt 2>/dev/null | grep -q OK; do sleep 5; done'
 
       - name: Show container logs
         if: always()
         run: docker logs plg_ajax_j2c4_test 2>&1 | tail -80 || true
 
-      - name: Run J2C4 cart tests
+      - name: Run ${{ matrix.name }}
         run: |
           cd plg_ajax_joomlaajaxforms/tests-j2c4
-          chmod +x run-tests.sh
-          ./run-tests.sh 11-j2c4-cart
+          ./run-tests.sh ${{ matrix.script }}
 
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: j2c4-full-logs
-          path: plg_ajax_joomlaajaxforms/tests-j2c4/
+          name: j2c4-${{ matrix.script }}-logs
+          path: plg_ajax_joomlaajaxforms/tests-j2c4/test-results/
           retention-days: 7
 
       - name: Cleanup
@@ -309,11 +334,40 @@ jobs:
           docker compose down -v
 
   test-j2c6-full:
-    name: J6 + J2Commerce 6 (full install)
+    name: ${{ matrix.name }} (J6+J2C6)
     runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Configuration'
+            script: 'configuration'
+          - name: '03 - AJAX Endpoint'
+            script: 'ajax-endpoint'
+          - name: '04 - Login'
+            script: 'login'
+          - name: '05 - Registration'
+            script: 'registration'
+          - name: '06 - Reset Request'
+            script: 'reset-request'
+          - name: '07 - Remind Request'
+            script: 'remind-request'
+          - name: '08 - Security'
+            script: 'security'
+          - name: '10 - Profile'
+            script: 'profile'
+          - name: '11 - J2Store Cart'
+            script: 'j2store-cart'
+          - name: '12 - htaccess Check'
+            script: 'htaccess-check'
+          - name: '09 - Uninstall'
+            script: 'uninstall'
     steps:
       - uses: actions/checkout@v4
 
@@ -324,58 +378,44 @@ jobs:
           path: plg_ajax_joomlaajaxforms/tests-j2c6/
 
       - name: Rename package
-        run: mv plg_ajax_joomlaajaxforms/tests-j2c6/plg_ajax_joomlaajaxforms_*.zip \
-               plg_ajax_joomlaajaxforms/tests-j2c6/extension.zip
+        run: mv plg_ajax_joomlaajaxforms/tests-j2c6/plg_ajax_joomlaajaxforms_*.zip plg_ajax_joomlaajaxforms/tests-j2c6/extension.zip
 
       - name: Build J2Commerce 6 from source
         run: |
           git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2commerce6-src
-          cd /tmp/j2commerce6-src
-          php build/build_package.php
-          # build_package.php writes to docs/packages/
-          ZIP=$(ls docs/packages/pkg_j2commerce_*.zip 2>/dev/null | head -1)
-          if [ -z "$ZIP" ]; then
-            ZIP=$(ls docs/packages/com_j2commerce_*.zip 2>/dev/null | head -1)
-          fi
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: No J2Commerce 6 package ZIP found in docs/packages/" && ls docs/packages/ && exit 1
-          fi
-          echo "Built: $ZIP"
+          cd /tmp/j2commerce6-src && php build/build_package.php
+          ZIP=$(ls docs/packages/pkg_j2commerce_*.zip docs/packages/com_j2commerce_*.zip 2>/dev/null | head -1)
+          [ -z "$ZIP" ] && echo "ERROR: No J2Commerce 6 ZIP found" && ls docs/packages/ && exit 1
           cp "$ZIP" "$GITHUB_WORKSPACE/plg_ajax_joomlaajaxforms/tests-j2c6/j2commerce6.zip"
 
       - name: Build image
         run: |
-          cd plg_ajax_joomlaajaxforms
           docker build \
-            -f tests-j2c6/Dockerfile \
+            -f plg_ajax_joomlaajaxforms/tests-j2c6/Dockerfile \
             -t plg_ajax_j2c6_test \
-            ../
+            .
 
       - name: Start environment
         run: |
           cd plg_ajax_joomlaajaxforms/tests-j2c6
           docker compose up -d
-          timeout 360 bash -c \
-            'until docker inspect plg_ajax_j2c6_test \
-               --format "{{.State.Health.Status}}" 2>/dev/null | grep -q healthy; \
-             do sleep 5; done'
+          timeout 360 bash -c 'until docker exec plg_ajax_j2c6_test cat /var/www/html/health.txt 2>/dev/null | grep -q OK; do sleep 5; done'
 
       - name: Show container logs
         if: always()
         run: docker logs plg_ajax_j2c6_test 2>&1 | tail -80 || true
 
-      - name: Run J2C6 cart tests
+      - name: Run ${{ matrix.name }}
         run: |
           cd plg_ajax_joomlaajaxforms/tests-j2c6
-          chmod +x run-tests.sh
-          ./run-tests.sh 11-j2c6-cart
+          ./run-tests.sh ${{ matrix.script }}
 
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: j2c6-full-logs
-          path: plg_ajax_joomlaajaxforms/tests-j2c6/
+          name: j2c6-${{ matrix.script }}-logs
+          path: plg_ajax_joomlaajaxforms/tests-j2c6/test-results/
           retention-days: 7
 
       - name: Cleanup

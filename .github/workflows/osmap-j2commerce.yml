@@ -6,10 +6,12 @@ on:
     branches: [main]
     paths:
       - 'j2commerce/plg_osmap_j2commerce/**'
+      - 'j2commerce/shared/**'
   pull_request:
     branches: [main]
     paths:
       - 'j2commerce/plg_osmap_j2commerce/**'
+      - 'j2commerce/shared/**'
       - 'shared/**'
 
 jobs:

@@ -27,8 +27,10 @@ class SitemapOutputTest
     private $db;
     private int $passed = 0;
     private int $failed = 0;
+    private string $productsTable;
+    private string $comElement;
 
-    // IDs inserted by docker-entrypoint.sh fixtures
+    // IDs inserted by docker-entrypoint.sh / post-install-fixtures.sh
     private const SHOP_MENU_ID    = 9001;
     private const PRODUCT_ALPHA   = ['menu_id' => 9002, 'path' => 'shop/test-product-alpha'];
     private const PRODUCT_BETA    = ['menu_id' => 9003, 'path' => 'shop/test-product-beta'];
@@ -36,19 +38,29 @@ class SitemapOutputTest
     public function __construct()
     {
         $this->db = Factory::getDbo();
+        $prefix   = $this->db->getPrefix();
+        // Detect installed J2Commerce version via SHOW TABLES LIKE
+        $this->db->setQuery('SHOW TABLES LIKE ' . $this->db->quote($prefix . 'j2commerce_products'));
+        if ($this->db->loadResult() !== null) {
+            $this->productsTable = '#__j2commerce_products';
+            $this->comElement    = 'com_j2commerce';
+        } else {
+            $this->productsTable = '#__j2store_products';
+            $this->comElement    = 'com_j2store';
+        }
     }
 
     public function run(): bool
     {
         echo "=== Sitemap Output Tests ===\n\n";
 
-        $this->test('Fixture: shop menu item exists (published=1, com_j2store)', function () {
+        $this->test('Fixture: shop menu item exists (published=1, ' . $this->comElement . ')', function () {
             $q = $this->db->getQuery(true)
                 ->select('COUNT(*)')
                 ->from('#__menu')
                 ->where('id = ' . self::SHOP_MENU_ID)
                 ->where('published = 1')
-                ->where('link LIKE ' . $this->db->quote('%com_j2store%'));
+                ->where('link LIKE ' . $this->db->quote('%' . $this->comElement . '%'));
             return (int) $this->db->setQuery($q)->loadResult() === 1;
         });
 
@@ -61,10 +73,10 @@ class SitemapOutputTest
             return (int) $this->db->setQuery($q)->loadResult() === 2;
         });
 
-        $this->test('Fixture: 2 enabled J2Store products exist', function () {
+        $this->test('Fixture: 2 enabled products exist (' . $this->productsTable . ')', function () {
             $q = $this->db->getQuery(true)
                 ->select('COUNT(*)')
-                ->from('#__j2store_products')
+                ->from($this->productsTable)
                 ->where('product_source_id IN (9001, 9002)')
                 ->where('enabled = 1');
             return (int) $this->db->setQuery($q)->loadResult() === 2;
@@ -134,17 +146,15 @@ class SitemapOutputTest
         });
 
         $this->test('Disabled product is excluded from query results', function () {
-            // Temporarily disable product alpha
             $this->db->setQuery(
-                'UPDATE #__j2store_products SET enabled=0 WHERE product_source_id=9001'
+                'UPDATE ' . $this->productsTable . ' SET enabled=0 WHERE product_source_id=9001'
             )->execute();
 
             $products = $this->runGetTreeQuery(self::SHOP_MENU_ID);
             $count = count($products);
 
-            // Re-enable
             $this->db->setQuery(
-                'UPDATE #__j2store_products SET enabled=1 WHERE product_source_id=9001'
+                'UPDATE ' . $this->productsTable . ' SET enabled=1 WHERE product_source_id=9001'
             )->execute();
 
             return $count === 1;
@@ -194,7 +204,7 @@ class SitemapOutputTest
                 . ' ON (m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id, ' . $db->quote('&%') . ')'
                 . '  OR m.link LIKE CONCAT(' . $db->quote('%&id=') . ', a.id))'
                 . ' AND m.link LIKE ' . $db->quote('%com_content%view=article%'))
-            ->join('INNER', $db->quoteName('#__j2store_products', 'p')
+            ->join('INNER', $db->quoteName($this->productsTable, 'p')
                 . ' ON p.product_source_id = a.id'
                 . ' AND p.product_source = ' . $db->quote('com_content')
                 . ' AND p.enabled = 1')

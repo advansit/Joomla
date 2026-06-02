@@ -56,7 +56,7 @@ VALUES
 SQL
     echo "[j2c6] Cart data seeded."
 
-    touch "$JOOMLA_ROOT/health.txt"
+    echo "OK" > "$JOOMLA_ROOT/health.txt"
     echo "[j2c6] Setup complete."
 ) &
 

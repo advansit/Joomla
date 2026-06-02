@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['j2commerce/com_j2store_cleanup/**']
+    paths:
+      - 'j2commerce/com_j2store_cleanup/**'
+      - 'j2commerce/shared/**'
 
 jobs:
   build:

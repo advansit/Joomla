@@ -4,10 +4,14 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['j2commerce/plg_j2commerce_productcompare/**']
+    paths:
+      - 'j2commerce/plg_j2commerce_productcompare/**'
+      - 'j2commerce/shared/**'
   pull_request:
     branches: [main]
-    paths: ['j2commerce/plg_j2commerce_productcompare/**']
+    paths:
+      - 'j2commerce/plg_j2commerce_productcompare/**'
+      - 'j2commerce/shared/**'
 
 jobs:
   build:

@@ -65,7 +65,7 @@ SQL
     echo "[j2c4] Cart data seeded."
 
     # Signal ready
-    touch "$JOOMLA_ROOT/health.txt"
+    echo "OK" > "$JOOMLA_ROOT/health.txt"
     echo "[j2c4] Setup complete."
 ) &
 

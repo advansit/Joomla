@@ -11,8 +11,10 @@ COPY plg_ajax_joomlaajaxforms/tests-j2c4/extension.zip /tmp/extension.zip
 ARG J2C4_URL=https://github.com/j2commerce/j2cart/releases/download/v4.1.3/com_j2store_v4-4.1.3-pro.zip
 RUN curl -fsSL "$J2C4_URL" -o /tmp/j2commerce4.zip
 
-# Test scripts must be inside the container so docker exec can run them
-COPY plg_ajax_joomlaajaxforms/tests-j2c4/scripts/ /tests-j2c4/scripts/
+# Standard test scripts (01-12) from the base test suite
+COPY plg_ajax_joomlaajaxforms/tests/scripts/ /scripts/
+# J2C4-specific overrides (11-j2c4-cart.php replaces 11-j2store-cart.php)
+COPY plg_ajax_joomlaajaxforms/tests-j2c4/scripts/11-j2c4-cart.php /scripts/11-j2store-cart.php
 
 COPY plg_ajax_joomlaajaxforms/tests-j2c4/scripts/docker-entrypoint.sh /docker-entrypoint-custom.sh
 RUN chmod +x /docker-entrypoint-custom.sh

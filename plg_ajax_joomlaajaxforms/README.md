@@ -180,22 +180,36 @@ Two additional CI jobs exercise the plugin against real J2Commerce installations
 - IDOR: unauthenticated `removeCartItem` rejected, row not deleted
 - Authenticated `removeCartItem` deletes the row and returns updated `cartCount`
 
-**`test-j2c6-full` (Joomla 6 + J2Commerce 6)** — runs only when the repository secret `J2COMMERCE6_ZIP` is set (base64-encoded ZIP). J2Commerce 6 has no public release; store the ZIP as a secret to enable this job. Tests mirror the J2C4 suite against `#__j2commerce_*` tables.
+**`test-j2c6-full` (Joomla 6 + J2Commerce 6)** — runs on every push/PR. Builds J2Commerce 6 from source (`git clone j2commerce/j2commerce && php build/build_package.php`) since no public release ZIP exists. Tests mirror the J2C4 suite against `#__j2commerce_*` tables.
 
 ### Running Tests Locally
 
 ```bash
+# Standard tests (Joomla 5 + Joomla 6, no J2Commerce)
 cd tests
 docker compose up -d
-timeout 300 bash -c 'until docker exec plg_ajax_joomlaajaxforms_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+timeout 300 bash -c 'until docker exec plg_ajax_joomlaajaxforms_test cat /var/www/html/health.txt 2>/dev/null | grep -q OK; do sleep 5; done'
 ./run-tests.sh all
 docker compose down -v
 
-# Joomla 6
-docker compose -f docker-compose.joomla6.yml up -d
-timeout 300 bash -c 'until docker exec plg_ajax_joomlaajaxforms_j6_test test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+# J2Commerce 4 full-install tests (Joomla 5 + J2Commerce 4)
+cd tests-j2c4
+# Place com_j2store ZIP as extension.zip and j2store4.zip in this directory first
+docker compose up -d
+timeout 360 bash -c 'until docker exec plg_ajax_j2c4_test cat /var/www/html/health.txt 2>/dev/null | grep -q OK; do sleep 5; done'
 ./run-tests.sh all
-docker compose -f docker-compose.joomla6.yml down -v
+docker compose down -v
+
+# J2Commerce 6 full-install tests (Joomla 6 + J2Commerce 6)
+cd tests-j2c6
+# Build J2Commerce 6 from source first:
+#   git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2c6-src
+#   cd /tmp/j2c6-src && php build/build_package.php
+#   cp docs/packages/pkg_j2commerce_*.zip tests-j2c6/j2commerce6.zip
+docker compose up -d
+timeout 360 bash -c 'until docker exec plg_ajax_j2c6_test cat /var/www/html/health.txt 2>/dev/null | grep -q OK; do sleep 5; done'
+./run-tests.sh all
+docker compose down -v
 ```
 
 ## Troubleshooting

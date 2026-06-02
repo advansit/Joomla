@@ -6,11 +6,13 @@ on:
     branches: [main]
     paths: 
       - 'j2commerce/plg_privacy_j2commerce/**'
+      - 'j2commerce/shared/**'
       - 'shared/**'
   pull_request:
     branches: [main]
     paths:
       - 'j2commerce/plg_privacy_j2commerce/**'
+      - 'j2commerce/shared/**'
       - 'shared/**'
 
 jobs:
