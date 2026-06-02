@@ -318,7 +318,7 @@ jobs:
       - name: Run tests
         run: |
           cd j2commerce/plg_privacy_j2commerce/tests
-          CONTAINER_NAME=plg_privacy_j2commerce_test_j2c6 ./run-tests.sh ${{ matrix.script }}
+          J2COMMERCE_STACK=j6 CONTAINER_NAME=plg_privacy_j2commerce_test_j2c6 ./run-tests.sh ${{ matrix.script }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
