@@ -34,10 +34,12 @@ JOOMLA_ROOT="/var/www/html"
         --no-interaction
     echo "[j2c4] Plugin installed."
 
-    # Enable the plugin
-    php "$JOOMLA_ROOT/cli/joomla.php" extension:enable \
-        --folder=ajax --element=joomlaajaxforms \
-        --no-interaction 2>/dev/null || true
+    # Enable the plugin via DB (extension:enable CLI does not exist in Joomla 5/6)
+    DB_PREFIX=$(php -r "require '$JOOMLA_ROOT/configuration.php'; echo (new JConfig)->dbprefix;" 2>/dev/null || echo "jos_")
+    mysql -h db -u joomla -pjoomla joomla_test \
+        -e "UPDATE ${DB_PREFIX}extensions SET enabled = 1 WHERE type = 'plugin' AND folder = 'ajax' AND element = 'joomlaajaxforms';" \
+        && echo "[j2c4] Plugin enabled." \
+        || echo "[j2c4] WARNING: Could not enable plugin via DB."
 
     # Seed test cart data: one user (id=999), one cart, two cart items
     echo "[j2c4] Seeding cart data..."
