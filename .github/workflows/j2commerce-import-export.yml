@@ -6,10 +6,12 @@ on:
     branches: [main]
     paths: 
       - 'j2commerce/com_j2commerce_importexport/**'
+      - 'j2commerce/shared/**'
   pull_request:
     branches: [main]
     paths:
       - 'j2commerce/com_j2commerce_importexport/**'
+      - 'j2commerce/shared/**'
       - 'shared/**'
 
 jobs:
@@ -106,10 +108,133 @@ jobs:
           cd j2commerce/com_j2commerce_importexport/tests
           docker compose down -v
 
+  test-j2c4-full:
+    name: ${{ matrix.name }} (J5+J2C4)
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Component Structure'
+            script: 'structure'
+          - name: '03 - Export Model'
+            script: 'export-model'
+          - name: '04 - Import Model'
+            script: 'import-model'
+          - name: '05 - Export Controller'
+            script: 'export-controller'
+          - name: '06 - Uninstall'
+            script: 'uninstall'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: j2commerce/com_j2commerce_importexport/tests/
+      - name: Build J2C4 image
+        run: |
+          cp j2commerce/shared/docker-entrypoint-j2c-base.sh \
+             j2commerce/com_j2commerce_importexport/tests/docker-entrypoint-j2c-base.sh
+          cd j2commerce/com_j2commerce_importexport/tests
+          docker build -f Dockerfile.j2c4 -t com_j2commerce_importexport_test_j2c4 .
+      - name: Start environment
+        run: |
+          cd j2commerce/com_j2commerce_importexport/tests
+          docker compose -f docker-compose.j2c4.yml up -d
+          timeout 360 bash -c 'until docker exec com_j2commerce_importexport_test_j2c4 test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+      - name: Show container logs
+        if: always()
+        run: docker logs com_j2commerce_importexport_test_j2c4 2>&1 | tail -80 || true
+      - name: Run tests
+        run: |
+          cd j2commerce/com_j2commerce_importexport/tests
+          CONTAINER_NAME=com_j2commerce_importexport_test_j2c4 ./run-tests.sh ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: j2c4-${{ matrix.script }}-logs
+          path: j2commerce/com_j2commerce_importexport/tests/test-results/*.txt
+      - name: Cleanup
+        if: always()
+        run: |
+          cd j2commerce/com_j2commerce_importexport/tests
+          docker compose -f docker-compose.j2c4.yml down -v
+
+  test-j2c6-full:
+    name: ${{ matrix.name }} (J6+J2C6)
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: '01 - Installation'
+            script: 'installation'
+          - name: '02 - Component Structure'
+            script: 'structure'
+          - name: '03 - Export Model'
+            script: 'export-model'
+          - name: '04 - Import Model'
+            script: 'import-model'
+          - name: '05 - Export Controller'
+            script: 'export-controller'
+          - name: '06 - Uninstall'
+            script: 'uninstall'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-package
+          path: j2commerce/com_j2commerce_importexport/tests/
+      - name: Build J2Commerce 6 from source
+        run: |
+          git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2commerce6-src
+          cd /tmp/j2commerce6-src && php build/build_package.php
+          ZIP=$(ls docs/packages/pkg_j2commerce_*.zip docs/packages/com_j2commerce_*.zip 2>/dev/null | head -1)
+          [ -z "$ZIP" ] && echo "ERROR: No J2Commerce 6 ZIP found" && ls docs/packages/ && exit 1
+          cp "$ZIP" "$GITHUB_WORKSPACE/j2commerce/com_j2commerce_importexport/tests/j2commerce6.zip"
+      - name: Build J2C6 image
+        run: |
+          cp j2commerce/shared/docker-entrypoint-j2c-base.sh \
+             j2commerce/com_j2commerce_importexport/tests/docker-entrypoint-j2c-base.sh
+          cd j2commerce/com_j2commerce_importexport/tests
+          docker build -f Dockerfile.j2c6 -t com_j2commerce_importexport_test_j2c6 .
+      - name: Start environment
+        run: |
+          cd j2commerce/com_j2commerce_importexport/tests
+          docker compose -f docker-compose.j2c6.yml up -d
+          timeout 360 bash -c 'until docker exec com_j2commerce_importexport_test_j2c6 test -f /var/www/html/health.txt 2>/dev/null; do sleep 5; done'
+      - name: Show container logs
+        if: always()
+        run: docker logs com_j2commerce_importexport_test_j2c6 2>&1 | tail -80 || true
+      - name: Run tests
+        run: |
+          cd j2commerce/com_j2commerce_importexport/tests
+          CONTAINER_NAME=com_j2commerce_importexport_test_j2c6 ./run-tests.sh ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: j2c6-${{ matrix.script }}-logs
+          path: j2commerce/com_j2commerce_importexport/tests/test-results/*.txt
+      - name: Cleanup
+        if: always()
+        run: |
+          cd j2commerce/com_j2commerce_importexport/tests
+          docker compose -f docker-compose.j2c6.yml down -v
+
   collect-results:
     name: Collect Results
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, test-j2c4-full, test-j2c6-full]
     if: always()
     permissions: {}
     steps:

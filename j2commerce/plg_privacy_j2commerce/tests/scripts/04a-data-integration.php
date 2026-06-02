@@ -136,20 +136,29 @@ class DataIntegrationTest
         echo "\n--- Cart Operations ---\n";
 
         $testCart = (object) [
-            'user_id' => 999,
-            'session_id' => 'test-delete-session',
-            'cart_type' => 'cart',
-            'created_on' => date('Y-m-d H:i:s')
+            'user_id'        => 999,
+            'session_id'     => 'test-delete-session',
+            'cart_type'      => 'cart',
+            'created_on'     => date('Y-m-d H:i:s'),
+            'modified_on'    => date('Y-m-d H:i:s'),
+            'customer_ip'    => '127.0.0.1',
+            'cart_params'    => '{}',
+            'cart_browser'   => '',
+            'cart_analytics' => '',
         ];
         $this->db->insertObject('#__' . $this->tp . '_carts', $testCart, $this->tp . '_cart_id');
         $cartId = $this->db->insertid();
         $this->test('Cart insert works', $cartId > 0);
 
         $testCartItem = (object) [
-            'cart_id' => $cartId,
-            'product_id' => 1,
-            'variant_id' => 1,
-            'product_qty' => 1.0000
+            'cart_id'        => $cartId,
+            'product_id'     => 1,
+            'variant_id'     => 1,
+            'vendor_id'      => 0,
+            'product_type'   => 'simple',
+            'cartitem_params' => '{}',
+            'product_qty'    => 1.0000,
+            'product_options' => '{}',
         ];
         $this->db->insertObject('#__' . $this->tp . '_cartitems', $testCartItem, $this->tp . '_cartitem_id');
         $cartItemId = $this->db->insertid();
@@ -172,39 +181,68 @@ class DataIntegrationTest
         // Test 5: Order anonymization on correct tables
         echo "\n--- Order Anonymization (real schema) ---\n";
 
-        // Insert order + orderinfo
+        // Insert order + orderinfo — J2Commerce 6 has additional NOT NULL columns without defaults
+        $isJ6 = ($this->tp === 'j2commerce');
+
         $testOrder = (object) [
-            'order_id' => 'TEST-ANON-001',
-            'user_id' => 999,
-            'user_email' => 'anon@test.com',
-            'order_total' => 100.00000,
+            'order_id'      => 'TEST-ANON-001',
+            'user_id'       => 999,
+            'user_email'    => 'anon@test.com',
+            'order_total'   => 100.00000,
             'order_subtotal' => 90.00000,
-            'order_tax' => 10.00000,
+            'order_tax'     => 10.00000,
             'order_shipping' => 0.00000,
             'order_discount' => 0.00000,
             'order_state_id' => 1,
             'currency_code' => 'CHF',
             'currency_value' => 1.00000000,
-            'created_on' => date('Y-m-d H:i:s', strtotime('-5 years'))
+            'created_on'    => date('Y-m-d H:i:s', strtotime('-5 years')),
         ];
+        if ($isJ6) {
+            $testOrder->cart_id            = 0;
+            $testOrder->invoice_prefix     = 'INV-';
+            $testOrder->invoice_number     = 99;
+            $testOrder->token              = 'test-anon-token';
+            $testOrder->order_shipping_tax = 0.00000;
+            $testOrder->order_credit       = 0.00000;
+            $testOrder->order_surcharge    = 0.00000;
+            $testOrder->orderpayment_type  = '';
+            $testOrder->transaction_id     = '';
+            $testOrder->transaction_status = '';
+            $testOrder->transaction_details = '';
+            $testOrder->currency_id        = 1;
+            $testOrder->ip_address         = '127.0.0.1';
+            $testOrder->is_shippable       = 0;
+            $testOrder->is_including_tax   = 0;
+            $testOrder->customer_note      = '';
+            $testOrder->customer_language  = '';
+            $testOrder->customer_group     = '';
+            $testOrder->order_state        = 'Confirmed';
+        }
         $this->db->insertObject('#__' . $this->tp . '_orders', $testOrder, $this->tp . '_order_id');
         $orderPk = $this->db->insertid();
         $this->test('Test order inserted', $orderPk > 0);
 
         $testInfo = (object) [
-            'order_id' => 'TEST-ANON-001',
+            'order_id'           => 'TEST-ANON-001',
             'billing_first_name' => 'Secret',
-            'billing_last_name' => 'Person',
-            'billing_address_1' => 'Hidden Street 1',
-            'billing_city' => 'Secret City',
-            'billing_zip' => '99999',
-            'billing_phone_1' => '+41 00 000 00 00',
+            'billing_last_name'  => 'Person',
+            'billing_address_1'  => 'Hidden Street 1',
+            'billing_city'       => 'Secret City',
+            'billing_zip'        => '99999',
+            'billing_phone_1'    => '+41 00 000 00 00',
             'shipping_first_name' => 'Secret',
-            'shipping_last_name' => 'Person',
-            'shipping_address_1' => 'Hidden Street 1',
-            'shipping_city' => 'Secret City',
-            'shipping_zip' => '99999',
+            'shipping_last_name'  => 'Person',
+            'shipping_address_1'  => 'Hidden Street 1',
+            'shipping_city'       => 'Secret City',
+            'shipping_zip'        => '99999',
         ];
+        if ($isJ6) {
+            // all_billing, all_shipping, all_payment are longtext NOT NULL in J2Commerce 6
+            $testInfo->all_billing  = '{}';
+            $testInfo->all_shipping = '{}';
+            $testInfo->all_payment  = '{}';
+        }
         $this->db->insertObject('#__' . $this->tp . '_orderinfos', $testInfo, $this->tp . '_orderinfo_id');
         $infoPk = $this->db->insertid();
         $this->test('Test order info inserted', $infoPk > 0);
