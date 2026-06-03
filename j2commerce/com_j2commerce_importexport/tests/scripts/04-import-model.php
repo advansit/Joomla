@@ -93,20 +93,41 @@ class ImportModelTest
             }
         });
 
-        // --- Runtime: import() batch method exists and handles empty data ---
-        $this->test('importData() method exists', function () use ($rc) {
-            return $rc->hasMethod('importData');
-        });
+        // --- Runtime: importProductFull() with minimal valid data ---
+        // Detect stack
+        $db     = Factory::getContainer()->get(DatabaseInterface::class);
+        $tables = $db->getTableList();
+        $prefix = $db->getPrefix();
+        $isJ6   = in_array($prefix . 'j2commerce_products', $tables, true);
+        $hasJ4  = in_array($prefix . 'j2store_products',    $tables, true);
 
-        $this->test('importData() with empty file returns result array', function () use ($model) {
-            // importData() dispatches on file extension — use an empty .csv so it reaches the empty-data path
-            $tmpCsv = sys_get_temp_dir() . '/importexport-test-empty.csv';
-            file_put_contents($tmpCsv, '');
-            $result = $model->importData($tmpCsv, 'products_full', []);
-            return is_array($result)
-                && array_key_exists('imported', $result)
-                && array_key_exists('failed', $result);
-        });
+        if (!$isJ6 && !$hasJ4) {
+            echo "SKIP importProductFull() round-trip — J2Commerce tables not present\n";
+        } else {
+            $this->test('importProductFull() with minimal data succeeds', function () use ($model) {
+                $data = [
+                    'title'       => 'Import Test Product ' . uniqid(),
+                    'alias'       => 'import-test-' . uniqid(),
+                    'category'    => 'Import Test Category',
+                    'sku'         => 'IMP-TEST-' . uniqid(),
+                    'price'       => 19.99,
+                    'variants'    => [],
+                    'product_images' => [],
+                    'options'     => [],
+                    'filters'     => [],
+                    'files'       => [],
+                    'tags'        => [],
+                    'custom_fields' => [],
+                ];
+                $result = $model->importProductFull($data, []);
+                return is_array($result)
+                    && ($result['success'] ?? false) === true
+                    && isset($result['article_id'])
+                    && isset($result['product_id'])
+                    && (int) $result['article_id'] > 0
+                    && (int) $result['product_id'] > 0;
+            });
+        }
 
         echo "\n=== Import Model Summary ===\n";
         echo "Passed: {$this->passed}\n";
