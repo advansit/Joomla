@@ -309,6 +309,31 @@ if ($task === 'cleanup' && Session::checkToken()) {
         return;
     }
     
+    // Reject any IDs that belong to protected/core extensions before passing
+    // them to cleanupExtensions(). classifyExtension() marks com_j2store and
+    // com_j2commerce as 'core'; we enforce that here so a crafted POST cannot
+    // bypass the UI-level protection.
+    $protectedElements = ['com_j2store', 'com_j2commerce'];
+    $query = createDbQuery($db)
+        ->select($db->quoteName(['extension_id', 'element']))
+        ->from($db->quoteName('#__extensions'))
+        ->whereIn($db->quoteName('extension_id'), $cids);
+    $db->setQuery($query);
+    $blocked = [];
+    foreach ($db->loadObjectList() as $ext) {
+        if (in_array($ext->element, $protectedElements, true)) {
+            $blocked[] = $ext->element;
+        }
+    }
+    if (!empty($blocked)) {
+        $app->enqueueMessage(
+            'Cannot remove protected core extension(s): ' . implode(', ', $blocked),
+            'error'
+        );
+        $app->redirect('index.php?option=com_j2store_cleanup');
+        return;
+    }
+
     $r = cleanupExtensions($db, $cids);
 
     if ($r['success'] > 0) {

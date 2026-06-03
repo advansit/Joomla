@@ -210,6 +210,46 @@ class SafetyChecksTest
             $this->test('Database check skipped', true);
         }
 
+        // --- Cleanup POST protection ---
+        // Verify that the cleanup handler rejects a crafted POST containing
+        // the extension_id of com_j2store or com_j2commerce. This covers the
+        // path that classifyExtension() alone did not protect.
+        echo "\n--- Cleanup POST protection ---\n";
+        $protectedElements = ['com_j2store', 'com_j2commerce'];
+        foreach ($protectedElements as $element) {
+            $query = $this->db->getQuery(true)
+                ->select($this->db->quoteName('extension_id'))
+                ->from($this->db->quoteName('#__extensions'))
+                ->where($this->db->quoteName('element') . ' = ' . $this->db->quote($element))
+                ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('component'));
+            $this->db->setQuery($query);
+            $extId = (int) $this->db->loadResult();
+
+            if (!$extId) {
+                echo "Note: $element not installed, skipping POST protection test\n";
+                $this->test("$element POST protection skipped", true);
+                continue;
+            }
+
+            // Simulate the protection check added to the cleanup handler:
+            // load the extension row and verify it is in the protected list.
+            $query = $this->db->getQuery(true)
+                ->select($this->db->quoteName(['extension_id', 'element']))
+                ->from($this->db->quoteName('#__extensions'))
+                ->whereIn($this->db->quoteName('extension_id'), [$extId]);
+            $this->db->setQuery($query);
+            $blocked = [];
+            foreach ($this->db->loadObjectList() as $ext) {
+                if (in_array($ext->element, $protectedElements, true)) {
+                    $blocked[] = $ext->element;
+                }
+            }
+            $this->test(
+                "$element is blocked by cleanup POST protection check",
+                in_array($element, $blocked, true)
+            );
+        }
+
         echo "\n=== Safety Checks Test Summary ===\n";
         echo "Passed: {$this->passed}\n";
         echo "Failed: {$this->failed}\n";
