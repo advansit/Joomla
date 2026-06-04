@@ -95,11 +95,12 @@ class GetProductsDataTest
             $p   = $products[0];
             $pkCol = $this->productsPk;
 
-            $this->test('Product has ' . $pkCol,  isset($p->$pkCol));
-            $this->test('Product has title',       isset($p->title) && !empty($p->title));
-            $this->test('Product has sku',         isset($p->sku));
-            $this->test('Product has price',       isset($p->price));
-            $this->test('Product has options key', isset($p->options) && is_array($p->options));
+            $this->test('Product has ' . $pkCol,    isset($p->$pkCol));
+            $this->test('Product has title',         isset($p->title) && !empty($p->title));
+            $this->test('Product has sku',           isset($p->sku));
+            $this->test('Product has price',         isset($p->price));
+            $this->test('Product has availability',  array_key_exists('availability', (array) $p));
+            $this->test('Product has options key',   isset($p->options) && is_array($p->options));
 
             // Product 0 has options — verify they're loaded on both J4 and J6
             $p1 = array_values(array_filter($products, fn($x) => (int)$x->$pkCol === $this->seededProductIds[0]))[0] ?? null;
@@ -296,8 +297,7 @@ class GetProductsDataTest
             `product_id`           INT UNSIGNED NOT NULL DEFAULT 0,
             `sku`                  VARCHAR(255) NOT NULL DEFAULT \'\',
             `price`                DECIMAL(15,5) NOT NULL DEFAULT 0.00000,
-            `stock`                DECIMAL(15,4) NOT NULL DEFAULT 0.0000,
-            `availability`         VARCHAR(255) NOT NULL DEFAULT \'\',
+            `availability`         INT          DEFAULT NULL,
             `params`               TEXT         NOT NULL,
             `isdefault`            TINYINT(1)   NOT NULL DEFAULT 0,
             PRIMARY KEY (`' . $variantCol . '`)
@@ -427,8 +427,7 @@ class GetProductsDataTest
                 'product_id'   => $productId,
                 'sku'          => 'TEST-SKU-' . $i . '-' . $ts,
                 'price'        => 10.00 + ($i * 5),
-                'stock'        => 100,
-                'availability' => '',
+                'availability' => 1,
                 'params'       => '{}',
                 'isdefault'    => 1,
             ];

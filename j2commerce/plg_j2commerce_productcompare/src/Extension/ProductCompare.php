@@ -309,7 +309,6 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
                 $db->quoteName('v') . '.' . $db->quoteName($variantsPk),
                 $db->quoteName('v') . '.' . $db->quoteName('sku'),
                 $db->quoteName('v') . '.' . $db->quoteName('price'),
-                $db->quoteName('v') . '.' . $db->quoteName('stock'),
                 $db->quoteName('v') . '.' . $db->quoteName('availability'),
                 $db->quoteName('c') . '.' . $db->quoteName('title'),
                 $db->quoteName('c') . '.' . $db->quoteName('introtext'),
