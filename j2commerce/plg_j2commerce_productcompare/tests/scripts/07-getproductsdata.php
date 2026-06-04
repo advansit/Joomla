@@ -101,18 +101,13 @@ class GetProductsDataTest
             $this->test('Product has price',       isset($p->price));
             $this->test('Product has options key', isset($p->options) && is_array($p->options));
 
-            // Product 0 has options — on J5 verify they're loaded; on J6 options
-            // return empty (J6 schema has no option_name/option_value, see #118)
+            // Product 0 has options — verify they're loaded on both J4 and J6
             $p1 = array_values(array_filter($products, fn($x) => (int)$x->$pkCol === $this->seededProductIds[0]))[0] ?? null;
             if ($p1) {
-                if ($this->isJ6) {
-                    $this->test('Product options empty on J6 (schema pending #118)', $p1->options === []);
-                } else {
-                    $this->test('Product with options: options not empty', !empty($p1->options),
-                        'Expected options for product ' . $this->seededProductIds[0]);
-                    $optionNames = array_column($p1->options, 'option_name');
-                    $this->test('Option name "Colour" present', in_array('Colour', $optionNames));
-                }
+                $this->test('Product with options: options not empty', !empty($p1->options),
+                    'Expected options for product ' . $this->seededProductIds[0]);
+                $optionNames = array_column($p1->options, 'option_name');
+                $this->test('Option name "Colour" present', in_array('Colour', $optionNames));
             }
 
             // Product 1 has no options — verify empty array, no crash
@@ -155,14 +150,9 @@ class GetProductsDataTest
         // Product with options
         $opts = $method->invoke($plugin, $this->seededProductIds[0]);
         $this->test('getProductOptions: returns array', is_array($opts));
-        if ($this->isJ6) {
-            // J6: option lookup not yet implemented (schema has no option_name/option_value — see #118)
-            $this->test('getProductOptions: empty on J6 (pending #118)', $opts === []);
-        } else {
-            $this->test('getProductOptions: not empty on J5',  !empty($opts));
-            $this->test('Option has option_name key',          isset($opts[0]['option_name']));
-            $this->test('Option has option_value key',         isset($opts[0]['option_value']));
-        }
+        $this->test('getProductOptions: not empty',    !empty($opts));
+        $this->test('Option has option_name key',      isset($opts[0]['option_name']));
+        $this->test('Option has option_value key',     isset($opts[0]['option_value']));
 
         // Product without options
         $opts2 = $method->invoke($plugin, $this->seededProductIds[1]);
@@ -224,14 +214,26 @@ class GetProductsDataTest
     private string $productsTable;
     /** @var string Variants table name */
     private string $variantsTable;
-    /** @var string Product options table name */
+    /** @var string Product options mapping table name */
     private string $optionsTable;
+    /** @var string Options label table (J6 only) */
+    private string $optionsLabelTable;
+    /** @var string Option values table (J6 only) */
+    private string $optionValuesTable;
+    /** @var string Product option values mapping table (J6 only) */
+    private string $productOptionValuesTable;
     /** @var string Products PK column */
     private string $productsPk;
     /** @var string Variants PK column */
     private string $variantsPk;
     /** @var string Options PK column */
     private string $optionsPk;
+    /** @var int[] Seeded j2commerce_options IDs (J6 only) */
+    private array $seededOptionLabelIds = [];
+    /** @var int[] Seeded j2commerce_optionvalues IDs (J6 only) */
+    private array $seededOptionValueIds = [];
+    /** @var int[] Seeded j2commerce_product_optionvalues IDs (J6 only) */
+    private array $seededProductOptionValueIds = [];
 
     private function detectStack(): void
     {
@@ -241,19 +243,25 @@ class GetProductsDataTest
         $this->isJ6 = (getenv('J2COMMERCE_STACK') === 'j6');
 
         if ($this->isJ6) {
-            $this->productsTable = '#__j2commerce_products';
-            $this->variantsTable = '#__j2commerce_variants';
-            $this->optionsTable  = '#__j2commerce_product_options';
-            $this->productsPk    = 'j2commerce_product_id';
-            $this->variantsPk    = 'j2commerce_variant_id';
-            $this->optionsPk     = 'j2commerce_product_option_id';
+            $this->productsTable            = '#__j2commerce_products';
+            $this->variantsTable            = '#__j2commerce_variants';
+            $this->optionsTable             = '#__j2commerce_product_options';
+            $this->optionsLabelTable        = '#__j2commerce_options';
+            $this->optionValuesTable        = '#__j2commerce_optionvalues';
+            $this->productOptionValuesTable = '#__j2commerce_product_optionvalues';
+            $this->productsPk               = 'j2commerce_product_id';
+            $this->variantsPk               = 'j2commerce_variant_id';
+            $this->optionsPk                = 'j2commerce_productoption_id';
         } else {
-            $this->productsTable = '#__j2store_products';
-            $this->variantsTable = '#__j2store_variants';
-            $this->optionsTable  = '#__j2store_product_options';
-            $this->productsPk    = 'j2store_product_id';
-            $this->variantsPk    = 'j2store_variant_id';
-            $this->optionsPk     = 'j2store_product_option_id';
+            $this->productsTable            = '#__j2store_products';
+            $this->variantsTable            = '#__j2store_variants';
+            $this->optionsTable             = '#__j2store_product_options';
+            $this->optionsLabelTable        = '';
+            $this->optionValuesTable        = '';
+            $this->productOptionValuesTable = '';
+            $this->productsPk               = 'j2store_product_id';
+            $this->variantsPk               = 'j2store_variant_id';
+            $this->optionsPk                = 'j2store_product_option_id';
         }
     }
 
@@ -296,8 +304,7 @@ class GetProductsDataTest
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
 
         if ($this->isJ6) {
-            // Real J2Commerce 6 schema: mapping table only — no option_name/option_value.
-            // Option labels live in a separate #__j2commerce_options table (see #118).
+            // J6: product_options is a mapping table (product_id → option_id)
             $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $optionsBase . '` (
                 `' . $optionCol . '`   INT UNSIGNED NOT NULL AUTO_INCREMENT,
                 `option_id`            INT UNSIGNED NOT NULL DEFAULT 0,
@@ -307,6 +314,47 @@ class GetProductsDataTest
                 `required`             TINYINT(1)   NOT NULL DEFAULT 0,
                 `is_variant`           TINYINT(1)   NOT NULL DEFAULT 0,
                 PRIMARY KEY (`' . $optionCol . '`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
+
+            // J6: options label table
+            $optionsLabelBase = substr($this->optionsLabelTable, 3);
+            $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $optionsLabelBase . '` (
+                `j2commerce_option_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `option_name`          VARCHAR(255) NOT NULL DEFAULT \'\',
+                `option_unique_name`   VARCHAR(255) NOT NULL DEFAULT \'\',
+                `type`                 VARCHAR(50)  NOT NULL DEFAULT \'\',
+                `enabled`              TINYINT(1)   NOT NULL DEFAULT 1,
+                `ordering`             INT          NOT NULL DEFAULT 0,
+                PRIMARY KEY (`j2commerce_option_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
+
+            // J6: option values table
+            $optionValuesBase = substr($this->optionValuesTable, 3);
+            $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $optionValuesBase . '` (
+                `j2commerce_optionvalue_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `option_id`                INT UNSIGNED NOT NULL DEFAULT 0,
+                `optionvalue_name`         VARCHAR(255) NOT NULL DEFAULT \'\',
+                `optionvalue_image`        LONGTEXT     NOT NULL,
+                `ordering`                 INT          NOT NULL DEFAULT 0,
+                PRIMARY KEY (`j2commerce_optionvalue_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
+
+            // J6: product option values mapping table
+            $productOptionValuesBase = substr($this->productOptionValuesTable, 3);
+            $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $productOptionValuesBase . '` (
+                `j2commerce_product_optionvalue_id`    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `productoption_id`                     INT UNSIGNED NOT NULL DEFAULT 0,
+                `optionvalue_id`                       INT UNSIGNED DEFAULT NULL,
+                `parent_optionvalue`                   TEXT         NOT NULL,
+                `product_optionvalue_price`            DECIMAL(15,8) NOT NULL DEFAULT 0.00000000,
+                `product_optionvalue_prefix`           VARCHAR(255) NOT NULL DEFAULT \'\',
+                `product_optionvalue_weight`           DECIMAL(15,8) NOT NULL DEFAULT 0.00000000,
+                `product_optionvalue_weight_prefix`    VARCHAR(255) NOT NULL DEFAULT \'\',
+                `product_optionvalue_sku`              VARCHAR(255) NOT NULL DEFAULT \'\',
+                `product_optionvalue_default`          INT          NOT NULL DEFAULT 0,
+                `ordering`                             INT          NOT NULL DEFAULT 0,
+                `product_optionvalue_attribs`          TEXT         NOT NULL,
+                PRIMARY KEY (`j2commerce_product_optionvalue_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
         } else {
             $this->db->setQuery('CREATE TABLE IF NOT EXISTS `' . $prefix . $optionsBase . '` (
@@ -389,29 +437,104 @@ class GetProductsDataTest
         }
 
         // Options for product 0 only
-        foreach ([
-            ['option_name' => 'Colour', 'option_value' => 'Red'],
-            ['option_name' => 'Size',   'option_value' => 'M'],
-        ] as $opt) {
-            $option = (object)[
-                'product_id'   => $this->seededProductIds[0],
-                'option_name'  => $opt['option_name'],
-                'option_value' => $opt['option_value'],
-            ];
-            $this->db->insertObject($this->optionsTable, $option, $this->optionsPk);
-            $this->seededOptionIds[] = (int)$this->db->insertid();
+        if ($this->isJ6) {
+            // J6: seed via the three-table join:
+            //   j2commerce_options (label) → j2commerce_product_options (mapping)
+            //   → j2commerce_product_optionvalues → j2commerce_optionvalues (value label)
+            foreach ([
+                ['option_name' => 'Colour', 'option_value' => 'Red'],
+                ['option_name' => 'Size',   'option_value' => 'M'],
+            ] as $opt) {
+                // 1. Option label
+                $optLabel = (object)[
+                    'option_name'        => $opt['option_name'],
+                    'option_unique_name' => strtolower($opt['option_name']) . '_' . $ts,
+                    'type'               => 'select',
+                    'enabled'            => 1,
+                    'ordering'           => 0,
+                ];
+                $this->db->insertObject($this->optionsLabelTable, $optLabel, 'j2commerce_option_id');
+                $optionLabelId = (int) $this->db->insertid();
+                $this->seededOptionLabelIds[] = $optionLabelId;
+
+                // 2. Option value label
+                $optValue = (object)[
+                    'option_id'        => $optionLabelId,
+                    'optionvalue_name' => $opt['option_value'],
+                    'optionvalue_image' => '',
+                    'ordering'         => 0,
+                ];
+                $this->db->insertObject($this->optionValuesTable, $optValue, 'j2commerce_optionvalue_id');
+                $optionValueId = (int) $this->db->insertid();
+                $this->seededOptionValueIds[] = $optionValueId;
+
+                // 3. Product → option mapping
+                $productOption = (object)[
+                    'option_id'  => $optionLabelId,
+                    'parent_id'  => 0,
+                    'product_id' => $this->seededProductIds[0],
+                    'ordering'   => 0,
+                    'required'   => 0,
+                    'is_variant' => 0,
+                ];
+                $this->db->insertObject($this->optionsTable, $productOption, $this->optionsPk);
+                $productOptionId = (int) $this->db->insertid();
+                $this->seededOptionIds[] = $productOptionId;
+
+                // 4. Product option → option value mapping
+                $productOptionValue = (object)[
+                    'productoption_id'                  => $productOptionId,
+                    'optionvalue_id'                    => $optionValueId,
+                    'parent_optionvalue'                => '',
+                    'product_optionvalue_price'         => 0,
+                    'product_optionvalue_prefix'        => '+',
+                    'product_optionvalue_weight'        => 0,
+                    'product_optionvalue_weight_prefix' => '+',
+                    'product_optionvalue_sku'           => '',
+                    'product_optionvalue_default'       => 0,
+                    'ordering'                          => 0,
+                    'product_optionvalue_attribs'       => '',
+                ];
+                $this->db->insertObject($this->productOptionValuesTable, $productOptionValue, 'j2commerce_product_optionvalue_id');
+                $this->seededProductOptionValueIds[] = (int) $this->db->insertid();
+            }
+        } else {
+            foreach ([
+                ['option_name' => 'Colour', 'option_value' => 'Red'],
+                ['option_name' => 'Size',   'option_value' => 'M'],
+            ] as $opt) {
+                $option = (object)[
+                    'product_id'   => $this->seededProductIds[0],
+                    'option_name'  => $opt['option_name'],
+                    'option_value' => $opt['option_value'],
+                ];
+                $this->db->insertObject($this->optionsTable, $option, $this->optionsPk);
+                $this->seededOptionIds[] = (int) $this->db->insertid();
+            }
         }
     }
 
     private function cleanupFixtures(): void
     {
-        foreach ([
-            [$this->optionsTable,  $this->optionsPk,   $this->seededOptionIds],
-            [$this->variantsTable, $this->variantsPk,  $this->seededVariantIds],
-            [$this->productsTable, $this->productsPk,  $this->seededProductIds],
-            ['#__content',         'id',               $this->seededContentIds],
-        ] as [$table, $pk, $ids]) {
-            if (empty($ids)) continue;
+        $toDelete = [];
+
+        if ($this->isJ6) {
+            $toDelete[] = [$this->productOptionValuesTable, 'j2commerce_product_optionvalue_id', $this->seededProductOptionValueIds];
+            $toDelete[] = [$this->optionsTable,             $this->optionsPk,                    $this->seededOptionIds];
+            $toDelete[] = [$this->optionValuesTable,        'j2commerce_optionvalue_id',          $this->seededOptionValueIds];
+            $toDelete[] = [$this->optionsLabelTable,        'j2commerce_option_id',               $this->seededOptionLabelIds];
+        } else {
+            $toDelete[] = [$this->optionsTable, $this->optionsPk, $this->seededOptionIds];
+        }
+
+        $toDelete[] = [$this->variantsTable, $this->variantsPk, $this->seededVariantIds];
+        $toDelete[] = [$this->productsTable, $this->productsPk, $this->seededProductIds];
+        $toDelete[] = ['#__content',         'id',              $this->seededContentIds];
+
+        foreach ($toDelete as [$table, $pk, $ids]) {
+            if (empty($ids)) {
+                continue;
+            }
             try {
                 $this->db->setQuery(
                     $this->db->getQuery(true)->delete($table)->whereIn($pk, $ids)

@@ -28,19 +28,25 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     use DatabaseAwareTrait;
 
     /**
-     * Subscribe to J2Commerce 6 events by their full dispatched names.
+     * Subscribe to J2Commerce 6 per-item hooks.
      *
-     * J2Commerce 6 dispatches events via PluginHelper::eventWithHtml() which
-     * prepends 'onJ2Commerce' to the event name. Confirmed from J2Commerce 6
-     * PluginHelper source and app_bootstrap5 getSubscribedEvents().
+     * These events are dispatched by J2Commerce 6 layout files via
+     * J2CommerceHelper::plugin()->eventWithHtml():
+     *
+     *   AfterProductListItemDisplay — fired in list/category/item_*.php after
+     *     each product card. Args: [$product, $context, &$displayData].
+     *
+     *   AfterProductDisplay — fired in app_bootstrap5/tmpl/bootstrap5/view.php
+     *     after the product detail block. Args: [$product, $view].
+     *
      * J2Commerce 4 events (onJ2Store*) are handled by the legacy method-name
      * convention and do not need entries here.
      */
     public static function getSubscribedEvents(): array
     {
         return [
-            'onJ2CommerceViewProductListHtml' => 'onJ2CommerceViewProductListHtml',
-            'onJ2CommerceViewProductHtml'     => 'onJ2CommerceViewProductHtml',
+            'onJ2CommerceAfterProductListItemDisplay' => 'onJ2CommerceAfterProductListItemDisplay',
+            'onJ2CommerceAfterProductDisplay'         => 'onJ2CommerceAfterProductDisplay',
         ];
     }
 
@@ -136,15 +142,14 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     }
 
     /**
-     * J2Commerce 6 — attempt to inject compare button via the ViewProductListHtml event.
+     * J2Commerce 6 — inject compare button after each product card in list view.
      *
-     * NOTE: ViewProductListHtml is a full view-render replacement event in J2Commerce 6
-     * (dispatched with [null, &$view, $model]). addResult() appends to the 'html' result
-     * set, but whether the template actually renders that HTML depends on the J2Commerce 6
-     * view implementation. Button injection via this event is not guaranteed to work.
-     * See issue #118 for the correct J6 approach.
+     * Fired by list/category/item_*.php via:
+     *   J2CommerceHelper::plugin()->eventWithHtml('AfterProductListItemDisplay', [$product, $context, &$displayData])
+     *
+     * The first argument is the product object with j2commerce_product_id.
      */
-    public function onJ2CommerceViewProductListHtml(Event $event): void
+    public function onJ2CommerceAfterProductListItemDisplay(Event $event): void
     {
         if (!$this->params->get('show_in_list', 1)) {
             return;
@@ -161,32 +166,27 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     }
 
     /**
-     * J2Commerce 6 — attempt to inject compare button via the ViewProductHtml event.
+     * J2Commerce 6 — inject compare button after the product detail block.
      *
-     * NOTE: ViewProductHtml is a full view-render replacement event in J2Commerce 6.
-     * This handler scans arguments for a product object and calls addResult(), but
-     * button injection via this event is not guaranteed to work in J2Commerce 6.
-     * See issue #118 for the correct J6 approach.
+     * Fired by app_bootstrap5/tmpl/bootstrap5/view.php via:
+     *   J2CommerceHelper::plugin()->eventWithHtml('AfterProductDisplay', [$this->product, $this])
+     *
+     * The first argument is the product object with j2commerce_product_id.
      */
-    public function onJ2CommerceViewProductHtml(Event $event): void
+    public function onJ2CommerceAfterProductDisplay(Event $event): void
     {
         if (!$this->params->get('show_in_detail', 1)) {
             return;
         }
 
-        $item = null;
-        foreach ($event->getArguments() as $arg) {
-            if (is_object($arg) && isset($arg->j2commerce_product_id)) {
-                $item = $arg;
-                break;
-            }
-        }
+        $args    = $event->getArguments();
+        $product = $args[0] ?? null;
 
-        if ($item === null) {
+        if (!$product || !isset($product->j2commerce_product_id)) {
             return;
         }
 
-        $event->addResult($this->renderCompareButton((int) $item->j2commerce_product_id));
+        $event->addResult($this->renderCompareButton((int) $product->j2commerce_product_id));
     }
 
     /**
@@ -340,20 +340,39 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
      *
      * J2Commerce 4: #__j2store_product_options has option_name / option_value columns.
      *
-     * J2Commerce 6: #__j2commerce_product_options is a mapping table with columns
-     * j2commerce_productoption_id, option_id, parent_id, product_id, ordering,
-     * required, is_variant — no option_name/option_value. The option labels live in
-     * a separate #__j2commerce_options table whose schema is not yet confirmed.
-     * Returns empty array on J6 until the full schema is mapped (see #118).
+     * J2Commerce 6: #__j2commerce_product_options is a mapping table (product_id → option_id).
+     * Option labels live in #__j2commerce_options (option_name) and option values in
+     * #__j2commerce_optionvalues (optionvalue_name), joined via #__j2commerce_product_optionvalues.
      */
     private function getProductOptions(int $productId): array
     {
-        if ($this->isJ2Commerce6()) {
-            // TODO(#118): implement J6 option lookup via #__j2commerce_options join
-            return [];
-        }
-
         $db = $this->getDatabase();
+
+        if ($this->isJ2Commerce6()) {
+            $query = $this->createDbQuery($db)
+                ->select([
+                    $db->quoteName('o.option_name', 'option_name'),
+                    $db->quoteName('ov.optionvalue_name', 'option_value'),
+                ])
+                ->from($db->quoteName('#__j2commerce_product_options', 'po'))
+                ->join('LEFT', $db->quoteName('#__j2commerce_options', 'o')
+                    . ' ON ' . $db->quoteName('o.j2commerce_option_id') . ' = ' . $db->quoteName('po.option_id'))
+                ->join('LEFT', $db->quoteName('#__j2commerce_product_optionvalues', 'pov')
+                    . ' ON ' . $db->quoteName('pov.productoption_id') . ' = ' . $db->quoteName('po.j2commerce_productoption_id'))
+                ->join('LEFT', $db->quoteName('#__j2commerce_optionvalues', 'ov')
+                    . ' ON ' . $db->quoteName('ov.j2commerce_optionvalue_id') . ' = ' . $db->quoteName('pov.optionvalue_id'))
+                ->where($db->quoteName('po.product_id') . ' = :productid')
+                ->bind(':productid', $productId, ParameterType::INTEGER)
+                ->order($db->quoteName('po.ordering') . ' ASC');
+
+            $db->setQuery($query);
+
+            try {
+                return $db->loadAssocList() ?: [];
+            } catch (\Exception $e) {
+                return [];
+            }
+        }
 
         $query = $this->createDbQuery($db)
             ->select([$db->quoteName('option_name'), $db->quoteName('option_value')])

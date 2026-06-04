@@ -85,8 +85,8 @@ class PluginClassTest
             'onAfterRender',
             'onJ2StoreAfterDisplayProduct',
             'onJ2StoreAfterDisplayProductList',
-            'onJ2CommerceViewProductHtml',
-            'onJ2CommerceViewProductListHtml',
+            'onJ2CommerceAfterProductListItemDisplay',
+            'onJ2CommerceAfterProductDisplay',
             'onAjaxProductcompare',
         ] as $method) {
             $this->test("$method() exists", $rc->hasMethod($method));
@@ -100,6 +100,17 @@ class PluginClassTest
         // Extends CMSPlugin
         $this->test('Extends CMSPlugin',
             $rc->isSubclassOf('Joomla\CMS\Plugin\CMSPlugin'));
+
+        // getSubscribedEvents() returns the correct J6 per-item hooks
+        $events = \Advans\Plugin\J2Commerce\ProductCompare\Extension\ProductCompare::getSubscribedEvents();
+        $this->test('getSubscribedEvents() contains AfterProductListItemDisplay hook',
+            isset($events['onJ2CommerceAfterProductListItemDisplay']));
+        $this->test('getSubscribedEvents() contains AfterProductDisplay hook',
+            isset($events['onJ2CommerceAfterProductDisplay']));
+        $this->test('getSubscribedEvents() does not contain wrong ViewProductListHtml event',
+            !isset($events['onJ2CommerceViewProductListHtml']));
+        $this->test('getSubscribedEvents() does not contain wrong ViewProductHtml event',
+            !isset($events['onJ2CommerceViewProductHtml']));
 
         // autoloadLanguage = true
         $prop = $rc->getProperty('autoloadLanguage');
@@ -139,20 +150,20 @@ class PluginClassTest
         $result2 = $plugin0->onJ2StoreAfterDisplayProduct($product, 'detail');
         $this->test('J4 show_in_detail=0 → empty string', $result2 === '');
 
-        // J6: onJ2CommerceViewProductListHtml with show_in_list=0 → no result added
-        $eventList = new \Joomla\Event\Event('onJ2CommerceViewProductListHtml', [
+        // J6: onJ2CommerceAfterProductListItemDisplay with show_in_list=0 → no result added
+        $eventList = new \Joomla\Event\Event('onJ2CommerceAfterProductListItemDisplay', [
             (object)['j2commerce_product_id' => 1],
             'com_j2commerce.category',
         ]);
-        $plugin0->onJ2CommerceViewProductListHtml($eventList);
+        $plugin0->onJ2CommerceAfterProductListItemDisplay($eventList);
         $this->test('J6 show_in_list=0 → no result added',
             count($eventList->getArgument('result', [])) === 0);
 
-        // J6: onJ2CommerceViewProductHtml with show_in_detail=0 → no result added
-        $eventDetail = new \Joomla\Event\Event('onJ2CommerceViewProductHtml', [
+        // J6: onJ2CommerceAfterProductDisplay with show_in_detail=0 → no result added
+        $eventDetail = new \Joomla\Event\Event('onJ2CommerceAfterProductDisplay', [
             (object)['j2commerce_product_id' => 1],
         ]);
-        $plugin0->onJ2CommerceViewProductHtml($eventDetail);
+        $plugin0->onJ2CommerceAfterProductDisplay($eventDetail);
         $this->test('J6 show_in_detail=0 → no result added',
             count($eventDetail->getArgument('result', [])) === 0);
     }
