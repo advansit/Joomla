@@ -40,11 +40,11 @@ The plugin manifest uses `group="j2store"` permanently. Files install to `plugin
 - AJAX URL: `group=j2store`
 
 **J2Commerce 6.x**:
-- Events received via `SubscriberInterface` (`onJ2CommerceViewProductListHtml`, `onJ2CommerceViewProductHtml`)
 - DB tables: `#__j2commerce_products`, `#__j2commerce_variants`, `#__j2commerce_product_options`
 - AJAX URL: `group=j2store`
+- The plugin subscribes to `onJ2CommerceViewProductListHtml` and `onJ2CommerceViewProductHtml` via `SubscriberInterface`. These are full view-render replacement events in J2Commerce 6 — compare button injection via `addResult()` is not guaranteed to work. See [#118](https://github.com/advansit/Joomla/issues/118) for the planned fix.
 
-No configuration required — the correct event handlers and table names are selected automatically.
+No configuration required — table names and event handlers are selected automatically at runtime.
 
 ## Installation
 1. Download `plg_j2commerce_productcompare.zip`

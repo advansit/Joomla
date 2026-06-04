@@ -136,16 +136,13 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     }
 
     /**
-     * J2Commerce 6 — render compare button after each product item in list/category layouts.
+     * J2Commerce 6 — attempt to inject compare button via the ViewProductListHtml event.
      *
-     * Dispatched as onJ2CommerceViewProductListHtml via:
-     *   eventWithHtml('ViewProductListHtml', [$product, $context, &$displayData])
-     *
-     * Args[0]: product object with j2commerce_product_id
-     * Args[1]: context string
-     * Args[2]: displayData array (by reference)
-     *
-     * HTML is returned via $event->addResult() which PluginHelper collects into 'html'.
+     * NOTE: ViewProductListHtml is a full view-render replacement event in J2Commerce 6
+     * (dispatched with [null, &$view, $model]). addResult() appends to the 'html' result
+     * set, but whether the template actually renders that HTML depends on the J2Commerce 6
+     * view implementation. Button injection via this event is not guaranteed to work.
+     * See issue #118 for the correct J6 approach.
      */
     public function onJ2CommerceViewProductListHtml(Event $event): void
     {
@@ -164,14 +161,12 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     }
 
     /**
-     * J2Commerce 6 — render compare button after the product detail template.
+     * J2Commerce 6 — attempt to inject compare button via the ViewProductHtml event.
      *
-     * Dispatched as onJ2CommerceViewProductHtml. The dispatch signature varies
-     * across J2Commerce 6 versions and call sites. Rather than relying on a
-     * fixed argument index, scan all arguments for the one that carries
-     * j2commerce_product_id.
-     *
-     * HTML is returned via $event->addResult().
+     * NOTE: ViewProductHtml is a full view-render replacement event in J2Commerce 6.
+     * This handler scans arguments for a product object and calls addResult(), but
+     * button injection via this event is not guaranteed to work in J2Commerce 6.
+     * See issue #118 for the correct J6 approach.
      */
     public function onJ2CommerceViewProductHtml(Event $event): void
     {
