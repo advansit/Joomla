@@ -228,8 +228,6 @@ class AutoCleanupTask implements SubscriberInterface
         // Schema (verified against J2Commerce 6 install.mysql.utf8.sql):
         //   owner_id INT, owner_resource VARCHAR, metakey VARCHAR, metavalue TEXT
         // FK in #__j2commerce_orderitems is order_id (VARCHAR), not j2commerce_order_id.
-        // A DB error here (e.g. column name mismatch after a J2Commerce upgrade)
-        // is caught and returns false so the user is not incorrectly blocked.
         if (!in_array($prefix . 'j2commerce_metafields', $tables, true)) {
             return false;
         }
@@ -258,7 +256,11 @@ class AutoCleanupTask implements SubscriberInterface
 
             return (int) $db->loadResult() > 0;
         } catch (\Exception $e) {
-            return false;
+            // Fail-closed: treat as lifetime license on DB error to prevent
+            // accidental anonymization during automatic cleanup.
+            $this->logTask('hasLifetimeLicense J6 query failed — treating as lifetime license: ' . $e->getMessage());
+
+            return true;
         }
     }
 

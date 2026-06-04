@@ -49,6 +49,7 @@ class AutoCleanupTaskTest
         $this->testSchedulerEventAdvertisement();
         $this->testRetentionLogic();
         $this->testLifetimeLicenseExemption();
+        $this->testLifetimeLicenseMetafieldsPath();
 
         echo "\n=== AutoCleanupTask Test Summary ===\n";
         echo "Passed: {$this->passed}\n";
@@ -280,6 +281,135 @@ class AutoCleanupTaskTest
             'User without lifetime product should be in cleanup set'
         );
 
+        $this->cleanupTestData([$userId]);
+    }
+
+    private function testLifetimeLicenseMetafieldsPath(): void
+    {
+        echo "\n--- Lifetime License Metafields Path (J6) ---\n";
+
+        if (!$this->isJ6Stack()) {
+            $this->test('Metafields lifetime path (skipped — J4 stack)', true);
+            return;
+        }
+
+        // Verify #__j2commerce_metafields exists (required for J6 lifetime check)
+        $tables = $this->db->getTableList();
+        $prefix = $this->db->getPrefix();
+        $this->test(
+            '#__j2commerce_metafields table exists',
+            in_array($prefix . 'j2commerce_metafields', $tables, true)
+        );
+
+        // Seed: user with order + product + metafield marking it as lifetime license
+        $userId    = 9904;
+        $productId = 9904;
+        $orderId   = 'CLEANUP-META-' . time();
+        $oldDate   = date('Y-m-d H:i:s', strtotime('-11 years'));
+
+        $this->seedTestUser($userId, 'metafields-lifetime-test@example.com');
+        $this->seedTestOrder($userId, $orderId, $oldDate);
+
+        // Seed order item linking to the product
+        $itemSeeded = false;
+        try {
+            $item = (object) [
+                'order_id'    => $orderId,
+                'product_id'  => $productId,
+                'product_name' => 'Lifetime Product',
+                'quantity'    => 1,
+                'price'       => 199.00,
+                'tax'         => 0.00,
+                'discount'    => 0.00,
+            ];
+            $this->db->insertObject('#__j2commerce_orderitems', $item);
+            $itemSeeded = true;
+        } catch (\Exception $e) {
+            // schema may differ
+        }
+
+        // Seed metafield marking the product as lifetime license
+        $metaSeeded = false;
+        if ($itemSeeded && in_array($prefix . 'j2commerce_metafields', $tables, true)) {
+            try {
+                $meta = (object) [
+                    'metakey'        => 'is_lifetime_license',
+                    'namespace'      => 'product',
+                    'scope'          => 'product',
+                    'metavalue'      => 'yes',
+                    'valuetype'      => 'string',
+                    'description'    => '',
+                    'owner_id'       => $productId,
+                    'owner_resource' => 'product',
+                ];
+                $this->db->insertObject('#__j2commerce_metafields', $meta, 'id');
+                $metaSeeded = true;
+            } catch (\Exception $e) {
+                // non-fatal
+            }
+        }
+
+        if ($metaSeeded) {
+            // Query mirrors hasLifetimeLicense() J6 path in AutoCleanupTask
+            try {
+                $query = $this->db->getQuery(true)
+                    ->select('COUNT(*)')
+                    ->from($this->db->quoteName('#__j2commerce_orderitems', 'oi'))
+                    ->join('INNER', $this->db->quoteName('#__j2commerce_orders', 'o')
+                        . ' ON ' . $this->db->quoteName('o.order_id') . ' = ' . $this->db->quoteName('oi.order_id'))
+                    ->join('INNER', $this->db->quoteName('#__j2commerce_metafields', 'mf')
+                        . ' ON ' . $this->db->quoteName('mf.owner_id') . ' = ' . $this->db->quoteName('oi.product_id')
+                        . ' AND ' . $this->db->quoteName('mf.owner_resource') . ' = ' . $this->db->quote('product')
+                        . ' AND ' . $this->db->quoteName('mf.metakey') . ' = ' . $this->db->quote('is_lifetime_license')
+                        . ' AND LOWER(TRIM(' . $this->db->quoteName('mf.metavalue') . ')) = ' . $this->db->quote('yes'))
+                    ->where($this->db->quoteName('o.user_id') . ' = :userid')
+                    ->bind(':userid', $userId, ParameterType::INTEGER);
+                $this->db->setQuery($query);
+                $count = (int) $this->db->loadResult();
+
+                $this->test(
+                    'J6 metafields lifetime query detects seeded lifetime product',
+                    $count > 0,
+                    'Expected COUNT > 0 for user with lifetime metafield'
+                );
+            } catch (\Exception $e) {
+                $this->test('J6 metafields lifetime query', false, $e->getMessage());
+            }
+        } else {
+            $this->test('J6 metafields lifetime query (skipped — seed failed)', true);
+        }
+
+        // Verify fail-closed behaviour is in AutoCleanupTask source
+        $taskFile = JPATH_BASE . '/plugins/privacy/j2commerce/src/Task/AutoCleanupTask.php';
+        if (file_exists($taskFile)) {
+            $src = file_get_contents($taskFile);
+            $this->test(
+                'AutoCleanupTask hasLifetimeLicense J6 catch returns true (fail-closed)',
+                (bool) preg_match('/catch\s*\(\s*\\\\Exception[^}]+return\s+true\s*;/s', $src),
+                'catch block must return true to prevent accidental anonymization on DB error'
+            );
+        }
+
+        // Cleanup
+        try {
+            if ($metaSeeded) {
+                $this->db->setQuery(
+                    $this->db->getQuery(true)
+                        ->delete($this->db->quoteName('#__j2commerce_metafields'))
+                        ->where($this->db->quoteName('owner_id') . ' = ' . $productId)
+                        ->where($this->db->quoteName('owner_resource') . ' = ' . $this->db->quote('product'))
+                )->execute();
+            }
+            if ($itemSeeded) {
+                $this->db->setQuery(
+                    $this->db->getQuery(true)
+                        ->delete($this->db->quoteName('#__j2commerce_orderitems'))
+                        ->where($this->db->quoteName('order_id') . ' = ' . $this->db->quote($orderId))
+                )->execute();
+            }
+        } catch (\Exception $e) {
+            // non-fatal
+        }
         $this->cleanupTestData([$userId]);
     }
 
