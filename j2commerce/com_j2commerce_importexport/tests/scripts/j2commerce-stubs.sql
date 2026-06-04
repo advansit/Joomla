@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS `#__j2commerce_variants` (
 
 CREATE TABLE IF NOT EXISTS `#__j2commerce_productquantities` (
   `j2commerce_productquantity_id` int NOT NULL AUTO_INCREMENT,
-  `product_attributes` text NOT NULL DEFAULT '',
+  `product_attributes` text NOT NULL COMMENT 'serialised variant attribute combination',
   `variant_id` int NOT NULL,
   `quantity` int NOT NULL DEFAULT 0,
   `on_hold` int NOT NULL DEFAULT 0,
@@ -204,4 +204,30 @@ CREATE TABLE IF NOT EXISTS `#__j2commerce_product_filters` (
   `product_id` int NOT NULL,
   `filter_id` int NOT NULL,
   PRIMARY KEY (`product_id`,`filter_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `#__j2commerce_productfiles` (
+  `j2commerce_productfile_id` int NOT NULL AUTO_INCREMENT,
+  `product_file_display_name` varchar(255) NOT NULL,
+  `product_file_save_name` varchar(255) NOT NULL,
+  `product_id` int NOT NULL,
+  `download_total` int NOT NULL DEFAULT 0,
+  PRIMARY KEY (`j2commerce_productfile_id`),
+  KEY `productfile_product_id` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `#__j2commerce_metafields` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `metakey` varchar(255) NOT NULL,
+  `namespace` varchar(255) NOT NULL,
+  `scope` varchar(255) NOT NULL,
+  `metavalue` text NOT NULL,
+  `valuetype` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  `owner_id` int unsigned NOT NULL,
+  `owner_resource` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `metafields_owner_id_index` (`owner_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
