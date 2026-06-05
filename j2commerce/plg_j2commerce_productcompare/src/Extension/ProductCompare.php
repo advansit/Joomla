@@ -169,9 +169,11 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
      * J2Commerce 6 — inject compare button after the product detail block.
      *
      * Fired by app_bootstrap5/tmpl/bootstrap5/view.php via:
-     *   J2CommerceHelper::plugin()->eventWithHtml('AfterProductDisplay', [$this->product, $this])
+     *   J2CommerceHelper::plugin()->eventWithHtml('AfterProductDisplay', [...])
      *
-     * The first argument is the product object with j2commerce_product_id.
+     * The argument signature may vary across J2Commerce 6 versions. We scan all
+     * arguments for the first object that carries j2commerce_product_id rather
+     * than relying on a fixed index.
      */
     public function onJ2CommerceAfterProductDisplay(Event $event): void
     {
@@ -179,10 +181,16 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
             return;
         }
 
-        $args    = $event->getArguments();
-        $product = $args[0] ?? null;
+        $product = null;
 
-        if (!$product || !isset($product->j2commerce_product_id)) {
+        foreach ($event->getArguments() as $arg) {
+            if (is_object($arg) && isset($arg->j2commerce_product_id)) {
+                $product = $arg;
+                break;
+            }
+        }
+
+        if ($product === null) {
             return;
         }
 

@@ -166,6 +166,32 @@ class PluginClassTest
         $plugin0->onJ2CommerceAfterProductDisplay($eventDetail);
         $this->test('J6 show_in_detail=0 → no result added',
             count($eventDetail->getArgument('result', [])) === 0);
+
+        // J6: AfterProductDisplay — product found regardless of argument position.
+        // The handler scans all args for the first object with j2commerce_product_id,
+        // so it works whether the product is at $args[0] (current public source) or
+        // $args[2] ([$result, $view, $product] signature reported in review).
+        $params1 = new Registry(['show_in_list' => 1, 'show_in_detail' => 1]);
+        $plugin1 = $this->makePlugin($params1);
+
+        // Product at $args[0]
+        $ev0 = new \Joomla\Event\Event('onJ2CommerceAfterProductDisplay', [
+            (object)['j2commerce_product_id' => 42],
+            (object)['view' => 'product'],
+        ]);
+        $plugin1->onJ2CommerceAfterProductDisplay($ev0);
+        $this->test('AfterProductDisplay: product at args[0] → result added',
+            count($ev0->getArgument('result', [])) > 0);
+
+        // Product at $args[2] ([$result, $view, $product] signature)
+        $ev2 = new \Joomla\Event\Event('onJ2CommerceAfterProductDisplay', [
+            '',
+            (object)['view' => 'product'],
+            (object)['j2commerce_product_id' => 43],
+        ]);
+        $plugin1->onJ2CommerceAfterProductDisplay($ev2);
+        $this->test('AfterProductDisplay: product at args[2] → result added',
+            count($ev2->getArgument('result', [])) > 0);
     }
 }
 
