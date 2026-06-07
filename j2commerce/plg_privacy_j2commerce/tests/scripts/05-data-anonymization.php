@@ -133,6 +133,10 @@ class DataAnonymizationTest
             'shipping_fax'          => '+41 44 111 22 34',
             'shipping_company'      => 'Muster AG',
             'shipping_tax_number'   => 'CHE-123.456.789',
+            // LONGTEXT NOT NULL without DEFAULT on J6 — must be set explicitly
+            'all_billing'           => '',
+            'all_shipping'          => '',
+            'all_payment'           => '',
         ];
         $this->db->insertObject($orderinfosTable, $testInfo, $orderinfoPkCol);
         $infoPk = $this->db->insertid();
