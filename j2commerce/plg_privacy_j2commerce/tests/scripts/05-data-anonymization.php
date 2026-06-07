@@ -141,9 +141,12 @@ class DataAnonymizationTest
         // Load the plugin class file directly (the Joomla autoloader does not
         // register plugin namespaces until the plugin is installed and enabled).
         $pluginClassFile = JPATH_BASE . '/plugins/privacy/j2commerce/src/Extension/J2Commerce.php';
-        if (!file_exists($pluginClassFile)) {
-            $this->test('anonymizeOrders() called via plugin (skipped — plugin not installed)', true);
+        $pluginAvailable = file_exists($pluginClassFile);
+
+        if (!$pluginAvailable) {
+            echo "  SKIP: plugin not installed at $pluginClassFile — anonymization round-trip skipped\n";
         } else {
+            $anonymized = false;
             try {
                 if (!class_exists(\Advans\Plugin\Privacy\J2Commerce\Extension\J2Commerce::class, false)) {
                     require_once $pluginClassFile;
@@ -160,52 +163,55 @@ class DataAnonymizationTest
                 $method = $rc->getMethod('anonymizeOrders');
                 $method->setAccessible(true);
                 $method->invoke($plugin, 998);
+                $anonymized = true;
                 $this->test('anonymizeOrders() called via plugin', true);
             } catch (\Throwable $e) {
                 $this->test('anonymizeOrders() called via plugin', false, $e->getMessage());
             }
+
+            if ($anonymized) {
+                // Verify orders table
+                $query = $this->createDbQuery()
+                    ->select('user_email, customer_note, ip_address')
+                    ->from($this->db->quoteName($ordersTable))
+                    ->where($this->db->quoteName($orderPkCol) . ' = ' . (int) $orderPk);
+                $order = $this->db->setQuery($query)->loadObject();
+                $this->test('user_email anonymized', $order->user_email === 'anonymized@deleted.invalid');
+                $this->test('customer_note cleared', $order->customer_note === '');
+                $this->test('ip_address cleared',    $order->ip_address   === '');
+
+                // Verify all PII fields in orderinfos
+                $query = $this->createDbQuery()
+                    ->select('*')
+                    ->from($this->db->quoteName($orderinfosTable))
+                    ->where($this->db->quoteName($orderinfoPkCol) . ' = ' . (int) $infoPk);
+                $info = $this->db->setQuery($query)->loadObject();
+                $this->test('billing_first_name anonymized',   $info->billing_first_name   === 'Anonymized');
+                $this->test('billing_last_name anonymized',    $info->billing_last_name    === 'User');
+                $this->test('billing_middle_name cleared',     $info->billing_middle_name  === '');
+                $this->test('billing_address_1 cleared',       $info->billing_address_1    === '');
+                $this->test('billing_city cleared',            $info->billing_city         === '');
+                $this->test('billing_zip cleared',             $info->billing_zip          === '');
+                $this->test('billing_phone_1 cleared',         $info->billing_phone_1      === '');
+                $this->test('billing_phone_2 cleared',         $info->billing_phone_2      === '');
+                $this->test('billing_fax cleared',             $info->billing_fax          === '');
+                $this->test('billing_company cleared',         $info->billing_company      === '');
+                $this->test('billing_tax_number cleared',      $info->billing_tax_number   === '');
+                $this->test('shipping_first_name cleared',     $info->shipping_first_name  === '');
+                $this->test('shipping_middle_name cleared',    $info->shipping_middle_name === '');
+                $this->test('shipping_phone_2 cleared',        $info->shipping_phone_2     === '');
+                $this->test('shipping_fax cleared',            $info->shipping_fax         === '');
+                $this->test('shipping_tax_number cleared',     $info->shipping_tax_number  === '');
+
+                // Financial data must be preserved
+                $query = $this->createDbQuery()
+                    ->select('order_total')
+                    ->from($this->db->quoteName($ordersTable))
+                    ->where($this->db->quoteName($orderPkCol) . ' = ' . (int) $orderPk);
+                $this->test('order_total preserved after anonymization',
+                    (float) $this->db->setQuery($query)->loadResult() === 50.0);
+            }
         }
-
-        // Verify orders
-        $query = $this->createDbQuery()
-            ->select('user_email, customer_note, ip_address')
-            ->from($this->db->quoteName($ordersTable))
-            ->where($this->db->quoteName($orderPkCol) . ' = ' . (int) $orderPk);
-        $order = $this->db->setQuery($query)->loadObject();
-        $this->test('user_email anonymized', $order->user_email === 'anonymized@deleted.invalid');
-        $this->test('customer_note cleared', $order->customer_note === '');
-        $this->test('ip_address cleared', $order->ip_address === '');
-
-        // Verify all PII fields in orderinfos
-        $query = $this->createDbQuery()
-            ->select('*')
-            ->from($this->db->quoteName($orderinfosTable))
-            ->where($this->db->quoteName($orderinfoPkCol) . ' = ' . (int) $infoPk);
-        $info = $this->db->setQuery($query)->loadObject();
-        $this->test('billing_first_name anonymized',   $info->billing_first_name   === 'Anonymized');
-        $this->test('billing_last_name anonymized',    $info->billing_last_name    === 'User');
-        $this->test('billing_middle_name cleared',     $info->billing_middle_name  === '');
-        $this->test('billing_address_1 cleared',       $info->billing_address_1    === '');
-        $this->test('billing_city cleared',            $info->billing_city         === '');
-        $this->test('billing_zip cleared',             $info->billing_zip          === '');
-        $this->test('billing_phone_1 cleared',         $info->billing_phone_1      === '');
-        $this->test('billing_phone_2 cleared',         $info->billing_phone_2      === '');
-        $this->test('billing_fax cleared',             $info->billing_fax          === '');
-        $this->test('billing_company cleared',         $info->billing_company      === '');
-        $this->test('billing_tax_number cleared',      $info->billing_tax_number   === '');
-        $this->test('shipping_first_name cleared',     $info->shipping_first_name  === '');
-        $this->test('shipping_middle_name cleared',    $info->shipping_middle_name === '');
-        $this->test('shipping_phone_2 cleared',        $info->shipping_phone_2     === '');
-        $this->test('shipping_fax cleared',            $info->shipping_fax         === '');
-        $this->test('shipping_tax_number cleared',     $info->shipping_tax_number  === '');
-
-        // Financial data must be preserved
-        $query = $this->createDbQuery()
-            ->select('order_total')
-            ->from($this->db->quoteName($ordersTable))
-            ->where($this->db->quoteName($orderPkCol) . ' = ' . (int) $orderPk);
-        $this->test('order_total preserved after anonymization',
-            (float) $this->db->setQuery($query)->loadResult() === 50.0);
 
         // Cleanup
         $this->db->setQuery('DELETE FROM ' . $this->db->quoteName($orderinfosTable) . ' WHERE ' . $this->db->quoteName($orderinfoPkCol) . ' = ' . (int) $infoPk)->execute();

@@ -185,6 +185,9 @@ CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_orderinfos (
     shipping_phone_1        VARCHAR(50)  NOT NULL DEFAULT '',
     shipping_phone_2        VARCHAR(50)  NOT NULL DEFAULT '',
     shipping_fax            VARCHAR(50)  NOT NULL DEFAULT '',
+    all_billing             TEXT         NOT NULL DEFAULT '',
+    all_shipping            TEXT         NOT NULL DEFAULT '',
+    all_payment             TEXT         NOT NULL DEFAULT '',
     PRIMARY KEY (j2commerce_orderinfo_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
