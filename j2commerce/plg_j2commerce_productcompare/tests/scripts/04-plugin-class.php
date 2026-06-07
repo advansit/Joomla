@@ -15,6 +15,15 @@ require_once JPATH_BASE . '/includes/framework.php';
 use Joomla\CMS\Factory;
 use Joomla\Registry\Registry;
 
+// Register the plugin namespace before any class that extends it is declared.
+JLoader::registerNamespace(
+    'Advans\\Plugin\\J2Commerce\\ProductCompare',
+    JPATH_BASE . '/plugins/j2store/productcompare/src',
+    false,
+    false,
+    'psr4'
+);
+
 /**
  * Minimal event stub that supports addResult() / getArgument('result').
  *

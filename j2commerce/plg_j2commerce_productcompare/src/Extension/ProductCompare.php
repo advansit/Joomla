@@ -260,7 +260,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
     /**
      * Render the compare button layout.
      */
-    private function renderCompareButton(int $productId): string
+    protected function renderCompareButton(int $productId): string
     {
         return $this->renderLayout('button', [
             'productId'   => $productId,
