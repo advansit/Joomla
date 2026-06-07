@@ -185,9 +185,9 @@ CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_orderinfos (
     shipping_phone_1        VARCHAR(50)  NOT NULL DEFAULT '',
     shipping_phone_2        VARCHAR(50)  NOT NULL DEFAULT '',
     shipping_fax            VARCHAR(50)  NOT NULL DEFAULT '',
-    all_billing             TEXT         NOT NULL DEFAULT '',
-    all_shipping            TEXT         NOT NULL DEFAULT '',
-    all_payment             TEXT         NOT NULL DEFAULT '',
+    all_billing             LONGTEXT     NOT NULL,
+    all_shipping            LONGTEXT     NOT NULL,
+    all_payment             LONGTEXT     NOT NULL,
     PRIMARY KEY (j2commerce_orderinfo_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -282,10 +282,10 @@ INSERT INTO ${DB_PREFIX}j2commerce_orders (order_id, user_id, user_email, order_
 VALUES ('ORD-J6-2013-001', 100, 'test@example.com', 99.00000, 90.00000, 9.00000, 0.00000, 0.00000, 'confirmed', 'CHF', 1.00000000, DATE_SUB(NOW(), INTERVAL 11 YEAR));
 
 -- Order infos with all PII fields (including billing_fax, billing_middle_name, etc.)
-INSERT INTO ${DB_PREFIX}j2commerce_orderinfos (order_id, billing_first_name, billing_last_name, billing_middle_name, billing_address_1, billing_city, billing_zip, billing_phone_1, billing_phone_2, billing_fax, billing_company, billing_tax_number, shipping_first_name, shipping_last_name, shipping_middle_name, shipping_address_1, shipping_city, shipping_zip, shipping_phone_1, shipping_phone_2, shipping_fax, shipping_tax_number)
+INSERT INTO ${DB_PREFIX}j2commerce_orderinfos (order_id, billing_first_name, billing_last_name, billing_middle_name, billing_address_1, billing_city, billing_zip, billing_phone_1, billing_phone_2, billing_fax, billing_company, billing_tax_number, shipping_first_name, shipping_last_name, shipping_middle_name, shipping_address_1, shipping_city, shipping_zip, shipping_phone_1, shipping_phone_2, shipping_fax, shipping_tax_number, all_billing, all_shipping, all_payment)
 VALUES
-('ORD-J6-2024-001', 'Test', 'User', 'M.', 'Teststrasse 1', 'Zürich', '8000', '+41 44 123 45 67', '+41 79 123 45 67', '+41 44 123 45 68', 'Test AG', 'CHE-123.456.789', 'Test', 'User', 'M.', 'Teststrasse 1', 'Zürich', '8000', '+41 44 123 45 67', '+41 79 123 45 67', '+41 44 123 45 68', 'CHE-123.456.789'),
-('ORD-J6-2013-001', 'Test', 'User', 'M.', 'Alte Strasse 5', 'Bern', '3000', '+41 31 987 65 43', '', '', 'Test AG', '', 'Test', 'User', '', 'Alte Strasse 5', 'Bern', '3000', '+41 31 987 65 43', '', '', '');
+('ORD-J6-2024-001', 'Test', 'User', 'M.', 'Teststrasse 1', 'Zürich', '8000', '+41 44 123 45 67', '+41 79 123 45 67', '+41 44 123 45 68', 'Test AG', 'CHE-123.456.789', 'Test', 'User', 'M.', 'Teststrasse 1', 'Zürich', '8000', '+41 44 123 45 67', '+41 79 123 45 67', '+41 44 123 45 68', 'CHE-123.456.789', '', '', ''),
+('ORD-J6-2013-001', 'Test', 'User', 'M.', 'Alte Strasse 5', 'Bern', '3000', '+41 31 987 65 43', '', '', 'Test AG', '', 'Test', 'User', '', 'Alte Strasse 5', 'Bern', '3000', '+41 31 987 65 43', '', '', '', '', '', '');
 
 -- Order items
 INSERT INTO ${DB_PREFIX}j2commerce_orderitems (order_id, product_id, orderitem_sku, orderitem_name, orderitem_quantity, orderitem_price, orderitem_finalprice)
