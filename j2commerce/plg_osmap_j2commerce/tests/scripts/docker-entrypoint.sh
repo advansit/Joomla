@@ -168,12 +168,26 @@ MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
 echo "mainmenu id: ${MAINMENU_ID}"
 
+COM_OSMAP_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
+echo "com_osmap extension_id: ${COM_OSMAP_ID}"
+
 mysql -h mysql -u joomla -pjoomla_pass joomla_db << EOSQL
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemaps (id, name, params, is_default, published, created_on, links_count)
 VALUES (1, 'Test Sitemap', '{}', 1, 1, NOW(), 0);
 
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemap_menus (sitemap_id, menutype_id, changefreq, priority, ordering)
 VALUES (1, ${MAINMENU_ID}, 'weekly', 0.5, 1);
+
+-- OSMap needs a menu item of type com_osmap so Joomla's router activates the component
+SET @max_rgt2 = (SELECT COALESCE(MAX(rgt), 0) FROM ${DB_PREFIX}menu);
+INSERT IGNORE INTO ${DB_PREFIX}menu
+    (id, menutype, title, alias, path, link, type, published, parent_id, level, component_id, language, access, params, lft, rgt)
+VALUES
+    (9010, 'mainmenu', 'Sitemap', 'sitemap', 'sitemap',
+     'index.php?option=com_osmap&view=xml&id=1',
+     'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_OSMAP_ID}, '*', 1, '{}',
+     @max_rgt2 + 1, @max_rgt2 + 2);
 EOSQL
 echo "OSMap sitemap created"
 
