@@ -169,8 +169,15 @@ MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
 echo "mainmenu id: ${MAINMENU_ID}"
 
-COM_OSMAP_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
+# Wait for com_osmap to appear in extensions (installed via JOOMLA_EXTENSIONS_PATHS)
+echo "Waiting for com_osmap in extensions table..."
+for i in $(seq 1 20); do
+    COM_OSMAP_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+        -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1;" 2>/dev/null)
+    COM_OSMAP_ID=${COM_OSMAP_ID:-0}
+    [ "$COM_OSMAP_ID" != "0" ] && break
+    sleep 3
+done
 echo "com_osmap extension_id: ${COM_OSMAP_ID}"
 
 mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
