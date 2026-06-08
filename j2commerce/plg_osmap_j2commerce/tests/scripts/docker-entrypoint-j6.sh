@@ -219,7 +219,7 @@ mysql -h mysql -u joomla -pjoomla_pass joomla_db -e "
     SELECT j2commerce_product_id, product_source_id, enabled FROM ${DB_PREFIX}j2commerce_products WHERE j2commerce_product_id IN (9001,9002);
 " 2>/dev/null || echo "WARNING: fixture verification failed"
 
-touch /var/www/html/health.txt
+echo "OK" > /var/www/html/health.txt
 echo "=== Setup complete ==="
 
 wait $JOOMLA_PID
