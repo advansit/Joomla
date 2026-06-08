@@ -19,10 +19,33 @@ echo "Getting DB prefix..."
 DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; \$c=new JConfig; echo \$c->dbprefix;" 2>/dev/null || echo "joom_")
 echo "Prefix: ${DB_PREFIX}"
 
-# Install OSMap before the plugin (plugin depends on OSMap being present)
-echo "Installing OSMap..."
-cp /tmp/osmap.zip /var/www/html/tmp/osmap.zip
-php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/osmap.zip 2>&1 | tail -3 || true
+# Install OSMap before the plugin (plugin depends on OSMap being present).
+# OSMap 5.1.x script.php uses AbstractScript::$app typed as CMSApplication,
+# which is incompatible with ConsoleApplication on J6 CLI — the CLI installer
+# fails with a TypeError. We work around this by:
+# 1. Extracting the ZIP manually into the component directories
+# 2. Registering com_osmap in the extensions table
+# The ZIP layout is: admin/ → administrator/components/com_osmap/
+#                    site/ → components/com_osmap/
+#                    osmap.xml at root
+echo "Installing OSMap (manual extract for J6 compatibility)..."
+OSMAP_TMP=$(mktemp -d)
+unzip -q /tmp/osmap.zip -d "$OSMAP_TMP" || true
+mkdir -p /var/www/html/administrator/components/com_osmap
+mkdir -p /var/www/html/components/com_osmap
+[ -d "$OSMAP_TMP/admin" ]      && cp -r "$OSMAP_TMP/admin/."      /var/www/html/administrator/components/com_osmap/
+[ -d "$OSMAP_TMP/site" ]       && cp -r "$OSMAP_TMP/site/."       /var/www/html/components/com_osmap/
+[ -f "$OSMAP_TMP/osmap.xml" ]  && cp    "$OSMAP_TMP/osmap.xml"    /var/www/html/administrator/components/com_osmap/
+[ -d "$OSMAP_TMP/media" ]      && cp -r "$OSMAP_TMP/media/."      /var/www/html/media/ 2>/dev/null || true
+rm -rf "$OSMAP_TMP"
+# Register com_osmap in extensions table (CLI installer skipped due to TypeError)
+mysql -h mysql -u joomla -pjoomla_pass joomla_db \
+    -e "INSERT IGNORE INTO ${DB_PREFIX}extensions
+        (name, type, element, folder, client_id, enabled, access, protected,
+         manifest_cache, params, custom_data, system_data, checked_out, checked_out_time, ordering, state)
+        VALUES ('OSMap', 'component', 'com_osmap', '', 1, 1, 1, 0,
+                '{}', '{}', '', '', 0, NULL, 0, 0);" 2>/dev/null || true
+echo "OSMap files extracted and registered in extensions table"
 
 echo "Waiting for plugin in DB..."
 until mysql -h mysql -u joomla -pjoomla_pass joomla_db \
@@ -193,6 +216,20 @@ COM_OSMAP_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
 COM_OSMAP_ID=${COM_OSMAP_ID:-0}
 echo "com_osmap extension_id: ${COM_OSMAP_ID}"
+
+# If OSMap CLI install failed (J6 AbstractScript type error), register com_osmap manually
+# so Joomla's router can activate the component for the sitemap HTTP test.
+if [ "$COM_OSMAP_ID" = "0" ]; then
+    echo "OSMap not in extensions table — registering com_osmap manually..."
+    mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+        -e "INSERT IGNORE INTO ${DB_PREFIX}extensions
+            (name, type, element, folder, client_id, enabled, access, protected, manifest_cache, params, custom_data, system_data, checked_out, checked_out_time, ordering, state)
+            VALUES ('OSMap', 'component', 'com_osmap', '', 1, 1, 1, 0, '{}', '{}', '', '', 0, NULL, 0, 0);" 2>/dev/null || true
+    COM_OSMAP_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+        -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
+    COM_OSMAP_ID=${COM_OSMAP_ID:-0}
+    echo "com_osmap extension_id after manual insert: ${COM_OSMAP_ID}"
+fi
 
 mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemaps (id, name, params, is_default, published, created_on, links_count)
