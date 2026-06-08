@@ -23,9 +23,13 @@ return new class implements ServiceProviderInterface
         $container->set(
             PluginInterface::class,
             function (Container $container) {
+                // The plugin group is j2store on J4/J5 and j2commerce on J6,
+                // set dynamically by the installer script.
+                $pluginData = PluginHelper::getPlugin('j2commerce', 'productcompare')
+                    ?: PluginHelper::getPlugin('j2store', 'productcompare');
                 $plugin = new ProductCompare(
                     $container->get(DispatcherInterface::class),
-                    (array) PluginHelper::getPlugin('j2store', 'productcompare')
+                    (array) $pluginData
                 );
                 $plugin->setApplication(Factory::getApplication());
 

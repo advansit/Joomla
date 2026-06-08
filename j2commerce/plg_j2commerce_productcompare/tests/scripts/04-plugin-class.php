@@ -18,7 +18,7 @@ use Joomla\Registry\Registry;
 // Register the plugin namespace before any class that extends it is declared.
 JLoader::registerNamespace(
     'Advans\\Plugin\\J2Commerce\\ProductCompare',
-    JPATH_BASE . '/plugins/j2store/productcompare/src',
+    JPATH_BASE . '/plugins/' . (getenv('J2COMMERCE_STACK') === 'j6' ? 'j2commerce' : 'j2store') . '/productcompare/src',
     false,
     false,
     'psr4'
@@ -66,7 +66,13 @@ class PluginClassTest
 {
     private $passed = 0;
     private $failed = 0;
-    private $classFile = '/var/www/html/plugins/j2store/productcompare/src/Extension/ProductCompare.php';
+    private string $classFile;
+
+    public function __construct()
+    {
+        $group = (getenv('J2COMMERCE_STACK') === 'j6') ? 'j2commerce' : 'j2store';
+        $this->classFile = '/var/www/html/plugins/' . $group . '/productcompare/src/Extension/ProductCompare.php';
+    }
 
     private function test(string $name, bool $condition, string $message = ''): void
     {
@@ -99,7 +105,7 @@ class PluginClassTest
         // manually so the class can be resolved without a full plugin bootstrap.
         JLoader::registerNamespace(
             'Advans\Plugin\J2Commerce\ProductCompare',
-            '/var/www/html/plugins/j2store/productcompare/src',
+            '/var/www/html/plugins/' . (getenv('J2COMMERCE_STACK') === 'j6' ? 'j2commerce' : 'j2store') . '/productcompare/src',
             false,
             false,
             'psr4'

@@ -74,17 +74,16 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
         }
 
         $wa = $doc->getWebAssetManager();
-        $wa->getRegistry()->addRegistryFile('media/plg_j2store_productcompare/joomla.asset.json');
-        $wa->useStyle('plg_j2store_productcompare.css')
-           ->useScript('plg_j2store_productcompare');
+        $wa->getRegistry()->addRegistryFile('media/plg_j2commerce_productcompare/joomla.asset.json');
+        $wa->useStyle('plg_j2commerce_productcompare.css')
+           ->useScript('plg_j2commerce_productcompare');
 
         // Configuration for JS — rendered as JSON in <head>, no inline <script> needed
-        // The plugin is installed in group=j2store (see manifest). com_ajax
-        // resolves the plugin by its installed group, so the AJAX URL must
-        // always use group=j2store regardless of the J2Commerce version.
-        $doc->addScriptOptions('plg_j2store_productcompare', [
+        // com_ajax resolves plugins by their installed group (folder in #__extensions).
+        // The group is set to j2store on J4/J5 and j2commerce on J6 by the installer script.
+        $doc->addScriptOptions('plg_j2commerce_productcompare', [
             'maxProducts' => (int) $this->params->get('max_products', 4),
-            'ajaxUrl'     => Uri::base() . 'index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json',
+            'ajaxUrl'     => Uri::base() . 'index.php?option=com_ajax&plugin=productcompare&group=' . $this->_type . '&format=json',
         ]);
     }
 
@@ -239,7 +238,7 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
      * Render a plugin layout with template-override support.
      *
      * Override resolution order (first match wins):
-     *   1. templates/{active-template}/html/plg_j2store_productcompare/{layout}.php
+     *   1. templates/{active-template}/html/plg_j2commerce_productcompare/{layout}.php
      *   2. plugins/j2store/productcompare/tmpl/{layout}.php
      *
      * @param   string  $layout  Layout name (without .php)
@@ -247,11 +246,12 @@ class ProductCompare extends CMSPlugin implements DatabaseAwareInterface, Subscr
      */
     private function renderLayout(string $layout, array $data): string
     {
-        $basePath = JPATH_PLUGINS . '/j2store/productcompare/tmpl';
+        // $this->_type is the plugin group (j2store on J4/J5, j2commerce on J6)
+        $basePath = JPATH_PLUGINS . '/' . $this->_type . '/productcompare/tmpl';
 
         $fileLayout = new FileLayout($layout, $basePath);
         $fileLayout->addIncludePath(
-            JPATH_THEMES . '/' . $this->getApplication()->getTemplate() . '/html/plg_j2store_productcompare'
+            JPATH_THEMES . '/' . $this->getApplication()->getTemplate() . '/html/plg_j2commerce_productcompare'
         );
 
         return $fileLayout->render($data);

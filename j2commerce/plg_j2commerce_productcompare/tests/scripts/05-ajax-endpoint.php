@@ -11,6 +11,8 @@ class AjaxEndpointTest
     private $passed = 0;
     private $failed = 0;
     private $baseUrl = 'http://localhost';
+    // The plugin group is j2store on J4/J5 and j2commerce on J6.
+    private string $pluginGroup;
 
     private function test(string $name, bool $condition, string $message = ''): void
     {
@@ -65,7 +67,7 @@ class AjaxEndpointTest
     {
         echo "--- Endpoint reachability ---\n";
 
-        $r = $this->request('/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json');
+        $r = $this->request('/index.php?option=com_ajax&plugin=productcompare&group=' . $this->pluginGroup . '&format=json');
 
         // 404 means the plugin is not registered — that's a real failure
         $this->test('Endpoint not 404', $r['code'] !== 404 && $r['code'] !== 0,
@@ -83,7 +85,7 @@ class AjaxEndpointTest
 
         // Request without token must be rejected (not 200 with data)
         $r = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json',
+            '/index.php?option=com_ajax&plugin=productcompare&group=' . $this->pluginGroup . '&format=json',
             ['products' => [1, 2]]
         );
 
@@ -109,7 +111,7 @@ class AjaxEndpointTest
 
         // 0 products — must return error
         $r0 = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json&products[]=',
+            '/index.php?option=com_ajax&plugin=productcompare&group=' . $this->pluginGroup . '&format=json&products[]=',
             []
         );
         $this->test('0 products: not 500', $r0['code'] !== 500,
@@ -117,7 +119,7 @@ class AjaxEndpointTest
 
         // 1 product — must return error (minimum is 2)
         $r1 = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json&products[]=1'
+            '/index.php?option=com_ajax&plugin=productcompare&group=' . $this->pluginGroup . '&format=json&products[]=1'
         );
         $this->test('1 product: not 500', $r1['code'] !== 500,
             "Got HTTP {$r1['code']}");
@@ -135,7 +137,7 @@ class AjaxEndpointTest
         echo "\n--- Response format ---\n";
 
         $r = $this->request(
-            '/index.php?option=com_ajax&plugin=productcompare&group=j2store&format=json'
+            '/index.php?option=com_ajax&plugin=productcompare&group=' . $this->pluginGroup . '&format=json'
         );
 
         // Response must be valid JSON (even error responses)
@@ -150,4 +152,5 @@ class AjaxEndpointTest
 }
 
 $test = new AjaxEndpointTest();
+$test->pluginGroup = (getenv('J2COMMERCE_STACK') === 'j6') ? 'j2commerce' : 'j2store';
 exit($test->run() ? 0 : 1);

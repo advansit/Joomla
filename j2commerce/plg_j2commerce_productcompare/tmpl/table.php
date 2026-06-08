@@ -12,7 +12,7 @@
  *                         ->options     (array)   key/value pairs of product options
  *
  * Template override path:
- *   templates/{your-template}/html/plg_j2store_productcompare/table.php
+ *   templates/{your-template}/html/plg_j2commerce_productcompare/table.php
  */
 defined('_JEXEC') or die;
 

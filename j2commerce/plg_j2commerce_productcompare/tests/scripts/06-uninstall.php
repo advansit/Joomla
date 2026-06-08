@@ -27,7 +27,7 @@ class UninstallTest
         echo "=== Uninstall Tests ===\n\n";
 
         // Get extension ID before uninstall
-        $result = $this->db->query("SELECT extension_id FROM {$this->dbPrefix}extensions WHERE element = 'productcompare' AND type = 'plugin' AND folder = 'j2store'");
+        $result = $this->db->query("SELECT extension_id FROM {$this->dbPrefix}extensions WHERE element = 'productcompare' AND type = 'plugin' AND folder = (getenv('J2COMMERCE_STACK') === 'j6' ? 'j2commerce' : 'j2store')");
         $row = $result ? $result->fetch_assoc() : null;
         $extensionId = $row ? (int) $row['extension_id'] : 0;
 
@@ -47,13 +47,13 @@ class UninstallTest
         });
 
         $this->test('Plugin removed from #__extensions', function () {
-            $result = $this->db->query("SELECT COUNT(*) as cnt FROM {$this->dbPrefix}extensions WHERE element = 'productcompare' AND folder = 'j2store'");
+            $result = $this->db->query("SELECT COUNT(*) as cnt FROM {$this->dbPrefix}extensions WHERE element = 'productcompare' AND folder = (getenv('J2COMMERCE_STACK') === 'j6' ? 'j2commerce' : 'j2store')");
             $row = $result ? $result->fetch_assoc() : null;
             return $row && (int) $row['cnt'] === 0;
         });
 
         $this->test('Plugin files removed', function () {
-            return !file_exists('/var/www/html/plugins/j2store/productcompare/src/Extension/ProductCompare.php');
+            return !file_exists('/var/www/html/plugins/' . (getenv('J2COMMERCE_STACK') === 'j6' ? 'j2commerce' : 'j2store') . '/productcompare/src/Extension/ProductCompare.php');
         });
 
         echo "\n=== Uninstall Test Summary ===\n";

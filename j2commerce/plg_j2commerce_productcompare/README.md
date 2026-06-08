@@ -82,7 +82,7 @@ plg_j2commerce_productcompare/
 ├── services/provider.php
 ├── src/Extension/ProductCompare.php
 ├── language/ (en-GB, de-DE, fr-FR)
-├── media/ (js, css)                    # Installed to media/plg_j2store_productcompare/
+├── media/ (js, css)                    # Installed to media/plg_j2commerce_productcompare/
 └── tests/
 ```
 
@@ -174,7 +174,7 @@ All HTML rendered by this plugin can be overridden from your active Joomla templ
 
 The plugin uses `Joomla\CMS\Layout\FileLayout` with the following resolution order (first match wins):
 
-1. `templates/{your-template}/html/plg_j2store_productcompare/{layout}.php`
+1. `templates/{your-template}/html/plg_j2commerce_productcompare/{layout}.php`
 2. `plugins/j2store/productcompare/tmpl/{layout}.php` ← plugin default
 
 ### Available layouts
@@ -190,13 +190,13 @@ The plugin uses `Joomla\CMS\Layout\FileLayout` with the following resolution ord
 
 1. Create the override directory in your template:
    ```
-   templates/{your-template}/html/plg_j2store_productcompare/
+   templates/{your-template}/html/plg_j2commerce_productcompare/
    ```
 
 2. Copy the layout file(s) you want to override from the plugin:
    ```
-   plugins/j2store/productcompare/tmpl/button.php  →  templates/{your-template}/html/plg_j2store_productcompare/button.php
-   plugins/j2store/productcompare/tmpl/table.php   →  templates/{your-template}/html/plg_j2store_productcompare/table.php
+   plugins/j2store/productcompare/tmpl/button.php  →  templates/{your-template}/html/plg_j2commerce_productcompare/button.php
+   plugins/j2store/productcompare/tmpl/table.php   →  templates/{your-template}/html/plg_j2commerce_productcompare/table.php
    ```
    You only need to copy the files you actually want to change.
 
@@ -261,7 +261,7 @@ In your `button.php` override:
 
 ### CSS customization
 
-The plugin loads `media/plg_j2store_productcompare/css/productcompare.css` via Joomla's WebAssetManager. To override styles, add CSS to your template's stylesheet — the plugin CSS uses non-`!important` rules so template styles take precedence naturally.
+The plugin loads `media/plg_j2commerce_productcompare/css/productcompare.css` via Joomla's WebAssetManager. To override styles, add CSS to your template's stylesheet — the plugin CSS uses non-`!important` rules so template styles take precedence naturally.
 
 Key CSS classes:
 
@@ -349,8 +349,8 @@ This extension supports the following languages:
 
 Users can add additional language files by creating new language folders following Joomla's language structure:
 ```
-language/{language-tag}/plg_j2store_productcompare.ini
-language/{language-tag}/plg_j2store_productcompare.sys.ini
+language/{language-tag}/plg_j2commerce_productcompare.ini
+language/{language-tag}/plg_j2commerce_productcompare.sys.ini
 ```
 
 ## Accessibility

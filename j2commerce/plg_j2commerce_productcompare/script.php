@@ -15,9 +15,9 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
     public function preflight($type, $parent)
     {
         if ($type === 'update') {
-            // Remove any stale j2commerce group directory left behind by a previous
-            // incorrect migration. The plugin now permanently lives in group=j2store.
-            $staleDir = JPATH_PLUGINS . '/j2commerce/productcompare';
+            // Remove any stale j2store group directory left behind by a previous
+            // install that used group=j2store. The plugin now lives in group=j2commerce.
+            $staleDir = JPATH_PLUGINS . '/j2store/productcompare';
             if (is_dir($staleDir)) {
                 $files = new \RecursiveIteratorIterator(
                     new \RecursiveDirectoryIterator($staleDir, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -36,13 +36,13 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
-            $this->revertGroupMigrationIfNeeded();
+            $this->setGroupForInstalledStack();
             $this->ensureUpdateSite();
 
             $app = Factory::getApplication();
             $lang = $app->getLanguage();
-            $lang->load('plg_j2store_productcompare', JPATH_ADMINISTRATOR);
-            $lang->load('plg_j2store_productcompare', $parent->getParent()->getPath('source'));
+            $lang->load('plg_j2commerce_productcompare', JPATH_ADMINISTRATOR);
+            $lang->load('plg_j2commerce_productcompare', $parent->getParent()->getPath('source'));
 
             $sBox = 'padding:16px 20px;margin:16px 0;border-radius:4px;border-left:4px solid;background:#eff6ff;border-color:#2563eb';
 
@@ -60,24 +60,36 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
     }
 
     /**
-     * Revert any previous incorrect group migration.
+     * Set the plugin's folder in #__extensions to match the installed J2Commerce stack.
      *
-     * An earlier version of this script migrated folder=j2store → j2commerce in
-     * #__extensions. The plugin manifest has always been group="j2store", so the
-     * files live at plugins/j2store/productcompare/. Correct the DB record back to
-     * j2store so Joomla can find the plugin.
+     * The manifest installs the plugin into group=j2commerce (J6 default).
+     * On J4/J5 with J2Store 4, J2Store's eventWithHtml() only imports the j2store
+     * group, so the plugin must live in folder=j2store to receive those events.
+     * On J6 with J2Commerce 6, eventWithHtml() imports j2commerce + content,
+     * so folder=j2commerce is correct.
      */
-    private function revertGroupMigrationIfNeeded(): void
+    private function setGroupForInstalledStack(): void
     {
         $db = Factory::getContainer()->get(DatabaseInterface::class);
 
-        $query = $this->createDbQuery($db)
+        // Detect J2Store 4 (J4/J5 stack)
+        $q = $this->createDbQuery($db)
+            ->select('COUNT(*)')
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('element') . ' = ' . $db->quote('com_j2store'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('component'))
+            ->where($db->quoteName('enabled') . ' = 1');
+        $db->setQuery($q);
+        $isJ2Store4 = (int) $db->loadResult() > 0;
+
+        $targetFolder = $isJ2Store4 ? 'j2store' : 'j2commerce';
+
+        $q = $this->createDbQuery($db)
             ->update($db->quoteName('#__extensions'))
-            ->set($db->quoteName('folder') . ' = ' . $db->quote('j2store'))
+            ->set($db->quoteName('folder') . ' = ' . $db->quote($targetFolder))
             ->where($db->quoteName('element') . ' = ' . $db->quote('productcompare'))
-            ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-            ->where($db->quoteName('folder') . ' = ' . $db->quote('j2commerce'));
-        $db->setQuery($query);
+            ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'));
+        $db->setQuery($q);
         $db->execute();
     }
 
@@ -86,7 +98,15 @@ class PlgJ2commerceProductcompareInstallerScript extends InstallerScript
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $updateUrl = 'https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/plg_j2commerce_productcompare/updates/update.xml';
         $element = 'productcompare';
-        $folder = 'j2store';
+
+        // Resolve the actual installed folder (set by setGroupForInstalledStack)
+        $q = $this->createDbQuery($db)
+            ->select($db->quoteName('folder'))
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('element') . ' = ' . $db->quote($element))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'));
+        $db->setQuery($q);
+        $folder = $db->loadResult() ?: 'j2commerce';
 
         $query = $this->createDbQuery($db)
             ->select($db->quoteName('extension_id'))

@@ -20,7 +20,7 @@ use Joomla\Registry\Registry;
 // Register namespace from the installed path.
 JLoader::registerNamespace(
     'Advans\Plugin\J2Commerce\ProductCompare',
-    '/var/www/html/plugins/j2store/productcompare/src',
+    '/var/www/html/plugins/' . (getenv('J2COMMERCE_STACK') === 'j6' ? 'j2commerce' : 'j2store') . '/productcompare/src',
     false,
     false,
     'psr4'
