@@ -26,22 +26,22 @@ The J2Commerce Product Compare Plugin adds a visual comparison feature to your s
 
 - [Joomla](https://github.com/joomla/joomla-cms) 5.x or 6.x
 - PHP 8.1 or higher
-- J2Commerce 4.x (`#__j2store_*` tables) or J2Commerce 6.x (`#__j2commerce_*` tables) — plugin group is `j2store` in both cases
+- J2Commerce 4.x (`#__j2store_*` tables) or J2Commerce 6.x (`#__j2commerce_*` tables)
 
 ### J2Commerce Version Compatibility
 
 The plugin detects the installed J2Commerce version at runtime by checking for `#__j2commerce_products` in the database.
 
-The plugin manifest uses `group="j2store"` permanently. Files install to `plugins/j2store/productcompare/` and the AJAX endpoint is always `group=j2store` on both J2Commerce 4 and 6.
+The plugin manifest uses `group="j2commerce"`. On Joomla 6 the plugin is loaded from `plugins/j2commerce/productcompare/`. On Joomla 4/5 the installer script creates a mirror in `plugins/j2store/productcompare/` and registers the plugin with `folder=j2store` so that J2Store 4 can dispatch events to it.
 
-**J2Commerce 4.x**:
+**J2Commerce 4.x (Joomla 4/5)**:
 - Events received via legacy method-name convention (`onJ2StoreAfterDisplayProductList`, `onJ2StoreAfterDisplayProduct`)
 - DB tables: `#__j2store_products`, `#__j2store_variants`, `#__j2store_product_options`
 - AJAX URL: `group=j2store`
 
-**J2Commerce 6.x**:
+**J2Commerce 6.x (Joomla 6)**:
 - DB tables: `#__j2commerce_products`, `#__j2commerce_variants`, `#__j2commerce_product_options`
-- AJAX URL: `group=j2store`
+- AJAX URL: `group=j2commerce`
 - The plugin subscribes to `onJ2CommerceViewProductListHtml` and `onJ2CommerceViewProductHtml` via `SubscriberInterface`. These are full view-render replacement events in J2Commerce 6 — compare button injection via `addResult()` is not guaranteed to work. See [#118](https://github.com/advansit/Joomla/issues/118) for the planned fix.
 
 No configuration required — table names and event handlers are selected automatically at runtime.
@@ -77,7 +77,7 @@ plg_j2commerce_productcompare/
 ├── README.md
 ├── VERSION
 ├── LICENSE.txt
-├── plg_j2commerce_productcompare.xml   # Joomla manifest (group="j2store", element="productcompare")
+├── plg_j2commerce_productcompare.xml   # Joomla manifest (group="j2commerce", element="productcompare")
 ├── build.sh
 ├── services/provider.php
 ├── src/Extension/ProductCompare.php
@@ -86,7 +86,7 @@ plg_j2commerce_productcompare/
 └── tests/
 ```
 
-Installed path: `plugins/j2store/productcompare/`
+Installed path: `plugins/j2commerce/productcompare/` (Joomla 6) or `plugins/j2store/productcompare/` (Joomla 4/5 mirror)
 
 ### Building
 ```bash
@@ -175,7 +175,8 @@ All HTML rendered by this plugin can be overridden from your active Joomla templ
 The plugin uses `Joomla\CMS\Layout\FileLayout` with the following resolution order (first match wins):
 
 1. `templates/{your-template}/html/plg_j2commerce_productcompare/{layout}.php`
-2. `plugins/j2store/productcompare/tmpl/{layout}.php` ← plugin default
+2. `plugins/j2commerce/productcompare/tmpl/{layout}.php` ← plugin default (Joomla 6)
+3. `plugins/j2store/productcompare/tmpl/{layout}.php` ← plugin default (Joomla 4/5 mirror)
 
 ### Available layouts
 
@@ -195,8 +196,8 @@ The plugin uses `Joomla\CMS\Layout\FileLayout` with the following resolution ord
 
 2. Copy the layout file(s) you want to override from the plugin:
    ```
-   plugins/j2store/productcompare/tmpl/button.php  →  templates/{your-template}/html/plg_j2commerce_productcompare/button.php
-   plugins/j2store/productcompare/tmpl/table.php   →  templates/{your-template}/html/plg_j2commerce_productcompare/table.php
+   plugins/j2commerce/productcompare/tmpl/button.php  →  templates/{your-template}/html/plg_j2commerce_productcompare/button.php
+   plugins/j2commerce/productcompare/tmpl/table.php   →  templates/{your-template}/html/plg_j2commerce_productcompare/table.php
    ```
    You only need to copy the files you actually want to change.
 
