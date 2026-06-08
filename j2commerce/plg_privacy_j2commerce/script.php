@@ -24,6 +24,15 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
     /** @var string[] Files skipped because they already existed */
     private array $_overridesSkipped = [];
 
+    /**
+     * Returns a fresh query object compatible with Joomla 5 and 6.
+     * Joomla 6 introduced DatabaseInterface::createQuery(); Joomla 5 uses getQuery(true).
+     */
+    private function dbQuery(\Joomla\Database\DatabaseInterface $db): \Joomla\Database\QueryInterface
+    {
+        return method_exists($db, 'createQuery') ? $db->createQuery() : $db->getQuery(true);
+    }
+
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
@@ -230,7 +239,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         $sourceBase = $parent->getParent()->getPath('source') . '/overrides';
 
         $db    = Factory::getContainer()->get(DatabaseInterface::class);
-        $query = $db->createQuery()
+        $query = $this->dbQuery($db)
             ->select([$db->quoteName('element')])
             ->from($db->quoteName('#__extensions'))
             ->where($db->quoteName('type') . ' = ' . $db->quote('template'))
@@ -302,7 +311,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
 
         $element = 'j2commerce';
         $folder = 'privacy';
-        $query = $db->createQuery()
+        $query = $this->dbQuery($db)
             ->select($db->quoteName('extension_id'))
             ->from($db->quoteName('#__extensions'))
             ->where($db->quoteName('element') . ' = :element')
@@ -317,7 +326,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             return;
         }
 
-        $query = $db->createQuery()
+        $query = $this->dbQuery($db)
             ->select($db->quoteName('update_site_id'))
             ->from($db->quoteName('#__update_sites'))
             ->where($db->quoteName('location') . ' = :url')
@@ -326,7 +335,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         $siteId = (int) $db->loadResult();
 
         if ($siteId) {
-            $query = $db->createQuery()
+            $query = $this->dbQuery($db)
                 ->select('COUNT(*)')
                 ->from($db->quoteName('#__update_sites_extensions'))
                 ->where($db->quoteName('update_site_id') . ' = :siteId')
@@ -336,7 +345,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $db->setQuery($query);
 
             if (!(int) $db->loadResult()) {
-                $query = $db->createQuery()
+                $query = $this->dbQuery($db)
                     ->insert($db->quoteName('#__update_sites_extensions'))
                     ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
                     ->values(':siteId, :extId')
@@ -348,7 +357,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             return;
         }
 
-        $query = $db->createQuery()
+        $query = $this->dbQuery($db)
             ->insert($db->quoteName('#__update_sites'))
             ->columns([
                 $db->quoteName('name'),
@@ -366,7 +375,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         $db->execute();
         $siteId = (int) $db->insertid();
 
-        $query = $db->createQuery()
+        $query = $this->dbQuery($db)
             ->insert($db->quoteName('#__update_sites_extensions'))
             ->columns([$db->quoteName('update_site_id'), $db->quoteName('extension_id')])
             ->values(':siteId, :extId')
