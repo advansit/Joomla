@@ -221,6 +221,28 @@ class SafetyChecksTest
             $this->test('Database check skipped', true);
         }
 
+        // --- ACL: core.manage required for cleanup action ---
+        // The cleanup handler now calls $user->authorise('core.manage', 'com_j2store_cleanup')
+        // before executing any destructive action. Verify that the authorise()
+        // call is present in the source and that an unauthenticated user object
+        // (guest) would be denied.
+        echo "\n--- ACL enforcement ---\n";
+
+        $cleanupSrc = @file_get_contents(
+            JPATH_BASE . '/administrator/components/com_j2store_cleanup/j2store_cleanup.php'
+        );
+        $this->test(
+            'Cleanup handler calls authorise(core.manage)',
+            $cleanupSrc !== false && strpos($cleanupSrc, "authorise('core.manage'") !== false
+        );
+
+        // A guest user (id=0) must never be authorised for core.manage.
+        $guest = new \Joomla\CMS\User\User(0);
+        $this->test(
+            'Guest user is denied core.manage on com_j2store_cleanup',
+            !$guest->authorise('core.manage', 'com_j2store_cleanup')
+        );
+
         // --- Cleanup POST protection ---
         // Verify that the cleanup handler rejects a crafted POST containing
         // the extension_id of com_j2store or com_j2commerce. This covers the

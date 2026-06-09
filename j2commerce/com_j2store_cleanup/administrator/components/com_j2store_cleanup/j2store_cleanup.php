@@ -299,6 +299,14 @@ if (defined('J2STORE_CLEANUP_FUNCTIONS_ONLY')) {
 
 // Handle cleanup action
 if ($task === 'cleanup' && Session::checkToken()) {
+    // Require core.manage on this component — a valid session token alone is
+    // not sufficient because any authenticated backend user has one.
+    $user = $app->getIdentity();
+    if (!$user || !$user->authorise('core.manage', 'com_j2store_cleanup')) {
+        $app->enqueueMessage(Text::_('JERROR_ALERTNOAUTHOR'), 'error');
+        $app->redirect('index.php?option=com_j2store_cleanup');
+        return;
+    }
     $cids = $app->input->get('cid', [], 'array');
     $cids = array_map('intval', $cids);
     $cids = array_filter($cids); // Remove zeros
