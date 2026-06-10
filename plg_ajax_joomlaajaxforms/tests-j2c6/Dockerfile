@@ -1,8 +1,16 @@
 FROM joomla:6.1-php8.3-apache
 
+ARG JOOMLA_VERSION=6.1.1
+ARG JOOMLA_PACKAGE_URL=https://github.com/joomla/joomla-cms/releases/download/${JOOMLA_VERSION}/Joomla_${JOOMLA_VERSION}-Stable-Full_Package.zip
+
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     unzip curl default-mysql-client git \
     && rm -rf /var/lib/apt/lists/*
+
+RUN rm -rf /usr/src/joomla/* /var/www/html/* \
+    && curl -fsSL "$JOOMLA_PACKAGE_URL" -o /tmp/joomla.zip \
+    && unzip -q /tmp/joomla.zip -d /usr/src/joomla \
+    && rm /tmp/joomla.zip
 
 RUN echo "[client]\nskip-ssl" > /etc/mysql/conf.d/no-ssl.cnf
 

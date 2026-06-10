@@ -27,7 +27,12 @@ jobs:
           cd plg_ajax_joomlaajaxforms
           VERSION=$(grep -oP '(?<=<version>)[^<]+' joomlaajaxforms.xml)
           PACKAGE="plg_ajax_joomlaajaxforms_v${VERSION}.zip"
-          zip -r "$PACKAGE" . -x "*.git*" -x "tests/*" -x "*.zip"
+          zip -r "$PACKAGE" . \
+            -x "*.git*" \
+            -x "tests/*" \
+            -x "tests-j2c4/*" \
+            -x "tests-j2c6/*" \
+            -x "*.zip"
           echo "Built: $PACKAGE"
           ls -la "$PACKAGE"
           cp "$PACKAGE" tests/extension.zip
@@ -298,7 +303,7 @@ jobs:
         run: |
           docker build \
             -f plg_ajax_joomlaajaxforms/tests-j2c4/Dockerfile \
-            --build-arg J2C4_URL=https://github.com/j2commerce/j2cart/releases/download/v4.1.3/com_j2store_v4-4.1.3-pro.zip \
+            --build-arg J2C4_URL=https://github.com/j2commerce/j2cart/releases/download/v4.1.4/com_j2store_v4-4.1.4-pro.zip \
             -t plg_ajax_j2c4_test \
             .
 
