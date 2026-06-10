@@ -1,46 +1,57 @@
 #!/bin/bash
-# Waits for Joomla + all JOOMLA_EXTENSIONS_PATHS to finish installing,
-# then inserts test fixtures and writes health.txt.
+# Waits for Joomla, installs official upstream packages, inserts fixtures,
+# and writes health.txt.
 
 echo "=== OSMap J2Commerce Test Environment ==="
 
 /entrypoint.sh apache2-foreground &
 JOOMLA_PID=$!
 
-echo "Waiting for Joomla + extensions..."
+echo "Waiting for Joomla..."
 until [ -f /var/www/html/configuration.php ] && [ ! -d /var/www/html/installation ]; do
     sleep 3
 done
 
-echo "Waiting for plugin in DB..."
 DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; \$c=new JConfig; echo \$c->dbprefix;" 2>/dev/null || echo "joom_")
+echo "DB prefix: ${DB_PREFIX}"
+
+install_with_web_installer() {
+    local package_path="$1"
+    local label="$2"
+
+    echo "Installing ${label} via Joomla Web Installer..."
+    if PACKAGE_PATH="${package_path}" EXTENSION_NAME="${label}" php /usr/local/bin/install-extension-http.php; then
+        echo "${label} installed via Joomla Web Installer"
+    else
+        echo "ERROR: ${label} installation FAILED via Joomla Web Installer"
+        exit 1
+    fi
+}
+
+echo "Installing J2Store/J2Commerce 4 via Joomla CLI..."
+if [ -f /tmp/j2commerce4.zip ]; then
+    cp /tmp/j2commerce4.zip /var/www/html/tmp/j2commerce4.zip
+    if HTTP_HOST=localhost php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/j2commerce4.zip; then
+        echo "J2Store/J2Commerce 4 installed via Joomla CLI"
+    else
+        echo "ERROR: J2Store/J2Commerce 4 installation FAILED"
+        exit 1
+    fi
+else
+    echo "ERROR: J2Store/J2Commerce 4 ZIP not found at /tmp/j2commerce4.zip"
+    exit 1
+fi
+
+install_with_web_installer /tmp/osmap.zip "OSMap"
+install_with_web_installer /tmp/extension.zip "OSMap J2Commerce plugin"
+
+echo "Waiting for plugin in DB..."
 until mysql -h mysql -u joomla -pjoomla_pass joomla_db \
     -e "SELECT 1 FROM ${DB_PREFIX}extensions WHERE element='j2commerce' AND type='plugin' AND folder='osmap' LIMIT 1;" \
     2>/dev/null | grep -q 1; do
     sleep 3
 done
 echo "Plugin in DB. Prefix: ${DB_PREFIX}"
-
-# Patch OSMap Factory::getTable() for Joomla 5 compatibility.
-# Two issues:
-# 1. Table::getInstance() returns false (not null) in Joomla 5 — violates ?Table return type.
-# 2. Legacy table classes (OSMapTableSitemap etc.) are not auto-loaded in Joomla 5.
-OSMAP_FACTORY="/var/www/html/administrator/components/com_osmap/library/Alledia/OSMap/Factory.php"
-if [ -f "$OSMAP_FACTORY" ]; then
-    php -r "
-\$file = '/var/www/html/administrator/components/com_osmap/library/Alledia/OSMap/Factory.php';
-\$content = file_get_contents(\$file);
-\$old = 'return Table::getInstance(\$tableName, \$prefix);';
-\$new = '// Joomla 5: load legacy table class file if not already loaded' . PHP_EOL
-     . '        \$tableFile = JPATH_ADMINISTRATOR . \'/components/com_osmap/tables/\' . strtolower(\$tableName) . \'.php\';' . PHP_EOL
-     . '        if (is_file(\$tableFile) && !class_exists(\'OSMapTable\' . \$tableName)) {' . PHP_EOL
-     . '            require_once \$tableFile;' . PHP_EOL
-     . '        }' . PHP_EOL
-     . '        return Table::getInstance(\$tableName, \$prefix) ?: null;';
-\$patched = str_replace(\$old, \$new, \$content);
-if (\$patched === \$content) { echo \"WARNING: patch not applied (string not found)\n\"; } else { file_put_contents(\$file, \$patched); echo \"OSMap Factory.php patched for Joomla 5\n\"; }
-"
-fi
 
 echo "Enabling plugins..."
 mysql -h mysql -u joomla -pjoomla_pass joomla_db \
@@ -65,10 +76,11 @@ COM_J2STORE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2store' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
 echo "com_content=${COM_CONTENT_ID}, com_j2store=${COM_J2STORE_ID}"
 
-# Abort if com_j2store is not found
+# Warn if com_j2store is not found — do not abort.
+# On a J6-only installation com_j2store is absent; the plugin still installs
+# and the J2CommerceNew handler covers com_j2commerce menu items.
 if [ "$COM_J2STORE_ID" = "0" ]; then
-    echo "ERROR: com_j2store not found in extensions table"
-    exit 1
+    echo "WARNING: com_j2store not found in extensions table — J4 fixtures will be skipped"
 fi
 
 # Get the parent_id for top-level mainmenu items (= the global root item id).
@@ -112,12 +124,12 @@ VALUES
 -- J2Commerce products (real schema: visibility, no product_sku/product_price)
 -- 9003 = disabled (enabled=0), 9004 = enabled but no SEF menu item
 INSERT IGNORE INTO ${DB_PREFIX}j2store_products
-    (j2store_product_id, product_source_id, product_source, visibility, enabled)
+    (j2store_product_id, product_source_id, product_source, product_type, visibility, enabled, addtocart_text, up_sells, cross_sells, params)
 VALUES
-    (9001, 9001, 'com_content', 1, 1),
-    (9002, 9002, 'com_content', 1, 1),
-    (9003, 9003, 'com_content', 1, 0),
-    (9004, 9004, 'com_content', 1, 1);
+    (9001, 9001, 'com_content', 'simple', 1, 1, '', '', '', '{}'),
+    (9002, 9002, 'com_content', 'simple', 1, 1, '', '', '', '{}'),
+    (9003, 9003, 'com_content', 'simple', 1, 0, '', '', '', '{}'),
+    (9004, 9004, 'com_content', 'simple', 1, 1, '', '', '', '{}');
 
 -- J2Commerce variants (real schema: product_id, sku — not j2store_product_id, variant_sku)
 INSERT IGNORE INTO ${DB_PREFIX}j2store_variants
@@ -129,6 +141,7 @@ VALUES
     (9004, 9004, 'NOMENU',    29.00, 1);
 
 -- SEF menu items (published=-2, children of shop 9001)
+-- published=-2 = hidden from navigation but routable; OSMap includes these in sitemaps
 -- Only Alpha (9002) and Beta (9003) — disabled and nomenu have no SEF item
 INSERT IGNORE INTO ${DB_PREFIX}menu
     (id, menutype, title, alias, path, link, type, published, parent_id, level, component_id, language, access, params, lft, rgt)
@@ -167,12 +180,36 @@ MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
 echo "mainmenu id: ${MAINMENU_ID}"
 
-mysql -h mysql -u joomla -pjoomla_pass joomla_db << EOSQL
+# Read com_osmap extension_id from the official Joomla installation.
+COM_OSMAP_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
+    -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
+COM_OSMAP_ID=${COM_OSMAP_ID:-0}
+if [ "$COM_OSMAP_ID" = "0" ]; then
+    echo "ERROR: com_osmap is not registered after official OSMap installation"
+    exit 1
+fi
+echo "com_osmap extension_id: ${COM_OSMAP_ID}"
+
+mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemaps (id, name, params, is_default, published, created_on, links_count)
 VALUES (1, 'Test Sitemap', '{}', 1, 1, NOW(), 0);
 
 INSERT IGNORE INTO ${DB_PREFIX}osmap_sitemap_menus (sitemap_id, menutype_id, changefreq, priority, ordering)
 VALUES (1, ${MAINMENU_ID}, 'weekly', 0.5, 1);
+
+-- OSMap needs a menu item of type com_osmap so Joomla's router activates the component
+SET @max_rgt2 = (SELECT COALESCE(MAX(rgt), 0) FROM ${DB_PREFIX}menu);
+INSERT IGNORE INTO ${DB_PREFIX}menu
+    (id, menutype, title, alias, path, link, type, published, parent_id, level, component_id, language, access, params, lft, rgt)
+VALUES
+    (9010, 'mainmenu', 'Sitemap', 'sitemap', 'sitemap',
+     'index.php?option=com_osmap&view=xml&id=1',
+     'component', 1, ${MAINMENU_ROOT_ID}, 1, ${COM_OSMAP_ID}, '*', 1, '{}',
+     @max_rgt2 + 1, @max_rgt2 + 2);
+-- Update component_id in case COM_OSMAP_ID was 0 at INSERT time
+UPDATE ${DB_PREFIX}menu
+SET component_id = (SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1)
+WHERE id = 9010 AND component_id = 0;
 EOSQL
 echo "OSMap sitemap created"
 

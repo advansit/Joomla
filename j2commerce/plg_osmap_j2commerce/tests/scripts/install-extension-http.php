@@ -8,10 +8,12 @@
 $baseUrl = 'http://localhost';
 $adminUser = getenv('JOOMLA_ADMIN_USERNAME') ?: 'admin';
 $adminPass = getenv('JOOMLA_ADMIN_PASSWORD') ?: 'Admin123!@#';
-$packagePath = '/tmp/extension.zip';
+$packagePath = getenv('PACKAGE_PATH') ?: '/tmp/extension.zip';
 $extensionName = getenv('EXTENSION_NAME') ?: 'Extension';
 
 echo "=== Installing $extensionName via HTTP ===\n\n";
+
+@unlink('/tmp/cookies.txt');
 
 // Step 1: Login to admin
 echo "Step 1: Logging in to Joomla admin...\n";
