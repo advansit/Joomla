@@ -383,6 +383,12 @@ jobs:
       - name: Rename package
         run: mv plg_ajax_joomlaajaxforms/tests-j2c6/plg_ajax_joomlaajaxforms_*.zip plg_ajax_joomlaajaxforms/tests-j2c6/extension.zip
 
+      - name: Setup PHP for J2Commerce build
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+
       - name: Build J2Commerce 6 from source
         run: |
           git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2commerce6-src
