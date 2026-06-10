@@ -69,6 +69,7 @@ rsync -av --exclude="$BUILD_DIR" \
     --exclude="*.zip" \
     --exclude="build.env" \
     --exclude="tests" \
+    --exclude="tests-*" \
     --exclude=".git" \
     --exclude=".gitignore" \
     --exclude="node_modules" \
