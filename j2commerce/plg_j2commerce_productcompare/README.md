@@ -46,6 +46,10 @@ The plugin manifest uses `group="j2commerce"`. On Joomla 6 the plugin is loaded 
 
 No configuration required — table names and event handlers are selected automatically at runtime.
 
+### Compatibility Test Scope
+
+The CI installs Joomla full packages plus real J2Commerce/J2Store runtimes and verifies the AJAX endpoint, product data query, stock labels, and asset registration paths for Joomla 5/J2Commerce 4 and Joomla 6/J2Commerce 6. The `onAfterRender` injection path is skipped when the test document is not HTML, so the automated run should not be described as a complete browser-rendering proof for J2Commerce 6 product list/detail pages.
+
 ## Installation
 1. Download `plg_j2commerce_productcompare.zip`
 2. **System → Extensions → Install**
