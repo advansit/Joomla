@@ -42,5 +42,11 @@ if unzip -l "$PACKAGE_NAME" | awk '{print $4}' | grep -Eq '(^|/)tests($|/)|(^|/)
     exit 1
 fi
 
+if unzip -l "$PACKAGE_NAME" | awk '{print $4}' | grep -Eq '(^|/)Dockerfile(\.[^/]*)?$|(^|/)(docker-compose|compose)[^/]*\.ya?ml$'; then
+    echo ""
+    echo -e "${RED}Error: Package contains Docker or Compose files${NC}"
+    exit 1
+fi
+
 echo ""
 echo -e "${GREEN}Package verification complete${NC}"
