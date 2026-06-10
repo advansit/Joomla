@@ -136,7 +136,7 @@ mysql -h mysql -u joomla -pjoomla_pass joomla_db \
 
 # Insert test data into real J2Commerce tables
 echo "Inserting test data..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null << EOSQL
+mysql -h mysql -u joomla -pjoomla_pass joomla_db << EOSQL
 -- Create test user (ID 100)
 INSERT IGNORE INTO ${DB_PREFIX}users (id, name, username, email, password, block, sendEmail, registerDate, params)
 VALUES (100, 'Test User', 'testuser', 'test@example.com', '', 0, 0, NOW(), '{}');
@@ -181,7 +181,7 @@ echo "Test data inserted"
 # Install minimal AcyMailing schema for integration tests.
 # Only the tables the plugin accesses are created — no full AcyMailing install required.
 echo "Installing AcyMailing test schema..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null << EOACYM
+mysql -h mysql -u joomla -pjoomla_pass joomla_db << EOACYM
 CREATE TABLE IF NOT EXISTS ${DB_PREFIX}acym_configuration (
     id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
     name  VARCHAR(255) NOT NULL,
