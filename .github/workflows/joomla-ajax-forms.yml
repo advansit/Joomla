@@ -433,6 +433,34 @@ jobs:
           cd plg_ajax_joomlaajaxforms/tests-j2c6
           docker compose down -v
 
+  official-j5-j2c4:
+    name: Ajax Forms / official-j5-j2c4
+    runs-on: ubuntu-latest
+    needs: test-j2c4-full
+    if: always()
+    permissions: {}
+    steps:
+      - name: Verify official J5/J2C4 matrix
+        run: |
+          if [ "${{ needs.test-j2c4-full.result }}" != "success" ]; then
+            echo "Official J5/J2C4 matrix did not pass: ${{ needs.test-j2c4-full.result }}"
+            exit 1
+          fi
+
+  official-j6-j2c6:
+    name: Ajax Forms / official-j6-j2c6
+    runs-on: ubuntu-latest
+    needs: test-j2c6-full
+    if: always()
+    permissions: {}
+    steps:
+      - name: Verify official J6/J2C6 matrix
+        run: |
+          if [ "${{ needs.test-j2c6-full.result }}" != "success" ]; then
+            echo "Official J6/J2C6 matrix did not pass: ${{ needs.test-j2c6-full.result }}"
+            exit 1
+          fi
+
   collect-results:
     name: Collect Results
     runs-on: ubuntu-latest
