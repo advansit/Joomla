@@ -8,6 +8,10 @@
 
 Adds all enabled J2Store / J2Commerce products to the OSMap sitemap automatically.
 
+### Compatibility Test Scope
+
+The HTTP sitemap CI installs Joomla full packages, OSMap, and real J2Commerce/J2Store runtimes before checking generated XML product URLs. The class-level test scripts still use lightweight OSMap helper stubs for isolated method coverage, so they are not a standalone full OSMap runtime proof. Issue #99 remains partially addressed until the remaining getTree dispatch cases and single-product, disabled-product, and unpublished-product coverage are exercised against the real runtime.
+
 ## Description
 
 OSMap does not index J2Store or J2Commerce product pages out of the box.
