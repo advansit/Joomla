@@ -16,8 +16,6 @@ services:
       JOOMLA_ADMIN_USERNAME: admin
       JOOMLA_ADMIN_PASSWORD: "Admin123456789!@#"
       JOOMLA_ADMIN_EMAIL: admin@test.local
-      # Install OSMap and the plugin; no J2Commerce 4 package on J6
-      JOOMLA_EXTENSIONS_PATHS: "/tmp/osmap.zip;/tmp/extension.zip"
       J2COMMERCE_STACK: j6
     volumes:
       - joomla_j6_data:/var/www/html

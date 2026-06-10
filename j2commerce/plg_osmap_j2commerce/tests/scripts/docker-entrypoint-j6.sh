@@ -1,7 +1,7 @@
 #!/bin/bash
 # J6 test environment for plg_osmap_j2commerce.
-# Creates minimal #__j2commerce_products fixtures and menu items so
-# J2CommerceNew::getTree() can be exercised against real data.
+# Installs official J2Commerce 6 and OSMap packages, then seeds fixture data
+# through their real tables.
 
 set -e
 
@@ -10,7 +10,7 @@ echo "=== OSMap J2Commerce Test Environment (J6 Stack) ==="
 /entrypoint.sh apache2-foreground &
 JOOMLA_PID=$!
 
-echo "Waiting for Joomla + extensions..."
+echo "Waiting for Joomla..."
 until [ -f /var/www/html/configuration.php ] && [ ! -d /var/www/html/installation ]; do
     sleep 3
 done
@@ -19,42 +19,35 @@ echo "Getting DB prefix..."
 DB_PREFIX=$(php -r "require '/var/www/html/configuration.php'; \$c=new JConfig; echo \$c->dbprefix;" 2>/dev/null || echo "joom_")
 echo "Prefix: ${DB_PREFIX}"
 
-# Install OSMap before the plugin (plugin depends on OSMap being present).
-# OSMap 5.1.x script.php uses AbstractScript::$app typed as CMSApplication,
-# which is incompatible with ConsoleApplication on J6 CLI — the CLI installer
-# fails with a TypeError. We work around this by:
-# 1. Extracting the ZIP manually into the component directories
-# 2. Registering com_osmap in the extensions table
-# The ZIP layout is: admin/ → administrator/components/com_osmap/
-#                    site/ → components/com_osmap/
-#                    osmap.xml at root
-echo "Installing OSMap (manual extract for J6 compatibility)..."
-OSMAP_TMP=$(mktemp -d)
-unzip -q /tmp/osmap.zip -d "$OSMAP_TMP" || true
-mkdir -p /var/www/html/administrator/components/com_osmap
-mkdir -p /var/www/html/components/com_osmap
-[ -d "$OSMAP_TMP/admin" ]      && cp -r "$OSMAP_TMP/admin/."      /var/www/html/administrator/components/com_osmap/
-[ -d "$OSMAP_TMP/site" ]       && cp -r "$OSMAP_TMP/site/."       /var/www/html/components/com_osmap/
-[ -f "$OSMAP_TMP/osmap.xml" ]  && cp    "$OSMAP_TMP/osmap.xml"    /var/www/html/administrator/components/com_osmap/
-[ -d "$OSMAP_TMP/media" ]      && cp -r "$OSMAP_TMP/media/."      /var/www/html/media/ 2>/dev/null || true
-# OSMap include.php expects the bundled framework at this Joomla library path.
-[ -d "$OSMAP_TMP/extensions/ShackFramework" ] && {
-    rm -rf /var/www/html/libraries/allediaframework
-    mkdir -p /var/www/html/libraries/allediaframework
-    cp -r "$OSMAP_TMP/extensions/ShackFramework/." /var/www/html/libraries/allediaframework/
+install_with_web_installer() {
+    local package_path="$1"
+    local label="$2"
+
+    echo "Installing ${label} via Joomla Web Installer..."
+    if PACKAGE_PATH="${package_path}" EXTENSION_NAME="${label}" php /usr/local/bin/install-extension-http.php; then
+        echo "${label} installed via Joomla Web Installer"
+    else
+        echo "ERROR: ${label} installation FAILED via Joomla Web Installer"
+        exit 1
+    fi
 }
-rm -rf "$OSMAP_TMP"
-# Register com_osmap in extensions table (CLI installer skipped due to TypeError).
-# J6 extensions table has custom_data TEXT NOT NULL (no default) — must be included.
-mysql -h mysql -u joomla -pjoomla_pass joomla_db \
-    -e "INSERT IGNORE INTO ${DB_PREFIX}extensions
-        (package_id, name, type, element, folder, client_id, enabled, access,
-         protected, locked, manifest_cache, params, custom_data,
-         checked_out, checked_out_time, ordering, state)
-        VALUES (0, 'OSMap', 'component', 'com_osmap', '', 1, 1, 1,
-                0, 0, '{}', '{}', '',
-                NULL, NULL, 0, 0);" 2>&1 || true
-echo "OSMap files extracted and registered in extensions table"
+
+echo "Installing J2Commerce 6 via Joomla CLI..."
+if [ -f /tmp/j2commerce6.zip ]; then
+    cp /tmp/j2commerce6.zip /var/www/html/tmp/j2commerce6.zip
+    if HTTP_HOST=localhost php /var/www/html/cli/joomla.php extension:install --path=/var/www/html/tmp/j2commerce6.zip; then
+        echo "J2Commerce 6 installed via Joomla CLI"
+    else
+        echo "ERROR: J2Commerce 6 installation FAILED"
+        exit 1
+    fi
+else
+    echo "ERROR: J2Commerce 6 ZIP not found at /tmp/j2commerce6.zip"
+    exit 1
+fi
+
+install_with_web_installer /tmp/osmap.zip "OSMap"
+install_with_web_installer /tmp/extension.zip "OSMap J2Commerce plugin"
 
 echo "Waiting for plugin in DB..."
 until mysql -h mysql -u joomla -pjoomla_pass joomla_db \
@@ -89,49 +82,10 @@ echo "com_content=${COM_CONTENT_ID}"
 COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null)
 if [ -z "${COM_J2COMMERCE_ID}" ]; then
-    # com_j2commerce is not installed — insert a stub extension row so OSMap can
-    # resolve component_id → com_j2commerce and dispatch to J2CommerceNew::getTree().
-    # Use only columns present in all Joomla versions; || true prevents set -e
-    # from aborting on schema mismatches.
-    mysql -h mysql -u joomla -pjoomla_pass joomla_db 2>/dev/null \
-        -e "INSERT IGNORE INTO ${DB_PREFIX}extensions (package_id, name, type, element, folder, client_id, enabled, access, protected, locked, manifest_cache, params, custom_data, checked_out, checked_out_time, ordering, state) VALUES (0, 'com_j2commerce', 'component', 'com_j2commerce', '', 0, 1, 1, 0, 0, '{}', '{}', '', NULL, NULL, 0, 0);" || true
-    COM_J2COMMERCE_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
-        -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_j2commerce' AND type='component' LIMIT 1;" 2>/dev/null || echo "")
-    COM_J2COMMERCE_ID=${COM_J2COMMERCE_ID:-${COM_CONTENT_ID}}
+    echo "ERROR: com_j2commerce is not registered after official J2Commerce 6 installation"
+    exit 1
 fi
 echo "com_j2commerce=${COM_J2COMMERCE_ID}"
-
-# Create minimal #__j2commerce_products schema (J2Commerce 6 not installed in test image)
-echo "Creating J6 schema..."
-mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
-CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_products (
-    j2commerce_product_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    product_source_id     INT UNSIGNED NOT NULL DEFAULT 0,
-    product_source        VARCHAR(100) NOT NULL DEFAULT '',
-    product_type          VARCHAR(50)  NOT NULL DEFAULT 'simple',
-    enabled               TINYINT(1)   NOT NULL DEFAULT 1,
-    taxprofile_id         INT UNSIGNED NOT NULL DEFAULT 0,
-    params                TEXT         NOT NULL,
-    PRIMARY KEY (j2commerce_product_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS ${DB_PREFIX}j2commerce_metafields (
-    id             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    metakey        VARCHAR(255)  NOT NULL,
-    namespace      VARCHAR(255)  NOT NULL DEFAULT '',
-    scope          VARCHAR(255)  NOT NULL DEFAULT '',
-    metavalue      TEXT          NOT NULL,
-    valuetype      VARCHAR(255)  NOT NULL DEFAULT '',
-    description    TEXT          NOT NULL,
-    owner_id       INT UNSIGNED  NOT NULL,
-    owner_resource VARCHAR(255)  NOT NULL,
-    created_at     TIMESTAMP     NULL DEFAULT NULL,
-    updated_at     TIMESTAMP     NULL DEFAULT NULL,
-    PRIMARY KEY (id),
-    KEY idx_metafields_owner_id (owner_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-EOSQL
-echo "J6 schema created"
 
 echo "Inserting fixtures..."
 MAINMENU_ROOT_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
@@ -152,10 +106,10 @@ VALUES
 
 -- J2Commerce 6 products
 INSERT IGNORE INTO ${DB_PREFIX}j2commerce_products
-    (j2commerce_product_id, product_source_id, product_source, product_type, enabled, taxprofile_id, params)
+    (j2commerce_product_id, product_source_id, product_source, product_type, visibility, enabled, taxprofile_id, addtocart_text, up_sells, cross_sells, params)
 VALUES
-    (9001, 9001, 'com_content', 'simple', 1, 0, '{}'),
-    (9002, 9002, 'com_content', 'simple', 1, 0, '{}');
+    (9001, 9001, 'com_content', 'simple', 1, 1, 0, '', '', '', '{}'),
+    (9002, 9002, 'com_content', 'simple', 1, 1, 0, '', '', '', '{}');
 
 -- Menu items: shop parent (published=1) + product children (published=-2)
 -- published=-2 = hidden from navigation but routable; OSMap includes these in sitemaps
@@ -184,48 +138,17 @@ WHERE lft = 0;
 EOSQL
 echo "Fixtures inserted"
 
-# OSMap sitemap — ensure tables exist (CLI installer may skip SQL on J6 due to osmylicensesmanager)
-mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL
-CREATE TABLE IF NOT EXISTS \`${DB_PREFIX}osmap_sitemaps\` (
-  \`id\` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  \`name\` VARCHAR(100) NULL DEFAULT NULL,
-  \`params\` TEXT NULL DEFAULT NULL,
-  \`is_default\` TINYINT(1) NOT NULL DEFAULT '0',
-  \`published\` TINYINT(1) NOT NULL DEFAULT '1',
-  \`created_on\` DATETIME NULL DEFAULT NULL,
-  \`links_count\` INT(11) NOT NULL DEFAULT '0',
-  PRIMARY KEY (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS \`${DB_PREFIX}osmap_sitemap_menus\` (
-  \`sitemap_id\` INT(11) UNSIGNED NOT NULL,
-  \`menutype_id\` INT(11) NOT NULL,
-  \`changefreq\` ENUM('always','hourly','daily','weekly','monthly','yearly','never') NOT NULL DEFAULT 'weekly',
-  \`priority\` FLOAT NOT NULL DEFAULT '0.5',
-  \`ordering\` INT(11) NOT NULL DEFAULT '0',
-  PRIMARY KEY (\`sitemap_id\`, \`menutype_id\`)
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS \`${DB_PREFIX}osmap_items_settings\` (
-  \`sitemap_id\` INT(11) UNSIGNED NOT NULL,
-  \`uid\` VARCHAR(100) NOT NULL DEFAULT '',
-  \`settings_hash\` CHAR(32) NOT NULL DEFAULT '',
-  \`published\` TINYINT(1) UNSIGNED NOT NULL DEFAULT '1',
-  \`changefreq\` ENUM('always','hourly','daily','weekly','monthly','yearly','never') NOT NULL DEFAULT 'weekly',
-  \`priority\` FLOAT NOT NULL DEFAULT '0.5',
-  \`format\` TINYINT(1) UNSIGNED NULL DEFAULT '2',
-  PRIMARY KEY (\`sitemap_id\`, \`uid\`, \`settings_hash\`)
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
-EOSQL
-
+# OSMap sitemap — tables must come from the official OSMap installation.
 MAINMENU_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT id FROM ${DB_PREFIX}menu_types WHERE menutype='mainmenu' LIMIT 1;" 2>/dev/null || echo "0")
 
 COM_OSMAP_ID=$(mysql -h mysql -u joomla -pjoomla_pass joomla_db -sN \
     -e "SELECT extension_id FROM ${DB_PREFIX}extensions WHERE element='com_osmap' AND type='component' LIMIT 1;" 2>/dev/null || echo "0")
 COM_OSMAP_ID=${COM_OSMAP_ID:-0}
-echo "com_osmap extension_id: ${COM_OSMAP_ID}"
-
+if [ "$COM_OSMAP_ID" = "0" ]; then
+    echo "ERROR: com_osmap is not registered after official OSMap installation"
+    exit 1
+fi
 echo "com_osmap extension_id: ${COM_OSMAP_ID}"
 
 mysql -h mysql -u joomla -pjoomla_pass joomla_db <<EOSQL

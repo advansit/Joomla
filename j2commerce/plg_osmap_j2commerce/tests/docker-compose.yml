@@ -16,8 +16,6 @@ services:
       JOOMLA_ADMIN_USERNAME: admin
       JOOMLA_ADMIN_PASSWORD: Admin123456789!
       JOOMLA_ADMIN_EMAIL: admin@test.local
-      # Install OSMap, J2Commerce, and the plugin via Joomla's built-in extension installer
-      JOOMLA_EXTENSIONS_PATHS: "/tmp/osmap.zip;/tmp/j2commerce.zip;/tmp/extension.zip"
     volumes:
       - joomla_data:/var/www/html
     depends_on:
