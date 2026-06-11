@@ -93,11 +93,9 @@ class InstallationTest
 
         // Test 5: Overrides deployed to at least one active frontend template
         $query = $this->db->getQuery(true)
-            ->select($this->db->quoteName('element'))
-            ->from($this->db->quoteName('#__extensions'))
-            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('template'))
-            ->where($this->db->quoteName('client_id') . ' = 0')
-            ->where($this->db->quoteName('enabled') . ' = 1');
+            ->select('DISTINCT ' . $this->db->quoteName('template'))
+            ->from($this->db->quoteName('#__template_styles'))
+            ->where($this->db->quoteName('client_id') . ' = 0');
         $this->db->setQuery($query);
         $templates = $this->db->loadColumn() ?: [];
 

@@ -259,16 +259,8 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
     {
         $sourceBase = $parent->getParent()->getPath('source') . '/overrides';
 
-        $db    = Factory::getContainer()->get(DatabaseInterface::class);
-        $query = $this->dbQuery($db)
-            ->select([$db->quoteName('element')])
-            ->from($db->quoteName('#__extensions'))
-            ->where($db->quoteName('type') . ' = ' . $db->quote('template'))
-            ->where($db->quoteName('client_id') . ' = 0')
-            ->where($db->quoteName('enabled') . ' = 1');
-
-        $db->setQuery($query);
-        $templates = $db->loadColumn() ?: [];
+        $db        = Factory::getContainer()->get(DatabaseInterface::class);
+        $templates = $this->getFrontendTemplates($db);
 
         $overrideFiles = [
             'checkout/default_shipping_payment.php',
@@ -320,6 +312,37 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         // Store results for display in postflight message
         $this->_overridesCopied  = $copied;
         $this->_overridesSkipped = $skipped;
+    }
+
+    /**
+     * Return frontend templates that can receive overrides.
+     */
+    private function getFrontendTemplates(DatabaseInterface $db): array
+    {
+        $tables = $db->getTableList();
+
+        if (in_array($db->getPrefix() . 'template_styles', $tables, true)) {
+            $query = $this->dbQuery($db)
+                ->select('DISTINCT ' . $db->quoteName('template'))
+                ->from($db->quoteName('#__template_styles'))
+                ->where($db->quoteName('client_id') . ' = 0');
+            $db->setQuery($query);
+
+            $templates = array_filter($db->loadColumn() ?: []);
+
+            if (!empty($templates)) {
+                return array_values(array_unique($templates));
+            }
+        }
+
+        $query = $this->dbQuery($db)
+            ->select([$db->quoteName('element')])
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('template'))
+            ->where($db->quoteName('client_id') . ' = 0');
+        $db->setQuery($query);
+
+        return array_values(array_unique(array_filter($db->loadColumn() ?: [])));
     }
 
     /**
