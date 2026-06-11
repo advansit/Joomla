@@ -467,13 +467,45 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
      */
     private function uninstallTaskPlugin(): void
     {
+        $db          = Factory::getContainer()->get(DatabaseInterface::class);
         $extensionId = $this->getTaskPluginExtensionId();
 
-        if (!$extensionId) {
-            return;
+        $taskType = 'plg_task_j2commerceprivacy.autocleanup';
+        $tables   = $db->getTableList();
+
+        if (in_array($db->getPrefix() . 'scheduler_tasks', $tables, true)) {
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__scheduler_tasks'))
+                ->where($db->quoteName('type') . ' = :taskType')
+                ->bind(':taskType', $taskType);
+            $db->setQuery($query);
+            $db->execute();
         }
 
-        Installer::getInstance()->uninstall('plugin', $extensionId);
+        if ($extensionId) {
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__schemas'))
+                ->where($db->quoteName('extension_id') . ' = :extensionId')
+                ->bind(':extensionId', $extensionId, ParameterType::INTEGER);
+            $db->setQuery($query);
+            $db->execute();
+
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__update_sites_extensions'))
+                ->where($db->quoteName('extension_id') . ' = :extensionId')
+                ->bind(':extensionId', $extensionId, ParameterType::INTEGER);
+            $db->setQuery($query);
+            $db->execute();
+
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__extensions'))
+                ->where($db->quoteName('extension_id') . ' = :extensionId')
+                ->bind(':extensionId', $extensionId, ParameterType::INTEGER);
+            $db->setQuery($query);
+            $db->execute();
+        }
+
+        $this->deleteDirectory(JPATH_PLUGINS . '/task/j2commerceprivacy');
     }
 
     /**
@@ -554,5 +586,38 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         if (is_dir($oldDir) && count(glob($oldDir . '/*') ?: []) === 0) {
             @rmdir($oldDir);
         }
+    }
+
+    /**
+     * Recursively delete a directory without invoking Joomla's installer from inside uninstall().
+     */
+    private function deleteDirectory(string $path): void
+    {
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $items = scandir($path);
+
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $itemPath = $path . '/' . $item;
+
+            if (is_dir($itemPath) && !is_link($itemPath)) {
+                $this->deleteDirectory($itemPath);
+                continue;
+            }
+
+            @unlink($itemPath);
+        }
+
+        @rmdir($path);
     }
 }
