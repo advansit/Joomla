@@ -101,10 +101,8 @@ jobs:
         if: steps.version.outputs.bump != 'none'
         run: |
           cd plg_ajax_joomlaajaxforms
-          VERSION=$(grep -oP '(?<=<version>)[^<]+' joomlaajaxforms.xml)
-          PACKAGE="plg_ajax_joomlaajaxforms_${VERSION}.zip"
-          zip -r "$PACKAGE" . -x "*.git*" -x "tests/*" -x "*.zip"
-          echo "Built: $PACKAGE"
+          chmod +x build.sh
+          ./build.sh
 
       - name: Find package file
         if: steps.version.outputs.bump != 'none'
@@ -194,7 +192,7 @@ jobs:
             3. Enable plugin in System → Plugins
 
             ### Requirements
-            - Joomla 5.x, 6.x or 7.x
+            - Joomla 5.x or 6.x
             - PHP 8.1 or higher
           files: |
             plg_ajax_joomlaajaxforms/${{ steps.package.outputs.file }}
