@@ -190,7 +190,7 @@ jobs:
             3. Access via Components → J2Commerce Import/Export
 
             ### Requirements
-            - Joomla 5.x, 6.x or 7.x
+            - Joomla 5.x or 6.x
             - PHP 8.1 or higher
             - J2Commerce 4.x or higher
           files: |

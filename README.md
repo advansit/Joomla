@@ -23,7 +23,7 @@ Joomla/
 
 | Extension | Description | Joomla |
 |-----------|-------------|--------|
-| [Joomla! AJAX Forms](plg_ajax_joomlaajaxforms/) | AJAX login, registration, MFA, profile editing, password reset, username reminder, J2Store cart operations | 5.x – 7.x |
+| [Joomla! AJAX Forms](plg_ajax_joomlaajaxforms/) | AJAX login, registration, MFA, profile editing, password reset, username reminder, J2Store cart operations | 5.x – 6.x |
 
 ### J2Commerce Extensions
 
@@ -60,6 +60,8 @@ Releases are created **manually** via the GitHub Actions UI (`workflow_dispatch`
 2. Click **Run workflow**
 3. Choose a bump level or leave empty for auto-detect from commits
 
+Run release workflows one at a time because each workflow commits version files back to `main`. For planned compatibility releases, set the bump explicitly instead of relying on auto-detect.
+
 Auto-detect uses [Conventional Commits](https://www.conventionalcommits.org/) since the last tag:
 
 | Commit Prefix | Version Bump | Example |
@@ -79,8 +81,9 @@ Commits without a conventional prefix are ignored — no release is created.
 | `release-cleanup.yml` | `cleanup-v*` |
 | `release-productcompare.yml` | `productcompare-v*` |
 | `release-privacy.yml` | `privacy-v*` |
+| `release-osmap-j2commerce.yml` | `osmap-j2commerce-v*` |
 
-All releases and tags are preserved, so users can track changes between versions.
+Release workflows replace older releases and tags for the same extension prefix after the new release is created.
 
 View all releases: https://github.com/advansit/Joomla/releases
 
