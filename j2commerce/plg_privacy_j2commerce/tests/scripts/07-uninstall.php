@@ -86,6 +86,33 @@ class UninstallTest
             return !is_dir(JPATH_BASE . '/plugins/privacy/j2commerce/overrides');
         });
 
+        $this->test('Bundled task plugin removed from #__extensions', function () {
+            $query = $this->db->getQuery(true)
+                ->select('COUNT(*)')
+                ->from('#__extensions')
+                ->where('element = ' . $this->db->quote('j2commerceprivacy'))
+                ->where('folder = '  . $this->db->quote('task'));
+            return (int) $this->db->setQuery($query)->loadResult() === 0;
+        });
+
+        $this->test('Bundled task plugin files removed', function () {
+            return !is_dir(JPATH_BASE . '/plugins/task/j2commerceprivacy');
+        });
+
+        $this->test('Bundled scheduler tasks removed', function () {
+            $tables = $this->db->getTableList();
+
+            if (!in_array($this->db->getPrefix() . 'scheduler_tasks', $tables, true)) {
+                return true;
+            }
+
+            $query = $this->db->getQuery(true)
+                ->select('COUNT(*)')
+                ->from('#__scheduler_tasks')
+                ->where('type = ' . $this->db->quote('plg_task_j2commerceprivacy.autocleanup'));
+            return (int) $this->db->setQuery($query)->loadResult() === 0;
+        });
+
         echo "\n=== Uninstall Test Summary ===\n";
         echo "Passed: {$this->passed}, Failed: {$this->failed}\n";
         return $this->failed === 0;

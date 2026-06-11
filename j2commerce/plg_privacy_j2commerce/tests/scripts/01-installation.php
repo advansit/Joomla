@@ -55,9 +55,23 @@ class InstallationTest
         
         $this->test('Extension class exists', 
             file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/src/Extension/J2Commerce.php'));
-        
-        $this->test('Task class exists', 
-            file_exists(JPATH_BASE . '/plugins/privacy/j2commerce/src/Task/AutoCleanupTask.php'));
+
+        $query = $this->db->getQuery(true)
+            ->select('extension_id, enabled')
+            ->from('#__extensions')
+            ->where($this->db->quoteName('element') . ' = ' . $this->db->quote('j2commerceprivacy'))
+            ->where($this->db->quoteName('folder') . ' = ' . $this->db->quote('task'));
+        $this->db->setQuery($query);
+        $taskPlugin = $this->db->loadObject();
+
+        $this->test('Bundled task plugin is installed', $taskPlugin !== null, 'Task plugin not found in database');
+
+        if ($taskPlugin) {
+            $this->test('Bundled task plugin is enabled', $taskPlugin->enabled == 1, 'Task plugin is disabled');
+        }
+
+        $this->test('Task plugin class exists',
+            file_exists(JPATH_BASE . '/plugins/task/j2commerceprivacy/src/Extension/J2CommercePrivacy.php'));
         
         // Test 3: Language files exist
         $this->test('German language file exists', 
@@ -79,11 +93,9 @@ class InstallationTest
 
         // Test 5: Overrides deployed to at least one active frontend template
         $query = $this->db->getQuery(true)
-            ->select($this->db->quoteName('element'))
-            ->from($this->db->quoteName('#__extensions'))
-            ->where($this->db->quoteName('type') . ' = ' . $this->db->quote('template'))
-            ->where($this->db->quoteName('client_id') . ' = 0')
-            ->where($this->db->quoteName('enabled') . ' = 1');
+            ->select('DISTINCT ' . $this->db->quoteName('template'))
+            ->from($this->db->quoteName('#__template_styles'))
+            ->where($this->db->quoteName('client_id') . ' = 0');
         $this->db->setQuery($query);
         $templates = $this->db->loadColumn() ?: [];
 

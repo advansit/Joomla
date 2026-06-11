@@ -9,6 +9,7 @@ defined('_JEXEC') or die;
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\Installer\InstallerScript;
+use Joomla\CMS\Installer\Installer;
 use Joomla\CMS\Language\Text;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
@@ -36,6 +37,8 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
     public function postflight($type, $parent)
     {
         if ($type === 'install' || $type === 'update') {
+            $packageSource = $parent->getParent()->getPath('source');
+
             // Remove old manifest filename (renamed to j2commerce.xml in 1.2.8)
             $oldManifest = JPATH_PLUGINS . '/privacy/j2commerce/plg_privacy_j2commerce.xml';
             if (file_exists($oldManifest)) {
@@ -43,16 +46,20 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             }
 
             $this->ensureUpdateSite();
+            $this->removeLegacyAutoCleanupTaskFile();
 
             // Deploy template overrides on first install only (never overwrite)
             if ($type === 'install') {
-                $this->copyTemplateOverrides($parent);
+                $this->copyTemplateOverrides($packageSource);
             }
+
+            $this->installTaskPlugin($packageSource);
+            $this->migrateLegacySchedulerTasks();
 
             $app = Factory::getApplication();
             $lang = $app->getLanguage();
             $lang->load('plg_privacy_j2commerce', JPATH_ADMINISTRATOR);
-            $lang->load('plg_privacy_j2commerce', $parent->getParent()->getPath('source'));
+            $lang->load('plg_privacy_j2commerce', $packageSource);
 
             // Inline styles — Joomla 5 <joomla-alert> strips <style> tags
             $sBox = 'padding:16px 20px;margin:16px 0;border-radius:4px;border-left:4px solid';
@@ -96,8 +103,19 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '<h3 style="margin-top:0">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_TITLE') . '</h3>';
             $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP3_DESC') . '</p>';
 
-            // SQL: Create table
-            $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CREATE_TITLE') . '</strong></p>';
+            // SQL: J2Commerce 6 metafields
+            $message .= '<p><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_J6_TITLE') . '</strong></p>';
+            $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_J6_DESC') . '</p>';
+            $message .= '<div style="' . $sPre . '">'
+                . "INSERT INTO `#__j2commerce_metafields`\n"
+                . "  (`owner_id`, `owner_resource`, `metakey`, `metavalue`)\n"
+                . "VALUES\n"
+                . "  (123, 'product', 'is_lifetime_license', 'yes');"
+                . '</div>';
+            $message .= '<p><small>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_J6_HINT') . '</small></p>';
+
+            // SQL: J2Commerce 4 / J2Store create table
+            $message .= '<p style="margin-top:16px"><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CREATE_TITLE') . '</strong></p>';
             $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CREATE_DESC') . '</p>';
             $message .= '<div style="' . $sPre . '">'
                 . "CREATE TABLE IF NOT EXISTS `#__j2store_product_customfields` (\n"
@@ -126,9 +144,9 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '<p style="margin-top:16px"><strong>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_QUERY_TITLE') . '</strong></p>';
             $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_QUERY_DESC') . '</p>';
             $message .= '<table style="' . $sTbl . '">';
-            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_TABLE') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">#__j2store_product_customfields</span></td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_FIELDNAME') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">is_lifetime_license</span></td></tr>';
-            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_FIELDVALUE') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">Yes</span> ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CASE_INSENSITIVE') . '</td></tr>';
+            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_TABLE') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">#__j2commerce_metafields</span> (J2Commerce 6) / <span style="' . $sCode . '">#__j2store_product_customfields</span> (J2Commerce 4)</td></tr>';
+            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_FIELDNAME') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">metakey</span> / <span style="' . $sCode . '">field_name</span>: <span style="' . $sCode . '">is_lifetime_license</span></td></tr>';
+            $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_FIELDVALUE') . '</td><td style="' . $sTd . '"><span style="' . $sCode . '">metavalue</span> / <span style="' . $sCode . '">field_value</span>: <span style="' . $sCode . '">yes</span> ' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_CASE_INSENSITIVE') . '</td></tr>';
             $message .= '<tr><td style="' . $sTdL . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_COL_EFFECT') . '</td><td style="' . $sTd . '">' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_SQL_EFFECT_DESC') . '</td></tr>';
             $message .= '</table>';
             $message .= '</div>';
@@ -140,6 +158,7 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             $message .= '<p>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_STEP4_NAV') . '</p>';
             $message .= '<ol style="line-height:1.8">';
             $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_TYPE') . '</li>';
+            $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_PARAMS') . '</li>';
             $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_SCHEDULE') . '</li>';
             $message .= '<li>' . Text::_('PLG_PRIVACY_J2COMMERCE_POSTINSTALL_TASK_ENABLE') . '</li>';
             $message .= '</ol>';
@@ -220,6 +239,11 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         }
     }
 
+    public function uninstall($parent): void
+    {
+        $this->uninstallTaskPlugin();
+    }
+
     /**
      * Copy template overrides to all active frontend templates on first install.
      *
@@ -234,20 +258,12 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
      * plugin inside J2Commerce's checkout or MyProfile views. Template overrides
      * are the only way to integrate without patching rendered HTML.
      */
-    private function copyTemplateOverrides($parent): void
+    private function copyTemplateOverrides(string $packageSource): void
     {
-        $sourceBase = $parent->getParent()->getPath('source') . '/overrides';
+        $sourceBase = $packageSource . '/overrides';
 
-        $db    = Factory::getContainer()->get(DatabaseInterface::class);
-        $query = $this->dbQuery($db)
-            ->select([$db->quoteName('element')])
-            ->from($db->quoteName('#__extensions'))
-            ->where($db->quoteName('type') . ' = ' . $db->quote('template'))
-            ->where($db->quoteName('client_id') . ' = 0')
-            ->where($db->quoteName('enabled') . ' = 1');
-
-        $db->setQuery($query);
-        $templates = $db->loadColumn() ?: [];
+        $db        = Factory::getContainer()->get(DatabaseInterface::class);
+        $templates = $this->getFrontendTemplates($db);
 
         $overrideFiles = [
             'checkout/default_shipping_payment.php',
@@ -299,6 +315,37 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
         // Store results for display in postflight message
         $this->_overridesCopied  = $copied;
         $this->_overridesSkipped = $skipped;
+    }
+
+    /**
+     * Return frontend templates that can receive overrides.
+     */
+    private function getFrontendTemplates(DatabaseInterface $db): array
+    {
+        $tables = $db->getTableList();
+
+        if (in_array($db->getPrefix() . 'template_styles', $tables, true)) {
+            $query = $this->dbQuery($db)
+                ->select('DISTINCT ' . $db->quoteName('template'))
+                ->from($db->quoteName('#__template_styles'))
+                ->where($db->quoteName('client_id') . ' = 0');
+            $db->setQuery($query);
+
+            $templates = array_filter($db->loadColumn() ?: []);
+
+            if (!empty($templates)) {
+                return array_values(array_unique($templates));
+            }
+        }
+
+        $query = $this->dbQuery($db)
+            ->select([$db->quoteName('element')])
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('template'))
+            ->where($db->quoteName('client_id') . ' = 0');
+        $db->setQuery($query);
+
+        return array_values(array_unique(array_filter($db->loadColumn() ?: [])));
     }
 
     /**
@@ -383,5 +430,194 @@ class Plgprivacyj2commerceInstallerScript extends InstallerScript
             ->bind(':extId', $extensionId, ParameterType::INTEGER);
         $db->setQuery($query);
         $db->execute();
+    }
+
+    /**
+     * Install or update the bundled Joomla task plugin.
+     */
+    private function installTaskPlugin(string $packageSource): void
+    {
+        $source = $packageSource . '/plugins/task/j2commerceprivacy';
+
+        if (!is_dir($source) || !is_file($source . '/j2commerceprivacy.xml')) {
+            Factory::getApplication()->enqueueMessage(
+                'J2Commerce Privacy cleanup task plugin was not found in the installation package.',
+                'warning'
+            );
+
+            return;
+        }
+
+        $installer = Installer::getInstance();
+
+        if (!$installer->install($source)) {
+            Factory::getApplication()->enqueueMessage(
+                'J2Commerce Privacy cleanup task plugin could not be installed automatically.',
+                'warning'
+            );
+
+            return;
+        }
+
+        $this->setTaskPluginEnabled(true);
+    }
+
+    /**
+     * Remove the bundled task plugin when the privacy plugin is uninstalled.
+     */
+    private function uninstallTaskPlugin(): void
+    {
+        $db          = Factory::getContainer()->get(DatabaseInterface::class);
+        $extensionId = $this->getTaskPluginExtensionId();
+
+        $taskType = 'plg_task_j2commerceprivacy.autocleanup';
+        $tables   = $db->getTableList();
+
+        if (in_array($db->getPrefix() . 'scheduler_tasks', $tables, true)) {
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__scheduler_tasks'))
+                ->where($db->quoteName('type') . ' = :taskType')
+                ->bind(':taskType', $taskType);
+            $db->setQuery($query);
+            $db->execute();
+        }
+
+        if ($extensionId) {
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__schemas'))
+                ->where($db->quoteName('extension_id') . ' = :extensionId')
+                ->bind(':extensionId', $extensionId, ParameterType::INTEGER);
+            $db->setQuery($query);
+            $db->execute();
+
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__update_sites_extensions'))
+                ->where($db->quoteName('extension_id') . ' = :extensionId')
+                ->bind(':extensionId', $extensionId, ParameterType::INTEGER);
+            $db->setQuery($query);
+            $db->execute();
+
+            $query = $this->dbQuery($db)
+                ->delete($db->quoteName('#__extensions'))
+                ->where($db->quoteName('extension_id') . ' = :extensionId')
+                ->bind(':extensionId', $extensionId, ParameterType::INTEGER);
+            $db->setQuery($query);
+            $db->execute();
+        }
+
+        $this->deleteDirectory(JPATH_PLUGINS . '/task/j2commerceprivacy');
+    }
+
+    /**
+     * Enable or disable the installed task plugin.
+     */
+    private function setTaskPluginEnabled(bool $enabled): void
+    {
+        $db          = Factory::getContainer()->get(DatabaseInterface::class);
+        $extensionId = $this->getTaskPluginExtensionId();
+
+        if (!$extensionId) {
+            return;
+        }
+
+        $enabledValue = $enabled ? 1 : 0;
+
+        $query = $this->dbQuery($db)
+            ->update($db->quoteName('#__extensions'))
+            ->set($db->quoteName('enabled') . ' = :enabled')
+            ->where($db->quoteName('extension_id') . ' = :extensionId')
+            ->bind(':enabled', $enabledValue, ParameterType::INTEGER)
+            ->bind(':extensionId', $extensionId, ParameterType::INTEGER);
+        $db->setQuery($query);
+        $db->execute();
+    }
+
+    /**
+     * Return the bundled task plugin extension ID.
+     */
+    private function getTaskPluginExtensionId(): int
+    {
+        $db = Factory::getContainer()->get(DatabaseInterface::class);
+
+        $query = $this->dbQuery($db)
+            ->select($db->quoteName('extension_id'))
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
+            ->where($db->quoteName('folder') . ' = ' . $db->quote('task'))
+            ->where($db->quoteName('element') . ' = ' . $db->quote('j2commerceprivacy'));
+        $db->setQuery($query);
+
+        return (int) $db->loadResult();
+    }
+
+    /**
+     * Move any task entries created from the old non-discoverable routine ID.
+     */
+    private function migrateLegacySchedulerTasks(): void
+    {
+        $db     = Factory::getContainer()->get(DatabaseInterface::class);
+        $tables = $db->getTableList();
+
+        if (!in_array($db->getPrefix() . 'scheduler_tasks', $tables, true)) {
+            return;
+        }
+
+        $query = $this->dbQuery($db)
+            ->update($db->quoteName('#__scheduler_tasks'))
+            ->set($db->quoteName('type') . ' = ' . $db->quote('plg_task_j2commerceprivacy.autocleanup'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('plg_privacy_j2commerce.autocleanup'));
+        $db->setQuery($query);
+        $db->execute();
+    }
+
+    /**
+     * Remove the old task service file from existing installations.
+     */
+    private function removeLegacyAutoCleanupTaskFile(): void
+    {
+        $oldFile = JPATH_PLUGINS . '/privacy/j2commerce/src/Task/AutoCleanupTask.php';
+
+        if (is_file($oldFile)) {
+            @unlink($oldFile);
+        }
+
+        $oldDir = dirname($oldFile);
+
+        if (is_dir($oldDir) && count(glob($oldDir . '/*') ?: []) === 0) {
+            @rmdir($oldDir);
+        }
+    }
+
+    /**
+     * Recursively delete a directory without invoking Joomla's installer from inside uninstall().
+     */
+    private function deleteDirectory(string $path): void
+    {
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $items = scandir($path);
+
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $itemPath = $path . '/' . $item;
+
+            if (is_dir($itemPath) && !is_link($itemPath)) {
+                $this->deleteDirectory($itemPath);
+                continue;
+            }
+
+            @unlink($itemPath);
+        }
+
+        @rmdir($path);
     }
 }
