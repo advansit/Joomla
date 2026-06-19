@@ -1,31 +1,40 @@
-# Agent Instructions
+# Agent Instructions — Advans IT Solutions GmbH
 
-## Git Commits
+## Git-Workflow
+- Nie direkt auf `main` committen oder pushen. Jede Änderung über einen Feature-Branch + PR.
+- Branch-Namen kurz & beschreibend: `fix/...`, `feat/...`, `docs/...`, `chore/...`.
+- Den PR niemals selbst mergen — das macht der Maintainer.
+- Squash-Merge; Branch wird nach dem Merge gelöscht.
 
-### Verified signatures (branch protection requirement)
+## Commit-Konventionen
+- Commit-Email immer: `89843389+advansit@users.noreply.github.com`
+- Commit-Name immer:  `Advans IT Solutions GmbH`
+- Niemals `@advans.ch`-Adressen verwenden (GitHub blockiert den Push).
+- Diese Adresse ist an den verifizierten GPG-Signing-Key gebunden. Signing aktivieren,
+  WENN der Key in der Umgebung vorhanden ist (`git config commit.gpgsign true`);
+  andernfalls unsigniert committen — kein Commit darf am fehlenden Key scheitern.
+- Conventional Commits: `fix:` → Patch, `feat:` → Minor, `feat!:`/`BREAKING CHANGE:` → Major.
+  Scope optional (`fix(scope): ...`).
+- Kein `Co-authored-by`-Trailer und keine Agent-Signatur (kein „Ona", „Copilot" o. ä.).
 
-All commits must be signed with a verified GPG signature. The signing key UID must match the commit author e-mail exactly, otherwise GitHub rejects the merge.
+## Skills
+Detailwissen liegt in `.claude/skills/`. Vor repo-spezifischen Aufgaben den passenden Skill lesen.
 
-Always use:
-```
-git config user.email "89843389+advansit@users.noreply.github.com"
-git config user.name "Advans IT Solutions GmbH"
-```
+## Repo-spezifisch (Joomla)
+Dieses öffentliche Repo erzwingt verifizierte GPG-Signaturen — Signing ist hier verpflichtend (nicht optional).
+Eine E-Mail, die nicht zum verifizierten Key passt, erzeugt eine nicht-verifizierbare Signatur und der Merge wird abgelehnt.
 
-The signing key (`BBB1295FE1391E99`) is bound to `89843389+advansit@users.noreply.github.com`. Using any other e-mail (e.g. `pascal.raphael@users.noreply.github.com`) produces a signature GitHub cannot verify.
+Immer verwenden:
+- `git config user.email "89843389+advansit@users.noreply.github.com"`
+- `git config user.name "Advans IT Solutions GmbH"`
 
-### Conventional commits
+Generische Extensions in diesem Repository:
+- `plg_ajax_joomlaajaxforms`
+- `plg_osmap_j2commerce`
+- J2Commerce-Extensions
 
-Release CI workflows auto-detect the version bump from commit prefixes:
+Release-CI leitet die Version aus Conventional-Commit-Präfixen ab. Erkannt werden nur `fix(...)` und `feat(...)`.
 
-| Prefix | Bump |
-|---|---|
-| `fix:` / `fix(...):` | patch |
-| `feat:` / `feat(...):` | minor |
-| `feat!:` / `BREAKING CHANGE:` | major |
-
-Any other prefix (e.g. `i18n:`, `docs:`, `chore:`) is **not** recognized — the release workflow skips with "No conventional commit found". Use `fix(...):`  or `feat(...):` with a scope for non-standard change types (e.g. `fix(i18n):`, `fix(security):`).
-
-### No Co-authored-by trailer
-
-Do not add `Co-authored-by` trailers to commits in this repository.
+Skills liegen in:
+- `.claude/skills/joomla-extensions`
+- `.claude/skills/privacy-plugin`
