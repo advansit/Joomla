@@ -35,7 +35,7 @@ if [ -n "${GPG_PRIVATE_KEY}" ]; then
             || echo 'pinentry-mode loopback' >> ~/.gnupg/gpg.conf
         chmod 600 ~/.gnupg/gpg.conf
 
-        export GPG_TTY=$(tty 2>/dev/null || true)
+        _TTY=$(tty 2>/dev/null) && export GPG_TTY="$_TTY" || true
 
         GPG_OK=true
         echo "[setup-git-signing] GPG signing aktiviert (Key-ID: ${KEY_ID})."
@@ -56,9 +56,10 @@ if [ -n "${GH_PAT}" ]; then
         GH_OK=true
         echo "[setup-git-signing] gh auth konfiguriert."
     else
-        # gh nicht vorhanden – store-basierten Credential-Helper für github.com setzen
-        git config --global credential.https://github.com.helper \
-            "!f(){ echo username=x-access-token; echo ******; }; f" 2>/dev/null || true
+        # gh nicht vorhanden – Credential-Store für github.com befüllen
+        git config --global credential.helper store 2>/dev/null || true
+        { echo "https://x-access-token:${GH_PAT}@github.com"; } >> ~/.git-credentials 2>/dev/null || true
+        chmod 600 ~/.git-credentials 2>/dev/null || true
         GH_OK=true
         echo "[setup-git-signing] gh nicht gefunden – Git Credential Helper für github.com gesetzt."
     fi
