@@ -73,7 +73,9 @@ class ExportHttpTest
 
     /**
      * Perform an HTTP request. Returns ['code','headers','body'].
-     * Does NOT follow redirects so we can inspect the real status + headers.
+     * By default does NOT follow redirects so we can inspect the real status +
+     * headers; pass $follow=true to transparently follow them (used only for the
+     * login/token fetches, where the intermediate headers are irrelevant).
      */
     private function request(string $url, array $post = [], bool $follow = false): array
     {
@@ -384,7 +386,7 @@ class ExportHttpTest
         ]);
         $noTokenLeaks = strpos($noToken['body'], $sku) !== false;
         $this->test('Missing-token export does NOT leak seeded data', !$noTokenLeaks,
-            'CSRF check failed to block an untokened export');
+            'CSRF check failed to block an export without a CSRF token');
         $this->test('Missing-token export is rejected (invalid token / not a CSV download)',
             $noTokenLeaks === false
                 && (stripos($this->headerValue($noToken['headers'], 'Content-Type'), 'text/csv') === false

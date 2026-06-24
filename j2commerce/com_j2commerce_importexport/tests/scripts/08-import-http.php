@@ -310,9 +310,9 @@ class ImportHttpTest
         ]);
         @unlink($fileNoToken);
         $noTokenAccepted = isset($noTokenResp['json']['success']) && $noTokenResp['json']['success'] === true;
-        $this->test('Untokened upload is rejected', !$noTokenAccepted,
+        $this->test('Upload without a token is rejected', !$noTokenAccepted,
             "HTTP {$noTokenResp['code']}, body: " . substr(trim($noTokenResp['body']), 0, 120));
-        $this->test('Untokened upload did not create the product',
+        $this->test('Upload without a token did not create the product',
             $this->findVariantBySku($variantSku) === null,
             'a product was created without a valid CSRF token');
 
