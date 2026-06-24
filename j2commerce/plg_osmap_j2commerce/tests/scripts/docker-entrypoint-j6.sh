@@ -73,7 +73,7 @@ mysql -h mysql -u joomla -pjoomla_pass joomla_db \
 if [ "${J2COMMERCE_SEF}" = "1" ]; then
     echo "Enabling SEF URLs (J2COMMERCE_SEF=1)..."
     mysql -h mysql -u joomla -pjoomla_pass joomla_db \
-        -e "UPDATE ${DB_PREFIX}extensions SET params=JSON_SET(COALESCE(params,'{}'), '\$.sef', 1) WHERE element='com_config' AND type='component' LIMIT 1;" 2>/dev/null || true
+        -e "UPDATE ${DB_PREFIX}extensions SET params=JSON_SET(COALESCE(params,'{}'), '$.sef', 1) WHERE element='com_config' AND type='component' LIMIT 1;" 2>/dev/null || true
     php -r "
 \$f = '/var/www/html/configuration.php';
 \$c = file_get_contents(\$f);
@@ -89,7 +89,7 @@ file_put_contents(\$f, \$c);
 else
     echo "Disabling SEF URLs (default J6 mode)..."
     mysql -h mysql -u joomla -pjoomla_pass joomla_db \
-        -e "UPDATE ${DB_PREFIX}extensions SET params=JSON_SET(COALESCE(params,'{}'), '\$.sef', 0) WHERE element='com_config' AND type='component' LIMIT 1;" 2>/dev/null || true
+        -e "UPDATE ${DB_PREFIX}extensions SET params=JSON_SET(COALESCE(params,'{}'), '$.sef', 0) WHERE element='com_config' AND type='component' LIMIT 1;" 2>/dev/null || true
     php -r "
 \$f = '/var/www/html/configuration.php';
 \$c = file_get_contents(\$f);

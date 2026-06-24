@@ -2,6 +2,11 @@ name: Build & Test - OSMap J2Commerce
 
 on:
   workflow_dispatch:
+    inputs:
+      j2commerce6_ref:
+        description: 'J2Commerce 6 git ref (commit SHA) to build from'
+        required: false
+        default: '2dd491e8e1b129a8754065937f85769d97ca76fa'
   push:
     branches: [main]
     paths:
@@ -11,6 +16,13 @@ on:
     paths:
       - 'j2commerce/plg_osmap_j2commerce/**'
       - 'shared/**'
+
+env:
+  # Pinned J2Commerce 6 source ref for reproducible/deterministic builds.
+  # The j2commerce/j2commerce repo publishes no release tags, so we pin to an
+  # explicit commit SHA (default branch HEAD as of 2026-06-24). Override via the
+  # workflow_dispatch "j2commerce6_ref" input when a newer build is needed.
+  J2C6_REF: ${{ github.event.inputs.j2commerce6_ref || '2dd491e8e1b129a8754065937f85769d97ca76fa' }}
 
 jobs:
   build:
@@ -161,8 +173,13 @@ jobs:
           extensions: zip
       - name: Build J2Commerce 6 from source
         run: |
-          git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2commerce6-src
-          echo "J2Commerce 6 source commit: $(git -C /tmp/j2commerce6-src rev-parse HEAD)"
+          # pinned: build from an explicit J2Commerce 6 commit (env.J2C6_REF) for
+          # a deterministic environment instead of the moving default branch.
+          git init /tmp/j2commerce6-src
+          git -C /tmp/j2commerce6-src remote add origin https://github.com/j2commerce/j2commerce.git
+          git -C /tmp/j2commerce6-src fetch --depth 1 origin "$J2C6_REF"
+          git -C /tmp/j2commerce6-src checkout --detach FETCH_HEAD
+          echo "J2Commerce 6 source commit (pinned $J2C6_REF): $(git -C /tmp/j2commerce6-src rev-parse HEAD)"
           cd /tmp/j2commerce6-src && php build/build_package.php
           ZIP=$(ls docs/packages/pkg_j2commerce_*.zip docs/packages/com_j2commerce_*.zip 2>/dev/null | head -1)
           [ -z "$ZIP" ] && echo "ERROR: No J2Commerce 6 ZIP found" && ls docs/packages/ && exit 1
@@ -227,8 +244,13 @@ jobs:
           extensions: zip
       - name: Build J2Commerce 6 from source
         run: |
-          git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2commerce6-src
-          echo "J2Commerce 6 source commit: $(git -C /tmp/j2commerce6-src rev-parse HEAD)"
+          # pinned: build from an explicit J2Commerce 6 commit (env.J2C6_REF) for
+          # a deterministic environment instead of the moving default branch.
+          git init /tmp/j2commerce6-src
+          git -C /tmp/j2commerce6-src remote add origin https://github.com/j2commerce/j2commerce.git
+          git -C /tmp/j2commerce6-src fetch --depth 1 origin "$J2C6_REF"
+          git -C /tmp/j2commerce6-src checkout --detach FETCH_HEAD
+          echo "J2Commerce 6 source commit (pinned $J2C6_REF): $(git -C /tmp/j2commerce6-src rev-parse HEAD)"
           cd /tmp/j2commerce6-src && php build/build_package.php
           ZIP=$(ls docs/packages/pkg_j2commerce_*.zip docs/packages/com_j2commerce_*.zip 2>/dev/null | head -1)
           [ -z "$ZIP" ] && echo "ERROR: No J2Commerce 6 ZIP found" && ls docs/packages/ && exit 1

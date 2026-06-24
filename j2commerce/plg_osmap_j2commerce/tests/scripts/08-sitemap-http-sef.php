@@ -12,6 +12,16 @@
  * never verified SEF product URL output (issue #99).
  */
 define('_JEXEC', 1);
+
+// This test only applies to the dedicated SEF-enabled stack. It is part of
+// TEST_SCRIPTS, so `./run-tests.sh all` would otherwise run it on the standard
+// non-SEF J5/J6 stacks where SEF is intentionally disabled and it would fail.
+// Skip cleanly (exit 0) unless the SEF environment flag (J2COMMERCE_SEF=1) is set.
+if (getenv('J2COMMERCE_SEF') !== '1') {
+    fwrite(STDOUT, "skipped: SEF env not set (J2COMMERCE_SEF=1 required)\n");
+    exit(0);
+}
+
 define('JPATH_BASE', '/var/www/html');
 require_once JPATH_BASE . '/includes/defines.php';
 $_SERVER['HTTP_HOST']   = $_SERVER['HTTP_HOST']   ?? 'localhost';
@@ -43,7 +53,6 @@ class SitemapHttpSefTest
         }
 
         echo "Sitemap fetched (" . strlen($xml) . " bytes)\n";
-        echo "Full sitemap response:\n" . $xml . "\n\n";
 
         $urls = $this->extractUrls($xml);
         echo "URLs found in sitemap: " . count($urls) . "\n";
@@ -54,8 +63,15 @@ class SitemapHttpSefTest
 
         $root = rtrim(\Joomla\CMS\Uri\Uri::root(), '/');
 
-        $this->test('Sitemap returns valid XML', function () use ($xml) {
-            return str_contains($xml, '<urlset') && str_contains($xml, 'sitemaps.org');
+        // Only dump the full sitemap response when debugging (OSMAP_SEF_DEBUG=1)
+        // or when XML validation fails, to avoid bloating CI logs/artifacts.
+        $xmlValid = str_contains($xml, '<urlset') && str_contains($xml, 'sitemaps.org');
+        if (getenv('OSMAP_SEF_DEBUG') === '1' || !$xmlValid) {
+            echo "Full sitemap response:\n" . $xml . "\n\n";
+        }
+
+        $this->test('Sitemap returns valid XML', function () use ($xmlValid) {
+            return $xmlValid;
         });
 
         $alpha = $this->findUrl($urls, 'test-product-alpha');
