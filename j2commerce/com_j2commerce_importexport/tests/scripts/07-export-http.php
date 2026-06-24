@@ -363,6 +363,10 @@ class ExportHttpTest
         $jsonDisp = $this->headerValue($json['headers'], 'Content-Disposition');
         $decoded  = json_decode($json['body'], true);
 
+        if ($json['code'] !== 200) {
+            echo "  [diag] JSON export raw body (first 800 chars): "
+                . substr(trim($json['body']), 0, 800) . "\n";
+        }
         $this->test('JSON export returns HTTP 200', $json['code'] === 200, "got HTTP {$json['code']}");
         $this->test('JSON Content-Type is application/json', stripos($jsonType, 'application/json') !== false, "Content-Type: $jsonType");
         $this->test('JSON Content-Disposition is attachment', stripos($jsonDisp, 'attachment') !== false, "Content-Disposition: $jsonDisp");
