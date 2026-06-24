@@ -111,10 +111,52 @@ jobs:
           cd j2commerce/com_j2store_cleanup/tests
           docker compose down -v
 
+  build-j2c6:
+    name: Build J2Commerce 6
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Setup PHP for J2Commerce build
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+      - name: Build J2Commerce 6 from source
+        run: |
+          # j2commerce/j2commerce publishes no release tags, so pin the source to a
+          # specific main commit for deterministic, reproducible builds.
+          J2C6_COMMIT=2dd491e8e1b129a8754065937f85769d97ca76fa # pinned (main)
+          git init /tmp/j2commerce6-src
+          git -C /tmp/j2commerce6-src remote add origin https://github.com/j2commerce/j2commerce.git
+          git -C /tmp/j2commerce6-src fetch --depth 1 origin "$J2C6_COMMIT"
+          git -C /tmp/j2commerce6-src checkout --detach FETCH_HEAD
+          echo "J2Commerce 6 source commit: $(git -C /tmp/j2commerce6-src rev-parse HEAD)"
+          cd /tmp/j2commerce6-src && php build/build_package.php
+          # Robust, deterministic ZIP selection: nullglob so a non-matching glob
+          # expands to nothing (instead of aborting the step under pipefail), and a
+          # fixed glob order (pkg_ preferred over com_) for reproducibility.
+          shopt -s nullglob
+          zips=( docs/packages/pkg_j2commerce_*.zip docs/packages/com_j2commerce_*.zip )
+          if (( ${#zips[@]} == 0 )); then
+            echo "ERROR: No J2Commerce 6 ZIP found in docs/packages"
+            ls -la docs/packages/ || true
+            exit 1
+          fi
+          ZIP="${zips[0]}"
+          sha256sum "$ZIP"
+          mkdir -p "$GITHUB_WORKSPACE/j2c6-dist"
+          cp "$ZIP" "$GITHUB_WORKSPACE/j2c6-dist/j2commerce6.zip"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: j2commerce6-package
+          path: j2c6-dist/j2commerce6.zip
+          retention-days: 1
+
   test-j6:
     name: ${{ matrix.name }} (J6 + J2C6)
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, build-j2c6]
     permissions:
       contents: read
     strategy:
@@ -140,20 +182,11 @@ jobs:
         with:
           name: extension-package
           path: j2commerce/com_j2store_cleanup/tests/
-      - name: Setup PHP for J2Commerce build
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+      - name: Download J2Commerce 6 package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          php-version: '8.3'
-          extensions: zip
-      - name: Build J2Commerce 6 from source
-        run: |
-          git clone --depth=1 https://github.com/j2commerce/j2commerce.git /tmp/j2commerce6-src
-          echo "J2Commerce 6 source commit: $(git -C /tmp/j2commerce6-src rev-parse HEAD)"
-          cd /tmp/j2commerce6-src && php build/build_package.php
-          ZIP=$(ls docs/packages/pkg_j2commerce_*.zip docs/packages/com_j2commerce_*.zip 2>/dev/null | head -1)
-          [ -z "$ZIP" ] && echo "ERROR: No J2Commerce 6 ZIP found" && ls docs/packages/ && exit 1
-          sha256sum "$ZIP"
-          cp "$ZIP" "$GITHUB_WORKSPACE/j2commerce/com_j2store_cleanup/tests/j2commerce6.zip"
+          name: j2commerce6-package
+          path: j2commerce/com_j2store_cleanup/tests/
       - name: Start environment (J6 + J2Commerce 6)
         run: |
           cd j2commerce/com_j2store_cleanup/tests
