@@ -327,6 +327,10 @@ class ImportHttpTest
         @unlink($file);
 
         $uploadOk = isset($upload['json']['success']) && $upload['json']['success'] === true;
+        if (!$uploadOk) {
+            echo "  [diag] upload body (first 600 chars): "
+                . substr(preg_replace('/\s+/', ' ', strip_tags($upload['body'])), 0, 600) . "\n";
+        }
         $this->test('Upload returns success JSON', $uploadOk,
             "HTTP {$upload['code']}, body: " . substr(trim($upload['body']), 0, 160));
 

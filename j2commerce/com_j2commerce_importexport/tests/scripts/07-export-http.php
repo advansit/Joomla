@@ -340,6 +340,10 @@ class ExportHttpTest
         $csvType = $this->headerValue($csv['headers'], 'Content-Type');
         $csvDisp = $this->headerValue($csv['headers'], 'Content-Disposition');
 
+        if ($csv['code'] !== 200) {
+            echo "  [diag] CSV export body (first 600 chars): "
+                . substr(preg_replace('/\s+/', ' ', strip_tags($csv['body'])), 0, 600) . "\n";
+        }
         $this->test('CSV export returns HTTP 200', $csv['code'] === 200, "got HTTP {$csv['code']}");
         $this->test('CSV Content-Type is text/csv', stripos($csvType, 'text/csv') !== false, "Content-Type: $csvType");
         $this->test('CSV Content-Disposition is attachment', stripos($csvDisp, 'attachment') !== false, "Content-Disposition: $csvDisp");
