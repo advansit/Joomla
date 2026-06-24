@@ -69,13 +69,29 @@ class ImportHttpTest
     private function request(string $url, $post = [], bool $follow = false): array
     {
         $ch = curl_init($url);
+
+        // Collect response headers via a callback rather than CURLOPT_HEADER so
+        // the body stream never contains header data. When following redirects,
+        // cURL emits one header block per hop; reset the buffer on each new
+        // status line so we keep only the FINAL response's headers. This avoids
+        // CURLINFO_HEADER_SIZE (which only reports the last block) leaving
+        // intermediate redirect headers prefixed into the body and breaking
+        // token scraping / JSON decoding.
+        $headers = '';
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER         => true,
+            CURLOPT_HEADER         => false,
             CURLOPT_FOLLOWLOCATION => $follow,
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_COOKIEJAR      => $this->cookieJar,
             CURLOPT_COOKIEFILE     => $this->cookieJar,
+            CURLOPT_HEADERFUNCTION => function ($curl, $line) use (&$headers) {
+                if (stripos($line, 'HTTP/') === 0) {
+                    $headers = '';
+                }
+                $headers .= $line;
+                return strlen($line);
+            },
         ]);
         if (!empty($post)) {
             curl_setopt($ch, CURLOPT_POST, true);
@@ -90,15 +106,13 @@ class ImportHttpTest
             }
             curl_setopt($ch, CURLOPT_POSTFIELDS, $hasFile ? $post : http_build_query($post));
         }
-        $raw        = curl_exec($ch);
-        $code       = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $raw  = $raw === false ? '' : $raw;
-        $body = substr($raw, $headerSize);
+        $body = $body === false ? '' : $body;
 
-        return ['code' => (int) $code, 'body' => $body, 'json' => json_decode($body, true)];
+        return ['code' => (int) $code, 'headers' => $headers, 'body' => $body, 'json' => json_decode($body, true)];
     }
 
     private function extractToken(string $html): ?string
