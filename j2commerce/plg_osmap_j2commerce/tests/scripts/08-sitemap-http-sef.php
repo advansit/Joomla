@@ -61,7 +61,15 @@ class SitemapHttpSefTest
         }
         echo "\n";
 
-        $root = rtrim(\Joomla\CMS\Uri\Uri::root(), '/');
+        // The product <loc> values are produced by the real OSMap web request,
+        // so their scheme+host is whatever the live Apache/Joomla stack emits
+        // (here http://localhost). Deriving the expected base from the actual
+        // response — instead of reconstructing it with Uri::root() in this CLI
+        // process, which resolves the base differently outside a web request —
+        // lets the test assert the real SEF response while staying host-agnostic.
+        $cliRoot = rtrim(\Joomla\CMS\Uri\Uri::root(), '/');
+        $root    = $this->baseFromUrls($urls) ?? $cliRoot;
+        echo "Base derived from response: {$root} (CLI Uri::root(): {$cliRoot})\n\n";
 
         // Only dump the full sitemap response when debugging (OSMAP_SEF_DEBUG=1)
         // or when XML validation fails, to avoid bloating CI logs/artifacts.
@@ -124,6 +132,16 @@ class SitemapHttpSefTest
         foreach ($urls as $u) {
             if (str_contains($u, $needle)) {
                 return $u;
+            }
+        }
+        return null;
+    }
+
+    private function baseFromUrls(array $urls): ?string
+    {
+        foreach ($urls as $u) {
+            if (preg_match('#^(https?://[^/]+)#i', $u, $m)) {
+                return $m[1];
             }
         }
         return null;
