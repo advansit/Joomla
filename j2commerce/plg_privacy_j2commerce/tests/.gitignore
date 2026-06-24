@@ -1,0 +1,14 @@
+# Test artifacts
+test-results/
+*.log
+
+# Docker volumes
+.docker/
+
+# Built packages (except in logs directory)
+*.zip
+!logs/*.zip
+
+# Temporary files
+*.tmp
+*.temp

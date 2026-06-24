@@ -1,0 +1,25 @@
+<?php
+/**
+ * Layout: Compare button
+ *
+ * Available variables:
+ *   $productId   (int)    J2Store product ID
+ *   $buttonText  (string) Translated button label
+ *   $buttonClass (string) CSS classes from plugin params
+ *
+ * Template override path:
+ *   templates/{your-template}/html/plg_j2commerce_productcompare/button.php
+ */
+defined('_JEXEC') or die;
+
+// FileLayout::render() exposes the passed data as $displayData and does not
+// extract it into local scope, so make the documented variables available.
+if (isset($displayData) && \is_array($displayData)) {
+    extract($displayData);
+}
+?>
+<button type="button"
+        class="j2store-compare-btn <?php echo $this->escape($buttonClass); ?>"
+        data-product-id="<?php echo (int) $productId; ?>">
+    <?php echo $this->escape($buttonText); ?>
+</button>

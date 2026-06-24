@@ -1,0 +1,1 @@
+../../shared/build/verify-package.sh

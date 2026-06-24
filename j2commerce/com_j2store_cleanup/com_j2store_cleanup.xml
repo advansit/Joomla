@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="component" method="upgrade">
+    <name>COM_J2STORE_CLEANUP</name>
+    <element>com_j2store_cleanup</element>
+    <author>Advans IT Solutions GmbH</author>
+    <creationDate>2026-06</creationDate>
+    <copyright>Copyright (C) 2026 Advans IT Solutions GmbH</copyright>
+    <license>Proprietary</license>
+    <authorEmail>info@advans.ch</authorEmail>
+    <authorUrl>https://advans.ch</authorUrl>
+    <version>1.0.4</version>
+    <description>COM_J2STORE_CLEANUP_XML_DESCRIPTION</description>
+    
+    <targetplatform name="joomla" version="(4\.[0-9]|5\.[0-9]|6\.[0-9])" />
+
+    <namespace path="administrator/components/com_j2store_cleanup">Advans\Component\J2StoreCleanup\Administrator</namespace>
+
+    <scriptfile>script.php</scriptfile>
+
+    <administration>
+        <menu>COM_J2STORE_CLEANUP</menu>
+        <files folder="administrator/components/com_j2store_cleanup">
+            <filename>j2store_cleanup.php</filename>
+        </files>
+        
+        <languages folder="administrator/language">
+            <language tag="en-GB">en-GB/com_j2store_cleanup.ini</language>
+            <language tag="en-GB">en-GB/com_j2store_cleanup.sys.ini</language>
+            <language tag="de-DE">de-DE/com_j2store_cleanup.ini</language>
+            <language tag="de-DE">de-DE/com_j2store_cleanup.sys.ini</language>
+            <language tag="fr-FR">fr-FR/com_j2store_cleanup.ini</language>
+            <language tag="fr-FR">fr-FR/com_j2store_cleanup.sys.ini</language>
+        </languages>
+    </administration>
+
+    <config>
+        <fields name="params">
+            <fieldset name="basic">
+                <field
+                    name="autoload_language"
+                    type="hidden"
+                    default="1"
+                />
+            </fieldset>
+        </fields>
+    </config>
+
+    <updateservers>
+        <server type="extension" priority="1" name="J2Store Cleanup">
+            https://raw.githubusercontent.com/advansit/Joomla/main/j2commerce/com_j2store_cleanup/updates/update.xml
+        </server>
+    </updateservers>
+</extension>

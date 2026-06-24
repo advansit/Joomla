@@ -1,0 +1,3 @@
+=== Performance Tests ===
+
+Test: API response time... ❌ FATAL ERROR: Table 'joomla_db.joom_license_keys' doesn't exist

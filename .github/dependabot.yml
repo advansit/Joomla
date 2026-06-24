@@ -1,0 +1,85 @@
+version: 2
+updates:
+  # Privacy Plugin
+  - package-ecosystem: "composer"
+    directory: "/j2commerce/plg_privacy_j2commerce"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "privacy"
+
+  # Import/Export Component
+  - package-ecosystem: "composer"
+    directory: "/j2commerce/com_j2commerce_importexport"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "importexport"
+
+  # J2Store Cleanup Component
+  - package-ecosystem: "composer"
+    directory: "/j2commerce/com_j2store_cleanup"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "cleanup"
+
+  # Product Compare Plugin
+  - package-ecosystem: "composer"
+    directory: "/j2commerce/plg_j2commerce_productcompare"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "productcompare"
+
+  # OSMap Plugin
+  - package-ecosystem: "composer"
+    directory: "/j2commerce/plg_osmap_j2commerce"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "osmap"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"
